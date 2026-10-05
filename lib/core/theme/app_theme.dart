@@ -21,7 +21,7 @@ class AppTheme {
           onSurface: AppColors.textPrimary,
           error: AppColors.error,
           outline: AppColors.border,
-          outlineVariant: AppColors.border.withOpacity(0.5),
+          outlineVariant: AppColors.border.withValues(alpha: 0.5),
         );
 
     return ThemeData(
@@ -57,7 +57,7 @@ class AppTheme {
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: AppColors.border.withOpacity(0.6), width: 1),
+          side: BorderSide(color: AppColors.border.withValues(alpha: 0.6), width: 1),
         ),
       ),
 
@@ -67,7 +67,7 @@ class AppTheme {
           backgroundColor: AppColors.blue,
           foregroundColor: Colors.white,
           elevation: 0,
-          shadowColor: AppColors.blue.withOpacity(0.25),
+          shadowColor: AppColors.blue.withValues(alpha: 0.25),
           minimumSize: const Size(double.infinity, 54),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           shape: RoundedRectangleBorder(
@@ -128,11 +128,11 @@ class AppTheme {
         suffixIconColor: AppColors.textSecondary,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: AppColors.border.withOpacity(0.8)),
+          borderSide: BorderSide(color: AppColors.border.withValues(alpha: 0.8)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: AppColors.border.withOpacity(0.8)),
+          borderSide: BorderSide(color: AppColors.border.withValues(alpha: 0.8)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
@@ -151,8 +151,8 @@ class AppTheme {
       // Category Badges & Filtering Chips (Youth, NGO, Tier Badges)
       chipTheme: ChipThemeData(
         backgroundColor: AppColors.surface,
-        disabledColor: AppColors.border.withOpacity(0.3),
-        selectedColor: AppColors.blue.withOpacity(0.12),
+        disabledColor: AppColors.border.withValues(alpha: 0.3),
+        selectedColor: AppColors.blue.withValues(alpha: 0.12),
         secondarySelectedColor: AppColors.blue,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         labelStyle: const TextStyle(
@@ -167,7 +167,7 @@ class AppTheme {
         ),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(10),
-          side: BorderSide(color: AppColors.border.withOpacity(0.6)),
+          side: BorderSide(color: AppColors.border.withValues(alpha: 0.6)),
         ),
       ),
 
@@ -175,9 +175,9 @@ class AppTheme {
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: Colors.white,
         elevation: 8,
-        shadowColor: Colors.black.withOpacity(0.06),
+        shadowColor: Colors.black.withValues(alpha: 0.06),
         height: 68,
-        indicatorColor: AppColors.blue.withOpacity(0.12),
+        indicatorColor: AppColors.blue.withValues(alpha: 0.12),
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
             return const TextStyle(
