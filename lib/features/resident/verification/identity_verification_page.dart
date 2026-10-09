@@ -386,7 +386,7 @@ class _IdentityVerificationPageState
                 const SizedBox(height: 18),
 
                 DropdownButtonFormField<String>(
-                  value: selectedIdType,
+                  initialValue: selectedIdType,
                   decoration: const InputDecoration(
                     labelText: 'ID Type',
                     prefixIcon: Icon(

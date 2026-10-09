@@ -192,7 +192,7 @@ class _MyEventsPageState extends State<MyEventsPage> {
                       width: 54,
                       height: 54,
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.16),
+                        color: Colors.white.withValues(alpha: 0.16),
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: const Icon(
@@ -248,7 +248,7 @@ class _MyEventsPageState extends State<MyEventsPage> {
                 ),
                 scrollDirection: Axis.horizontal,
                 itemCount: filters.length,
-                separatorBuilder: (_, __) =>
+                separatorBuilder: (_, _) =>
                     const SizedBox(width: 8),
                 itemBuilder: (context, index) {
                   final filter = filters[index];
@@ -285,7 +285,7 @@ class _MyEventsPageState extends State<MyEventsPage> {
                         50,
                       ),
                       itemCount: events.length,
-                      separatorBuilder: (_, __) =>
+                      separatorBuilder: (_, _) =>
                           const SizedBox(height: 14),
                       itemBuilder: (context, index) {
                         final event = events[index];

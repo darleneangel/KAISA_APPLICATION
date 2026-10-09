@@ -300,8 +300,8 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
                     ),
                     decoration: BoxDecoration(
                       color:
-                          Colors.white.withOpacity(
-                        0.16,
+                          Colors.white.withValues(
+                        alpha: 0.16,
                       ),
                       borderRadius:
                           BorderRadius.circular(20),

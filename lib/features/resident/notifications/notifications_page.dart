@@ -332,7 +332,7 @@ class _NotificationsPageState
                               displayedNotifications
                                   .length,
                           separatorBuilder:
-                              (_, __) =>
+                              (_, _) =>
                                   const SizedBox(
                             height: 10,
                           ),

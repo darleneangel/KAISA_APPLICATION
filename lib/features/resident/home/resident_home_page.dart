@@ -311,7 +311,7 @@ class _VerificationCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(22),
         boxShadow: [
           BoxShadow(
-            color: AppColors.blue.withOpacity(0.18),
+            color: AppColors.blue.withValues(alpha: 0.18),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -326,7 +326,7 @@ class _VerificationCard extends StatelessWidget {
               vertical: 6,
             ),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.16),
+              color: Colors.white.withValues(alpha: 0.16),
               borderRadius: BorderRadius.circular(30),
             ),
             child: const Row(
@@ -367,7 +367,7 @@ class _VerificationCard extends StatelessWidget {
           Text(
             'Verify your identity to join organizations, participate in events, and access more KAISA features.',
             style: TextStyle(
-              color: Colors.white.withOpacity(0.82),
+              color: Colors.white.withValues(alpha: 0.82),
               fontSize: 14,
               height: 1.4,
             ),

@@ -714,7 +714,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
           const SizedBox(height: 14),
 
           DropdownButtonFormField<String>(
-            value: _selectedGender,
+            initialValue: _selectedGender,
             decoration: const InputDecoration(
               labelText: 'Gender',
               prefixIcon:
@@ -791,7 +791,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
       child: Column(
         children: [
           DropdownButtonFormField<String>(
-            value: _selectedBarangay,
+            initialValue: _selectedBarangay,
             isExpanded: true,
             decoration: const InputDecoration(
               labelText: 'Barangay',
