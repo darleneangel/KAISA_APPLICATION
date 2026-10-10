@@ -4,6 +4,8 @@ import '../../../core/theme/app_colors.dart';
 import 'package:go_router/go_router.dart';
 import '../../../shared/repositories/organization_repository.dart';
 
+import '../../../shared/repositories/community_event_repository.dart';
+
 class LguAdminDashboardPage extends StatefulWidget {
   const LguAdminDashboardPage({super.key});
 
@@ -15,23 +17,17 @@ class _LguAdminDashboardPageState extends State<LguAdminDashboardPage> {
   int selectedIndex = 0;
   String searchQuery = '';
 
-  static const sections = [
-    ('Overview', Icons.dashboard_rounded),
-    ('Organizations', Icons.apartment_rounded),
-    ('Admin Assignments', Icons.admin_panel_settings_rounded),
-    ('Event Monitoring', Icons.event_available_rounded),
-    ('Reports', Icons.bar_chart_rounded),
-    ('Audit Logs', Icons.history_rounded),
-    ('Settings', Icons.settings_rounded),
-  ];
 
-  final OrganizationRepository repository =
-    OrganizationRepository.instance;
+  final CommunityEventRepository eventRepository =
+      CommunityEventRepository.instance;
+
+  final OrganizationRepository repository = OrganizationRepository.instance;
 
   @override
   void initState() {
     super.initState();
     repository.addListener(_refreshDashboard);
+    eventRepository.addListener(_refreshDashboard);
   }
 
   void _refreshDashboard() {
@@ -43,6 +39,7 @@ class _LguAdminDashboardPageState extends State<LguAdminDashboardPage> {
   @override
   void dispose() {
     repository.removeListener(_refreshDashboard);
+    eventRepository.removeListener(_refreshDashboard);
     super.dispose();
   }
 
@@ -108,7 +105,6 @@ class _LguAdminDashboardPageState extends State<LguAdminDashboardPage> {
     );
   }
 
-
   Widget _overview() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -159,14 +155,14 @@ class _LguAdminDashboardPageState extends State<LguAdminDashboardPage> {
                 ),
                 _statCard(
                   'Pending Assignments',
-                  '5',
+                  '${repository.unassignedOrganizations}',
                   Icons.assignment_ind_rounded,
                   const Color(0xFFB7791F),
                   cardWidth,
                 ),
                 _statCard(
                   'Upcoming Events',
-                  '12',
+                  '${eventRepository.upcomingEvents}',
                   Icons.event_rounded,
                   AppColors.blueDark,
                   cardWidth,
@@ -215,7 +211,6 @@ class _LguAdminDashboardPageState extends State<LguAdminDashboardPage> {
       ],
     );
   }
-
 
   Widget _statCard(
     String title,

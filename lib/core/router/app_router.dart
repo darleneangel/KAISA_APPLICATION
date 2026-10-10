@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-
 // AUTHENTICATION
 import '../../features/auth/views/welcome_page.dart';
 import '../../features/auth/views/login_page.dart';
@@ -26,10 +25,16 @@ import '../../features/resident/verification/verification_status_page.dart';
 import '../../features/resident/notifications/notifications_page.dart';
 
 //LGU ADMIN
-// LGU ADMIN
 import '../../features/lgu_admin/dashboard/lgu_admin_dashboard_page.dart';
 import '../../features/lgu_admin/organizations/organization_registry_page.dart';
 import '../../features/lgu_admin/layout/lgu_admin_shell.dart';
+import '../../features/lgu_admin/assignments/admin_assignments_page.dart';
+import '../../features/lgu_admin/events/event_monitoring_page.dart';
+import '../../features/lgu_admin/reports/lgu_reports_page.dart';
+import '../../features/lgu_admin/audit_logs/lgu_audit_logs_page.dart';
+import '../../features/lgu_admin/settings/lgu_settings_page.dart';
+
+
 
 final appRouter = GoRouter(
   initialLocation: '/welcome',
@@ -168,10 +173,7 @@ final appRouter = GoRouter(
         ),
         GoRoute(
           path: '/lgu-admin/assignments',
-          builder: (context, state) => const _LguModulePlaceholder(
-            title: 'Admin Assignments',
-            icon: Icons.admin_panel_settings_rounded,
-          ),
+          builder: (context, state) => const AdminAssignmentsPage(),
         ),
         GoRoute(
           path: '/lgu-admin/events',
@@ -182,24 +184,19 @@ final appRouter = GoRouter(
         ),
         GoRoute(
           path: '/lgu-admin/reports',
-          builder: (context, state) => const _LguModulePlaceholder(
-            title: 'Reports',
-            icon: Icons.bar_chart_rounded,
-          ),
+          builder: (context, state) => const LguReportsPage(),
         ),
         GoRoute(
           path: '/lgu-admin/audit-logs',
-          builder: (context, state) => const _LguModulePlaceholder(
-            title: 'Audit Logs',
-            icon: Icons.history_rounded,
-          ),
+          builder: (context, state) => const LguAuditLogsPage(),
         ),
         GoRoute(
           path: '/lgu-admin/settings',
-          builder: (context, state) => const _LguModulePlaceholder(
-            title: 'Settings',
-            icon: Icons.settings_rounded,
-          ),
+          builder: (context, state) => const LguSettingsPage(),
+        ),
+        GoRoute(
+          path: '/lgu-admin/events',
+          builder: (context, state) => const EventMonitoringPage(),
         ),
       ],
     ),
