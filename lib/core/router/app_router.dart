@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 // AUTHENTICATION
@@ -34,7 +33,10 @@ import '../../features/lgu_admin/reports/lgu_reports_page.dart';
 import '../../features/lgu_admin/audit_logs/lgu_audit_logs_page.dart';
 import '../../features/lgu_admin/settings/lgu_settings_page.dart';
 
-
+//ORGANIZATION ADMIN
+import '../../features/organization_admin/dashboard/organization_admin_dashboard_page.dart';
+import '../../features/organization_admin/shell/organization_admin_shell.dart';
+import '../../features/organization_admin/members/organization_members_page.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/welcome',
@@ -79,6 +81,7 @@ final appRouter = GoRouter(
         final data = state.extra as Map<String, dynamic>;
 
         return OrganizationDetailsPage(
+          organizationId: data['id'] as String?,
           name: data['name'],
           category: data['category'],
           description: data['description'],
@@ -142,20 +145,6 @@ final appRouter = GoRouter(
     ),
 
     // =========================
-    // ORGANIZATION ADMIN ROUTES
-    // =========================
-    GoRoute(
-      path: '/organization-admin/dashboard',
-      builder: (context, state) => const _DashboardPlaceholder(
-        title: 'Organization Admin',
-        description:
-            'Manage organization members, events, '
-            'announcements, and certificates.',
-        icon: Icons.groups_rounded,
-      ),
-    ),
-
-    // =========================
     // LGU ADMIN ROUTES
     // =========================
     ShellRoute(
@@ -177,10 +166,7 @@ final appRouter = GoRouter(
         ),
         GoRoute(
           path: '/lgu-admin/events',
-          builder: (context, state) => const _LguModulePlaceholder(
-            title: 'Event Monitoring',
-            icon: Icons.event_available_rounded,
-          ),
+          builder: (context, state) => const EventMonitoringPage(),
         ),
         GoRoute(
           path: '/lgu-admin/reports',
@@ -194,97 +180,38 @@ final appRouter = GoRouter(
           path: '/lgu-admin/settings',
           builder: (context, state) => const LguSettingsPage(),
         ),
+      ],
+    ),
+
+    // =========================
+    // ORGANIZATION ADMIN ROUTES
+    // =========================
+    ShellRoute(
+      builder: (context, state, child) => OrganizationAdminShell(child: child),
+      routes: [
         GoRoute(
-          path: '/lgu-admin/events',
-          builder: (context, state) => const EventMonitoringPage(),
+          path: '/organization-admin/dashboard',
+          builder: (context, state) =>
+              const OrganizationAdminDashboardPage(organizationId: 'ORG-001'),
         ),
+        GoRoute(
+          path: '/organization-admin/members',
+          builder: (context, state) =>
+              const OrganizationMembersPage(organizationId: 'ORG-001'),
+        ),
+        for (final module in const [
+          ('events', 'Events'),
+          ('attendance', 'Attendance'),
+          ('certificates', 'Certificate Studio'),
+          ('reports', 'Reports'),
+          ('settings', 'Settings'),
+        ])
+          GoRoute(
+            path: '/organization-admin/${module.$1}',
+            builder: (context, state) =>
+                OrganizationModulePlaceholder(title: module.$2),
+          ),
       ],
     ),
   ],
 );
-
-class _LguModulePlaceholder extends StatelessWidget {
-  final String title;
-  final IconData icon;
-
-  const _LguModulePlaceholder({required this.title, required this.icon});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 64, color: Theme.of(context).colorScheme.primary),
-            const SizedBox(height: 16),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'This module will be developed next.',
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// TEMPORARY SCREEN
-// Replace with actual dashboards in the next step.
-class _DashboardPlaceholder extends StatelessWidget {
-  final String title;
-  final String description;
-  final IconData icon;
-
-  const _DashboardPlaceholder({
-    required this.title,
-    required this.description,
-    required this.icon,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text('KAISA | $title')),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 440),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  icon,
-                  size: 72,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  '$title Dashboard',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.headlineSmall,
-                ),
-                const SizedBox(height: 12),
-                Text(description, textAlign: TextAlign.center),
-                const SizedBox(height: 24),
-                FilledButton.icon(
-                  onPressed: () => context.go('/resident/home'),
-                  icon: const Icon(Icons.home_rounded),
-                  label: const Text('Go to Resident Home'),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}

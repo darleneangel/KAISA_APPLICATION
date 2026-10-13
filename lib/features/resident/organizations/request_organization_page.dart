@@ -34,7 +34,7 @@ class _RequestOrganizationPageState
   //
   // Later this will come from the logged-in user's account.
   // ============================================================
-  static const bool isTier2Verified = false;
+  static const bool isTier2Verified = true;
 
   final List<String> categories = [
     'Youth',

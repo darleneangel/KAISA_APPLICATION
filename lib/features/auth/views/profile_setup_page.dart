@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../shared/repositories/resident_account_repository.dart';
 
 class ProfileSetupPage extends StatefulWidget {
   const ProfileSetupPage({super.key});
@@ -13,6 +14,12 @@ class ProfileSetupPage extends StatefulWidget {
 
 class _ProfileSetupPageState extends State<ProfileSetupPage> {
   final _formKey = GlobalKey<FormState>();
+
+  final account = ResidentAccountRepository.instance;
+
+  final _firstNameController = TextEditingController();
+  final _middleNameController = TextEditingController();
+  final _lastNameController = TextEditingController();
 
   final _birthDateController = TextEditingController();
   final _phoneController = TextEditingController();
@@ -27,11 +34,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
 
   bool _isSaving = false;
 
-  final List<String> _genders = [
-    'Male',
-    'Female',
-    'Prefer not to say',
-  ];
+  final List<String> _genders = ['Male', 'Female', 'Prefer not to say'];
 
   final List<String> _barangays = [
     'Barangay 1',
@@ -121,34 +124,13 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
   ];
 
   final List<_ChoiceItem> _interests = const [
-    _ChoiceItem(
-      label: 'Environment',
-      icon: Icons.eco_outlined,
-    ),
-    _ChoiceItem(
-      label: 'Education',
-      icon: Icons.school_outlined,
-    ),
-    _ChoiceItem(
-      label: 'Health',
-      icon: Icons.favorite_border_rounded,
-    ),
-    _ChoiceItem(
-      label: 'Youth',
-      icon: Icons.groups_outlined,
-    ),
-    _ChoiceItem(
-      label: 'Sports',
-      icon: Icons.sports_basketball_outlined,
-    ),
-    _ChoiceItem(
-      label: 'Arts & Culture',
-      icon: Icons.palette_outlined,
-    ),
-    _ChoiceItem(
-      label: 'Technology',
-      icon: Icons.computer_outlined,
-    ),
+    _ChoiceItem(label: 'Environment', icon: Icons.eco_outlined),
+    _ChoiceItem(label: 'Education', icon: Icons.school_outlined),
+    _ChoiceItem(label: 'Health', icon: Icons.favorite_border_rounded),
+    _ChoiceItem(label: 'Youth', icon: Icons.groups_outlined),
+    _ChoiceItem(label: 'Sports', icon: Icons.sports_basketball_outlined),
+    _ChoiceItem(label: 'Arts & Culture', icon: Icons.palette_outlined),
+    _ChoiceItem(label: 'Technology', icon: Icons.computer_outlined),
     _ChoiceItem(
       label: 'Community Service',
       icon: Icons.volunteer_activism_outlined,
@@ -157,60 +139,69 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
       label: 'Disaster Preparedness',
       icon: Icons.health_and_safety_outlined,
     ),
-    _ChoiceItem(
-      label: 'Livelihood',
-      icon: Icons.work_outline_rounded,
-    ),
+    _ChoiceItem(label: 'Livelihood', icon: Icons.work_outline_rounded),
   ];
 
   final List<_ChoiceItem> _skills = const [
-    _ChoiceItem(
-      label: 'Communication',
-      icon: Icons.forum_outlined,
-    ),
-    _ChoiceItem(
-      label: 'Leadership',
-      icon: Icons.groups_2_outlined,
-    ),
-    _ChoiceItem(
-      label: 'Graphic Design',
-      icon: Icons.design_services_outlined,
-    ),
-    _ChoiceItem(
-      label: 'Photography',
-      icon: Icons.camera_alt_outlined,
-    ),
-    _ChoiceItem(
-      label: 'Video Editing',
-      icon: Icons.video_camera_back_outlined,
-    ),
-    _ChoiceItem(
-      label: 'Programming',
-      icon: Icons.code_rounded,
-    ),
-    _ChoiceItem(
-      label: 'Writing',
-      icon: Icons.edit_note_rounded,
-    ),
-    _ChoiceItem(
-      label: 'Public Speaking',
-      icon: Icons.mic_none_rounded,
-    ),
-    _ChoiceItem(
-      label: 'Event Management',
-      icon: Icons.event_note_outlined,
-    ),
-    _ChoiceItem(
-      label: 'First Aid',
-      icon: Icons.medical_services_outlined,
-    ),
+    _ChoiceItem(label: 'Communication', icon: Icons.forum_outlined),
+    _ChoiceItem(label: 'Leadership', icon: Icons.groups_2_outlined),
+    _ChoiceItem(label: 'Graphic Design', icon: Icons.design_services_outlined),
+    _ChoiceItem(label: 'Photography', icon: Icons.camera_alt_outlined),
+    _ChoiceItem(label: 'Video Editing', icon: Icons.video_camera_back_outlined),
+    _ChoiceItem(label: 'Programming', icon: Icons.code_rounded),
+    _ChoiceItem(label: 'Writing', icon: Icons.edit_note_rounded),
+    _ChoiceItem(label: 'Public Speaking', icon: Icons.mic_none_rounded),
+    _ChoiceItem(label: 'Event Management', icon: Icons.event_note_outlined),
+    _ChoiceItem(label: 'First Aid', icon: Icons.medical_services_outlined),
   ];
+  @override
+  void initState() {
+    super.initState();
+
+    final nameParts = account.fullName.trim().split(RegExp(r'\s+'));
+
+    if (account.fullName.trim().isNotEmpty) {
+      _firstNameController.text = nameParts.first;
+
+      if (nameParts.length >= 2) {
+        _lastNameController.text = nameParts.last;
+      }
+
+      if (nameParts.length > 2) {
+        _middleNameController.text = nameParts
+            .sublist(1, nameParts.length - 1)
+            .join(' ');
+      }
+    }
+
+    _phoneController.text = account.phone;
+    _addressController.text = account.address;
+
+    if (account.barangay.isNotEmpty) {
+      _selectedBarangay = account.barangay;
+    }
+
+    if (account.birthDate != null) {
+      _birthDate = account.birthDate;
+
+      final date = _birthDate!;
+
+      _birthDateController.text =
+          '${date.month.toString().padLeft(2, '0')}/'
+          '${date.day.toString().padLeft(2, '0')}/'
+          '${date.year}';
+    }
+  }
 
   @override
   void dispose() {
+    _firstNameController.dispose();
+    _middleNameController.dispose();
+    _lastNameController.dispose();
     _birthDateController.dispose();
     _phoneController.dispose();
     _addressController.dispose();
+
     super.dispose();
   }
 
@@ -244,8 +235,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
     int age = today.year - _birthDate!.year;
 
     if (today.month < _birthDate!.month ||
-        (today.month == _birthDate!.month &&
-            today.day < _birthDate!.day)) {
+        (today.month == _birthDate!.month && today.day < _birthDate!.day)) {
       age--;
     }
 
@@ -262,20 +252,8 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
       return;
     }
 
-    if (_selectedGender == null) {
-      _showMessage('Please select your gender.');
-      return;
-    }
-
     if (_selectedBarangay == null) {
       _showMessage('Please select your barangay.');
-      return;
-    }
-
-    if (_selectedInterests.isEmpty) {
-      _showMessage(
-        'Choose at least one community interest.',
-      );
       return;
     }
 
@@ -283,20 +261,28 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
       _isSaving = true;
     });
 
-    // ==========================================================
-    // PROTOTYPE ONLY
-    //
-    // Later:
-    // Save resident profile to Supabase.
-    // The authenticated user will now have a Tier 1 / Basic
-    // Resident profile.
-    // ==========================================================
-
-    await Future.delayed(
-      const Duration(milliseconds: 900),
-    );
+    // Prototype only: saves to shared in-memory account state.
+    await Future.delayed(const Duration(milliseconds: 400));
 
     if (!mounted) return;
+
+    final firstName = _firstNameController.text.trim();
+    final middleName = _middleNameController.text.trim();
+    final lastName = _lastNameController.text.trim();
+
+    final fullName = [
+      firstName,
+      if (middleName.isNotEmpty) middleName,
+      lastName,
+    ].join(' ');
+
+    account.saveProfile(
+      fullName: fullName,
+      phone: _phoneController.text.trim(),
+      address: _addressController.text.trim(),
+      barangay: _selectedBarangay!,
+      birthDate: _birthDate!,
+    );
 
     setState(() {
       _isSaving = false;
@@ -306,11 +292,9 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
   }
 
   void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-      ),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   void _showProfileCompleteDialog() {
@@ -337,22 +321,17 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
           title: const Text(
             'You\'re all set!',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontWeight: FontWeight.w900,
-            ),
+            style: TextStyle(fontWeight: FontWeight.w900),
           ),
           content: Text(
             age != null
                 ? 'Your KAISA Basic Resident profile has been created. '
-                    'You are currently $age years old and can now start '
-                    'exploring your community.'
+                      'You are currently $age years old and can now start '
+                      'exploring your community.'
                 : 'Your KAISA Basic Resident profile has been created. '
-                    'You can now start exploring your community.',
+                      'You can now start exploring your community.',
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: AppColors.textSecondary,
-              height: 1.5,
-            ),
+            style: const TextStyle(color: AppColors.textSecondary, height: 1.5),
           ),
           actionsAlignment: MainAxisAlignment.center,
           actions: [
@@ -361,12 +340,8 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                 Navigator.pop(dialogContext);
                 context.go('/resident/home');
               },
-              icon: const Icon(
-                Icons.home_outlined,
-              ),
-              label: const Text(
-                'Enter KAISA',
-              ),
+              icon: const Icon(Icons.home_outlined),
+              label: const Text('Enter KAISA'),
             ),
           ],
         );
@@ -401,22 +376,14 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
   Widget _buildMobile() {
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(
-        20,
-        14,
-        20,
-        32,
-      ),
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 32),
       child: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(
-            maxWidth: 560,
-          ),
+          constraints: const BoxConstraints(maxWidth: 560),
           child: Form(
             key: _formKey,
             child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildTopBar(),
 
@@ -466,28 +433,19 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
   Widget _buildDesktop() {
     return Row(
       children: [
-        Expanded(
-          flex: 4,
-          child: _buildDesktopSidePanel(),
-        ),
+        Expanded(flex: 4, child: _buildDesktopSidePanel()),
 
         Expanded(
           flex: 6,
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 60,
-              vertical: 30,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 60, vertical: 30),
             child: Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(
-                  maxWidth: 760,
-                ),
+                constraints: const BoxConstraints(maxWidth: 760),
                 child: Form(
                   key: _formKey,
                   child: Column(
-                    crossAxisAlignment:
-                        CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _buildTopBar(),
 
@@ -498,18 +456,11 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                       const SizedBox(height: 28),
 
                       Row(
-                        crossAxisAlignment:
-                            CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(
-                            child:
-                                _buildPersonalInformation(),
-                          ),
+                          Expanded(child: _buildPersonalInformation()),
                           const SizedBox(width: 18),
-                          Expanded(
-                            child:
-                                _buildLocationInformation(),
-                          ),
+                          Expanded(child: _buildLocationInformation()),
                         ],
                       ),
 
@@ -561,9 +512,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(13),
-              border: Border.all(
-                color: AppColors.border,
-              ),
+              border: Border.all(color: AppColors.border),
             ),
             child: const Icon(
               Icons.arrow_back_rounded,
@@ -582,9 +531,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(13),
-            border: Border.all(
-              color: AppColors.border,
-            ),
+            border: Border.all(color: AppColors.border),
           ),
           child: Image.asset(
             'assets/images/kaisa_logo.png',
@@ -613,14 +560,10 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
 
   Widget _buildHeading() {
     return Column(
-      crossAxisAlignment:
-          CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 11,
-            vertical: 6,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
           decoration: BoxDecoration(
             color: AppColors.greenLight,
             borderRadius: BorderRadius.circular(30),
@@ -682,10 +625,54 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
     return _ProfileCard(
       icon: Icons.badge_outlined,
       title: 'Personal Details',
-      subtitle:
-          'A little more information about you.',
+      subtitle: 'A little more information about you.',
       child: Column(
         children: [
+          TextFormField(
+            controller: _firstNameController,
+            textCapitalization: TextCapitalization.words,
+            decoration: const InputDecoration(
+              labelText: 'First Name',
+              prefixIcon: Icon(Icons.person_outline_rounded),
+            ),
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return 'First name is required.';
+              }
+              return null;
+            },
+          ),
+
+          const SizedBox(height: 14),
+
+          TextFormField(
+            controller: _middleNameController,
+            textCapitalization: TextCapitalization.words,
+            decoration: const InputDecoration(
+              labelText: 'Middle Name (Optional)',
+              prefixIcon: Icon(Icons.person_outline_rounded),
+            ),
+          ),
+
+          const SizedBox(height: 14),
+
+          TextFormField(
+            controller: _lastNameController,
+            textCapitalization: TextCapitalization.words,
+            decoration: const InputDecoration(
+              labelText: 'Last Name',
+              prefixIcon: Icon(Icons.person_outline_rounded),
+            ),
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return 'Last name is required.';
+              }
+              return null;
+            },
+          ),
+
+          const SizedBox(height: 14),
+
           TextFormField(
             controller: _birthDateController,
             readOnly: true,
@@ -693,13 +680,10 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
             decoration: InputDecoration(
               labelText: 'Birth Date',
               hintText: 'MM/DD/YYYY',
-              prefixIcon:
-                  const Icon(Icons.cake_outlined),
+              prefixIcon: const Icon(Icons.cake_outlined),
               suffixIcon: IconButton(
                 onPressed: _selectBirthDate,
-                icon: const Icon(
-                  Icons.calendar_month_outlined,
-                ),
+                icon: const Icon(Icons.calendar_month_outlined),
               ),
             ),
             validator: (_) {
@@ -717,29 +701,16 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
             initialValue: _selectedGender,
             decoration: const InputDecoration(
               labelText: 'Gender',
-              prefixIcon:
-                  Icon(Icons.person_outline_rounded),
+              prefixIcon: Icon(Icons.person_outline_rounded),
             ),
-            hint: const Text(
-              'Select gender',
-            ),
+            hint: const Text('Select gender'),
             items: _genders.map((gender) {
-              return DropdownMenuItem(
-                value: gender,
-                child: Text(gender),
-              );
+              return DropdownMenuItem(value: gender, child: Text(gender));
             }).toList(),
             onChanged: (value) {
               setState(() {
                 _selectedGender = value;
               });
-            },
-            validator: (value) {
-              if (value == null) {
-                return 'Please select your gender.';
-              }
-
-              return null;
             },
           ),
 
@@ -755,8 +726,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
             decoration: const InputDecoration(
               labelText: 'Mobile Number',
               hintText: '09XXXXXXXXX',
-              prefixIcon:
-                  Icon(Icons.phone_outlined),
+              prefixIcon: Icon(Icons.phone_outlined),
             ),
             validator: (value) {
               final phone = value?.trim() ?? '';
@@ -765,8 +735,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                 return 'Mobile number is required.';
               }
 
-              if (!RegExp(r'^09\d{9}$')
-                  .hasMatch(phone)) {
+              if (!RegExp(r'^09\d{9}$').hasMatch(phone)) {
                 return 'Enter a valid 11-digit mobile number.';
               }
 
@@ -786,8 +755,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
     return _ProfileCard(
       icon: Icons.location_on_outlined,
       title: 'Resident Information',
-      subtitle:
-          'Help us connect you with nearby opportunities.',
+      subtitle: 'Help us connect you with nearby opportunities.',
       child: Column(
         children: [
           DropdownButtonFormField<String>(
@@ -795,17 +763,11 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
             isExpanded: true,
             decoration: const InputDecoration(
               labelText: 'Barangay',
-              prefixIcon:
-                  Icon(Icons.location_city_outlined),
+              prefixIcon: Icon(Icons.location_city_outlined),
             ),
-            hint: const Text(
-              'Select your barangay',
-            ),
+            hint: const Text('Select your barangay'),
             items: _barangays.map((barangay) {
-              return DropdownMenuItem(
-                value: barangay,
-                child: Text(barangay),
-              );
+              return DropdownMenuItem(value: barangay, child: Text(barangay));
             }).toList(),
             onChanged: (value) {
               setState(() {
@@ -825,20 +787,16 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
 
           TextFormField(
             controller: _addressController,
-            textCapitalization:
-                TextCapitalization.words,
+            textCapitalization: TextCapitalization.words,
             maxLines: 2,
             decoration: const InputDecoration(
               labelText: 'Street / Address',
-              hintText:
-                  'House no., street, subdivision',
-              prefixIcon:
-                  Icon(Icons.home_outlined),
+              hintText: 'House no., street, subdivision',
+              prefixIcon: Icon(Icons.home_outlined),
               alignLabelWithHint: true,
             ),
             validator: (value) {
-              if (value == null ||
-                  value.trim().isEmpty) {
+              if (value == null || value.trim().isEmpty) {
                 return 'Address is required.';
               }
 
@@ -853,9 +811,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
             decoration: BoxDecoration(
               color: AppColors.surfaceSoft,
               borderRadius: BorderRadius.circular(13),
-              border: Border.all(
-                color: AppColors.border,
-              ),
+              border: Border.all(color: AppColors.border),
             ),
             child: const Row(
               children: [
@@ -869,8 +825,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                   child: Text(
                     'City: Cavite City, Cavite',
                     style: TextStyle(
-                      color:
-                          AppColors.textSecondary,
+                      color: AppColors.textSecondary,
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                     ),
@@ -892,19 +847,15 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
     return _ProfileCard(
       icon: Icons.interests_outlined,
       title: 'Community Interests',
-      subtitle:
-          'Select at least one. We\'ll use these to personalize your feed.',
+      subtitle: 'Optional — select topics you enjoy to personalize your feed.',
       child: Column(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Wrap(
             spacing: 9,
             runSpacing: 9,
             children: _interests.map((interest) {
-              final selected =
-                  _selectedInterests
-                      .contains(interest.label);
+              final selected = _selectedInterests.contains(interest.label);
 
               return _SelectableChip(
                 item: interest,
@@ -912,11 +863,9 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                 onTap: () {
                   setState(() {
                     if (selected) {
-                      _selectedInterests
-                          .remove(interest.label);
+                      _selectedInterests.remove(interest.label);
                     } else {
-                      _selectedInterests
-                          .add(interest.label);
+                      _selectedInterests.add(interest.label);
                     }
                   });
                 },
@@ -940,7 +889,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
               const SizedBox(width: 6),
               Text(
                 _selectedInterests.isEmpty
-                    ? 'Choose at least one interest'
+                    ? 'No interests selected (optional)'
                     : '${_selectedInterests.length} selected',
                 style: TextStyle(
                   color: _selectedInterests.isEmpty
@@ -965,14 +914,12 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
     return _ProfileCard(
       icon: Icons.auto_awesome_outlined,
       title: 'Skills',
-      subtitle:
-          'Optional — tell organizations what you can contribute.',
+      subtitle: 'Optional — tell organizations what you can contribute.',
       child: Wrap(
         spacing: 9,
         runSpacing: 9,
         children: _skills.map((skill) {
-          final selected =
-              _selectedSkills.contains(skill.label);
+          final selected = _selectedSkills.contains(skill.label);
 
           return _SelectableChip(
             item: skill,
@@ -980,11 +927,9 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
             onTap: () {
               setState(() {
                 if (selected) {
-                  _selectedSkills
-                      .remove(skill.label);
+                  _selectedSkills.remove(skill.label);
                 } else {
-                  _selectedSkills
-                      .add(skill.label);
+                  _selectedSkills.add(skill.label);
                 }
               });
             },
@@ -1006,19 +951,14 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
         gradient: LinearGradient(
           colors: [
             AppColors.blueLight,
-            AppColors.greenLight
-                .withValues(alpha: .65),
+            AppColors.greenLight.withValues(alpha: .65),
           ],
         ),
         borderRadius: BorderRadius.circular(17),
-        border: Border.all(
-          color: AppColors.blue
-              .withValues(alpha: .12),
-        ),
+        border: Border.all(color: AppColors.blue.withValues(alpha: .12)),
       ),
       child: const Row(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(
             Icons.verified_user_outlined,
@@ -1030,8 +970,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
 
           Expanded(
             child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'Basic Resident Account',
@@ -1071,8 +1010,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
-        onPressed:
-            _isSaving ? null : _completeProfile,
+        onPressed: _isSaving ? null : _completeProfile,
         child: _isSaving
             ? const SizedBox(
                 width: 21,
@@ -1083,17 +1021,11 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                 ),
               )
             : const Row(
-                mainAxisAlignment:
-                    MainAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
-                    'Complete Profile',
-                  ),
+                  Text('Complete Profile'),
                   SizedBox(width: 8),
-                  Icon(
-                    Icons.arrow_forward_rounded,
-                    size: 19,
-                  ),
+                  Icon(Icons.arrow_forward_rounded, size: 19),
                 ],
               ),
       ),
@@ -1109,14 +1041,9 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
       children: [
         Row(
           children: [
-            Expanded(
-              child: Divider(),
-            ),
+            Expanded(child: Divider()),
             Padding(
-              padding:
-                  EdgeInsets.symmetric(
-                horizontal: 12,
-              ),
+              padding: EdgeInsets.symmetric(horizontal: 12),
               child: Text(
                 'STEP 3 OF 3',
                 style: TextStyle(
@@ -1127,17 +1054,14 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                 ),
               ),
             ),
-            Expanded(
-              child: Divider(),
-            ),
+            Expanded(child: Divider()),
           ],
         ),
 
         SizedBox(height: 11),
 
         Row(
-          mainAxisAlignment:
-              MainAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             _ProgressDot(completed: true),
             SizedBox(width: 7),
@@ -1172,11 +1096,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            AppColors.blueDark,
-            AppColors.blue,
-            AppColors.greenDark,
-          ],
+          colors: [AppColors.blueDark, AppColors.blue, AppColors.greenDark],
         ),
       ),
       child: Stack(
@@ -1189,8 +1109,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
               height: 310,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.white
-                    .withValues(alpha: .05),
+                color: Colors.white.withValues(alpha: .05),
               ),
             ),
           ),
@@ -1203,8 +1122,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
               height: 350,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.white
-                    .withValues(alpha: .05),
+                color: Colors.white.withValues(alpha: .05),
               ),
             ),
           ),
@@ -1212,48 +1130,38 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
           Padding(
             padding: const EdgeInsets.all(55),
             child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
                     Container(
                       width: 60,
                       height: 60,
-                      padding:
-                          const EdgeInsets.all(7),
+                      padding: const EdgeInsets.all(7),
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius:
-                            BorderRadius.circular(18),
+                        borderRadius: BorderRadius.circular(18),
                       ),
-                      child: Image.asset(
-                        'assets/images/kaisa_logo.png',
-                      ),
+                      child: Image.asset('assets/images/kaisa_logo.png'),
                     ),
 
                     const SizedBox(width: 14),
 
                     const Column(
-                      crossAxisAlignment:
-                          CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           'KAISA',
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 25,
-                            fontWeight:
-                                FontWeight.w900,
+                            fontWeight: FontWeight.w900,
                             letterSpacing: 1.5,
                           ),
                         ),
                         Text(
                           'Community Engagement Platform',
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 10,
-                          ),
+                          style: TextStyle(color: Colors.white70, fontSize: 10),
                         ),
                       ],
                     ),
@@ -1263,15 +1171,13 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                 const Spacer(),
 
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(
+                  padding: const EdgeInsets.symmetric(
                     horizontal: 12,
                     vertical: 7,
                   ),
                   decoration: BoxDecoration(
                     color: AppColors.yellow,
-                    borderRadius:
-                        BorderRadius.circular(30),
+                    borderRadius: BorderRadius.circular(30),
                   ),
                   child: const Text(
                     'FINAL STEP',
@@ -1314,34 +1220,28 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
 
                 const _SideFeature(
                   icon: Icons.explore_outlined,
-                  text:
-                      'Personalized opportunities',
+                  text: 'Personalized opportunities',
                 ),
 
                 const SizedBox(height: 17),
 
                 const _SideFeature(
                   icon: Icons.groups_outlined,
-                  text:
-                      'Relevant organizations',
+                  text: 'Relevant organizations',
                 ),
 
                 const SizedBox(height: 17),
 
                 const _SideFeature(
                   icon: Icons.location_on_outlined,
-                  text:
-                      'Local community programs',
+                  text: 'Local community programs',
                 ),
 
                 const Spacer(),
 
                 const Text(
                   'Connect • Participate • Impact',
-                  style: TextStyle(
-                    color: Colors.white54,
-                    fontSize: 11,
-                  ),
+                  style: TextStyle(color: Colors.white54, fontSize: 11),
                 ),
               ],
             ),
@@ -1377,9 +1277,7 @@ class _ProfileCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(19),
-        border: Border.all(
-          color: AppColors.border,
-        ),
+        border: Border.all(color: AppColors.border),
         boxShadow: const [
           BoxShadow(
             color: Color(0x09000000),
@@ -1389,8 +1287,7 @@ class _ProfileCard extends StatelessWidget {
         ],
       ),
       child: Column(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
@@ -1399,39 +1296,30 @@ class _ProfileCard extends StatelessWidget {
                 height: 36,
                 decoration: BoxDecoration(
                   color: AppColors.blueLight,
-                  borderRadius:
-                      BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(
-                  icon,
-                  size: 19,
-                  color: AppColors.blue,
-                ),
+                child: Icon(icon, size: 19, color: AppColors.blue),
               ),
 
               const SizedBox(width: 10),
 
               Expanded(
                 child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       title,
                       style: const TextStyle(
-                        color:
-                            AppColors.textPrimary,
+                        color: AppColors.textPrimary,
                         fontSize: 14,
-                        fontWeight:
-                            FontWeight.w900,
+                        fontWeight: FontWeight.w900,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       subtitle,
                       style: const TextStyle(
-                        color:
-                            AppColors.textMuted,
+                        color: AppColors.textMuted,
                         fontSize: 10,
                         height: 1.35,
                       ),
@@ -1474,23 +1362,13 @@ class _SelectableChip extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(30),
         child: AnimatedContainer(
-          duration:
-              const Duration(milliseconds: 180),
-          padding:
-              const EdgeInsets.symmetric(
-            horizontal: 13,
-            vertical: 10,
-          ),
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
           decoration: BoxDecoration(
-            color: selected
-                ? AppColors.blueLight
-                : AppColors.surfaceSoft,
-            borderRadius:
-                BorderRadius.circular(30),
+            color: selected ? AppColors.blueLight : AppColors.surfaceSoft,
+            borderRadius: BorderRadius.circular(30),
             border: Border.all(
-              color: selected
-                  ? AppColors.blue
-                  : AppColors.border,
+              color: selected ? AppColors.blue : AppColors.border,
               width: selected ? 1.4 : 1,
             ),
           ),
@@ -1498,13 +1376,9 @@ class _SelectableChip extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                selected
-                    ? Icons.check_circle_rounded
-                    : item.icon,
+                selected ? Icons.check_circle_rounded : item.icon,
                 size: 16,
-                color: selected
-                    ? AppColors.blue
-                    : AppColors.textSecondary,
+                color: selected ? AppColors.blue : AppColors.textSecondary,
               ),
 
               const SizedBox(width: 6),
@@ -1516,9 +1390,7 @@ class _SelectableChip extends StatelessWidget {
                       ? AppColors.blueDark
                       : AppColors.textSecondary,
                   fontSize: 11,
-                  fontWeight: selected
-                      ? FontWeight.w800
-                      : FontWeight.w600,
+                  fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
                 ),
               ),
             ],
@@ -1537,10 +1409,7 @@ class _SideFeature extends StatelessWidget {
   final IconData icon;
   final String text;
 
-  const _SideFeature({
-    required this.icon,
-    required this.text,
-  });
+  const _SideFeature({required this.icon, required this.text});
 
   @override
   Widget build(BuildContext context) {
@@ -1550,15 +1419,10 @@ class _SideFeature extends StatelessWidget {
           width: 39,
           height: 39,
           decoration: BoxDecoration(
-            color:
-                Colors.white.withValues(alpha: .12),
+            color: Colors.white.withValues(alpha: .12),
             borderRadius: BorderRadius.circular(11),
           ),
-          child: Icon(
-            icon,
-            size: 19,
-            color: AppColors.yellow,
-          ),
+          child: Icon(icon, size: 19, color: AppColors.yellow),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -1584,10 +1448,7 @@ class _ProgressDot extends StatelessWidget {
   final bool active;
   final bool completed;
 
-  const _ProgressDot({
-    this.active = false,
-    this.completed = false,
-  });
+  const _ProgressDot({this.active = false, this.completed = false});
 
   @override
   Widget build(BuildContext context) {
@@ -1598,8 +1459,8 @@ class _ProgressDot extends StatelessWidget {
         color: completed
             ? AppColors.green
             : active
-                ? AppColors.blue
-                : AppColors.border,
+            ? AppColors.blue
+            : AppColors.border,
         borderRadius: BorderRadius.circular(20),
       ),
     );
@@ -1614,8 +1475,5 @@ class _ChoiceItem {
   final String label;
   final IconData icon;
 
-  const _ChoiceItem({
-    required this.label,
-    required this.icon,
-  });
+  const _ChoiceItem({required this.label, required this.icon});
 }

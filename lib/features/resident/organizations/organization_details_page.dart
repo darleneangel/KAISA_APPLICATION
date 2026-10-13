@@ -3,7 +3,11 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
 
+import '../../../shared/models/organization_membership_model.dart';
+import '../../../shared/repositories/organization_membership_repository.dart';
+
 class OrganizationDetailsPage extends StatelessWidget {
+  final String? organizationId;
   final String name;
   final String category;
   final String description;
@@ -11,16 +15,26 @@ class OrganizationDetailsPage extends StatelessWidget {
 
   const OrganizationDetailsPage({
     super.key,
+    this.organizationId,
     required this.name,
     required this.category,
     required this.description,
     required this.members,
   });
 
-  // PROTOTYPE ONLY:
-  // Tier 1 = false
-  // Tier 2 = true
-  static const bool isTier2Verified = false;
+  // Prototype resident identity.
+  // Replace with authenticated user data later.
+  static const String demoResidentId = 'RES-DEMO-001';
+  static const String demoResidentName = 'KAISA Demo Resident';
+  static const String demoResidentEmail = 'resident.demo@example.com';
+
+  static final OrganizationMembershipRepository membershipRepository =
+      OrganizationMembershipRepository.instance;
+
+  // LOCAL PROTOTYPE TESTING ONLY.
+  // This temporarily allows testing membership applications.
+  // Replace with actual verification status before deployment.
+  static const bool isTier2Verified = true;
 
   void _handleJoinOrganization(BuildContext context) {
     if (!isTier2Verified) {
@@ -29,6 +43,20 @@ class OrganizationDetailsPage extends StatelessWidget {
     }
 
     _showJoinConfirmation(context);
+  }
+
+  OrganizationMembership? get currentMembership {
+    if (organizationId == null) return null;
+
+    for (final membership in membershipRepository.forOrganization(
+      organizationId!,
+    )) {
+      if (membership.residentId == demoResidentId) {
+        return membership;
+      }
+    }
+
+    return null;
   }
 
   void _showVerificationRequiredDialog(BuildContext context) {
@@ -74,34 +102,47 @@ class OrganizationDetailsPage extends StatelessWidget {
   }
 
   void _showJoinConfirmation(BuildContext context) {
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
           title: const Text('Join Organization?'),
           content: Text(
-            'Would you like to join $name?',
+            'Would you like to submit a membership application to $name?',
           ),
           actions: [
             TextButton(
-              onPressed: () {
-                Navigator.pop(dialogContext);
-              },
+              onPressed: () => Navigator.pop(dialogContext),
               child: const Text('Cancel'),
             ),
             FilledButton(
               onPressed: () {
                 Navigator.pop(dialogContext);
 
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      'Your request to join $name has been submitted.',
+                if (organizationId == null) return;
+
+                try {
+                  membershipRepository.requestMembership(
+                    organizationId: organizationId!,
+                    residentId: demoResidentId,
+                    residentName: demoResidentName,
+                    residentEmail: demoResidentEmail,
+                  );
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Your application to join $name has been submitted.',
+                      ),
                     ),
-                  ),
-                );
+                  );
+                } on StateError catch (error) {
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text(error.message)));
+                }
               },
-              child: const Text('Join'),
+              child: const Text('Submit Application'),
             ),
           ],
         );
@@ -121,9 +162,7 @@ class OrganizationDetailsPage extends StatelessWidget {
         ),
         title: const Text(
           'Organization',
-          style: TextStyle(
-            fontWeight: FontWeight.w700,
-          ),
+          style: TextStyle(fontWeight: FontWeight.w700),
         ),
         actions: [
           IconButton(
@@ -157,10 +196,7 @@ class OrganizationDetailsPage extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(24, 28, 24, 30),
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [
-                    AppColors.blue,
-                    AppColors.blueDark,
-                  ],
+                  colors: [AppColors.blue, AppColors.blueDark],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
@@ -227,9 +263,7 @@ class OrganizationDetailsPage extends StatelessWidget {
                       const SizedBox(width: 6),
                       Text(
                         '$members members',
-                        style: const TextStyle(
-                          color: Colors.white70,
-                        ),
+                        style: const TextStyle(color: Colors.white70),
                       ),
                     ],
                   ),
@@ -240,30 +274,50 @@ class OrganizationDetailsPage extends StatelessWidget {
             // ========================================================
             // MAIN CONTENT
             // ========================================================
-
             Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Join button
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.icon(
-                      onPressed: () {
-                        _handleJoinOrganization(context);
-                      },
-                      icon: const Icon(Icons.group_add_outlined),
-                      label: const Text('Join Organization'),
-                    ),
+                  // Join button — connected to the Membership Repository.
+                  AnimatedBuilder(
+                    animation: membershipRepository,
+                    builder: (context, child) {
+                      final membership = currentMembership;
+
+                      final buttonText = switch (membership?.status) {
+                        MembershipStatus.pending => 'Application Pending',
+                        MembershipStatus.approved => 'Already a Member',
+                        MembershipStatus.rejected => 'Application Rejected',
+                        null => 'Join Organization',
+                      };
+
+                      final buttonIcon = switch (membership?.status) {
+                        MembershipStatus.pending => Icons.hourglass_top_rounded,
+                        MembershipStatus.approved => Icons.verified_rounded,
+                        MembershipStatus.rejected => Icons.cancel_outlined,
+                        null => Icons.group_add_outlined,
+                      };
+
+                      return SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.icon(
+                          onPressed:
+                              membership == null && organizationId != null
+                              ? () => _handleJoinOrganization(context)
+                              : null,
+                          icon: Icon(buttonIcon),
+                          label: Text(buttonText),
+                        ),
+                      );
+                    },
                   ),
 
                   const SizedBox(height: 28),
 
                   // About
-                  const _SectionTitle(
-                    title: 'About',
-                  ),
+                  const _SectionTitle(title: 'About'),
 
                   const SizedBox(height: 10),
 
@@ -321,10 +375,7 @@ class OrganizationDetailsPage extends StatelessWidget {
                   const SizedBox(height: 30),
 
                   // Recent activity
-                  const _SectionTitle(
-                    title: 'Recent Posts',
-                    action: 'See all',
-                  ),
+                  const _SectionTitle(title: 'Recent Posts', action: 'See all'),
 
                   const SizedBox(height: 14),
 
@@ -339,8 +390,7 @@ class OrganizationDetailsPage extends StatelessWidget {
                   const SizedBox(height: 30),
 
                   // Verification reminder for Tier 1
-                  if (!isTier2Verified)
-                    const _VerificationReminder(),
+                  if (!isTier2Verified) const _VerificationReminder(),
                 ],
               ),
             ),
@@ -359,10 +409,7 @@ class _SectionTitle extends StatelessWidget {
   final String title;
   final String? action;
 
-  const _SectionTitle({
-    required this.title,
-    this.action,
-  });
+  const _SectionTitle({required this.title, this.action});
 
   @override
   Widget build(BuildContext context) {
@@ -412,9 +459,7 @@ class _OfficerCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: AppColors.border,
-        ),
+        border: Border.all(color: AppColors.border),
       ),
       child: Row(
         children: [
@@ -436,12 +481,7 @@ class _OfficerCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  name,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
+                Text(name, style: const TextStyle(fontWeight: FontWeight.w700)),
                 const SizedBox(height: 3),
                 Text(
                   role,
@@ -454,10 +494,7 @@ class _OfficerCard extends StatelessWidget {
             ),
           ),
 
-          const Icon(
-            Icons.chevron_right_rounded,
-            color: AppColors.textMuted,
-          ),
+          const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
         ],
       ),
     );
@@ -490,18 +527,14 @@ class _OrganizationEventCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: AppColors.border,
-        ),
+        border: Border.all(color: AppColors.border),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
             width: 58,
-            padding: const EdgeInsets.symmetric(
-              vertical: 10,
-            ),
+            padding: const EdgeInsets.symmetric(vertical: 10),
             decoration: BoxDecoration(
               color: AppColors.greenLight,
               borderRadius: BorderRadius.circular(14),
@@ -600,10 +633,7 @@ class _RecentPostCard extends StatelessWidget {
   final String time;
   final String content;
 
-  const _RecentPostCard({
-    required this.time,
-    required this.content,
-  });
+  const _RecentPostCard({required this.time, required this.content});
 
   @override
   Widget build(BuildContext context) {
@@ -612,19 +642,14 @@ class _RecentPostCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: AppColors.border,
-        ),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             time,
-            style: const TextStyle(
-              fontSize: 12,
-              color: AppColors.textMuted,
-            ),
+            style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
           ),
 
           const SizedBox(height: 10),
@@ -650,10 +675,7 @@ class _RecentPostCard extends StatelessWidget {
               SizedBox(width: 6),
               Text(
                 'Like',
-                style: TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 12,
-                ),
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
               ),
               SizedBox(width: 18),
               Icon(
@@ -664,10 +686,7 @@ class _RecentPostCard extends StatelessWidget {
               SizedBox(width: 6),
               Text(
                 'Comment',
-                style: TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 12,
-                ),
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
               ),
             ],
           ),
@@ -696,10 +715,7 @@ class _VerificationReminder extends StatelessWidget {
       child: const Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            Icons.lock_outline_rounded,
-            color: AppColors.blueDark,
-          ),
+          Icon(Icons.lock_outline_rounded, color: AppColors.blueDark),
           SizedBox(width: 12),
           Expanded(
             child: Column(

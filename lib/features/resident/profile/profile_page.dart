@@ -30,10 +30,7 @@ class ProfilePage extends StatelessWidget {
             size: 40,
             color: AppColors.error,
           ),
-          title: const Text(
-            'Log Out?',
-            textAlign: TextAlign.center,
-          ),
+          title: const Text('Log Out?', textAlign: TextAlign.center),
           content: const Text(
             'Are you sure you want to log out of your KAISA account?',
             textAlign: TextAlign.center,
@@ -53,9 +50,7 @@ class ProfilePage extends StatelessWidget {
                 // Supabase signOut() will be added later.
                 context.go('/login');
               },
-              style: TextButton.styleFrom(
-                foregroundColor: AppColors.error,
-              ),
+              style: TextButton.styleFrom(foregroundColor: AppColors.error),
               child: const Text('Log Out'),
             ),
           ],
@@ -64,17 +59,10 @@ class ProfilePage extends StatelessWidget {
     );
   }
 
-  void _showComingSoon(
-    BuildContext context,
-    String feature,
-  ) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          '$feature will be connected soon.',
-        ),
-      ),
-    );
+  void _showComingSoon(BuildContext context, String feature) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('$feature will be connected soon.')));
   }
 
   @override
@@ -86,9 +74,7 @@ class ProfilePage extends StatelessWidget {
         automaticallyImplyLeading: false,
         title: const Text(
           'Profile',
-          style: TextStyle(
-            fontWeight: FontWeight.w800,
-          ),
+          style: TextStyle(fontWeight: FontWeight.w800),
         ),
         actions: [
           const NotificationBell(),
@@ -96,14 +82,9 @@ class ProfilePage extends StatelessWidget {
           IconButton(
             tooltip: 'Settings',
             onPressed: () {
-              _showComingSoon(
-                context,
-                'Settings',
-              );
+              _showComingSoon(context, 'Settings');
             },
-            icon: const Icon(
-              Icons.settings_outlined,
-            ),
+            icon: const Icon(Icons.settings_outlined),
           ),
 
           const SizedBox(width: 8),
@@ -113,12 +94,7 @@ class ProfilePage extends StatelessWidget {
       body: SafeArea(
         top: false,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(
-            20,
-            20,
-            20,
-            110,
-          ),
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 110),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -131,10 +107,7 @@ class ProfilePage extends StatelessWidget {
                 padding: const EdgeInsets.all(22),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
-                    colors: [
-                      AppColors.blue,
-                      AppColors.blueDark,
-                    ],
+                    colors: [AppColors.blue, AppColors.blueDark],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -151,10 +124,7 @@ class ProfilePage extends StatelessWidget {
                           decoration: BoxDecoration(
                             color: Colors.white,
                             shape: BoxShape.circle,
-                            border: Border.all(
-                              color: Colors.white,
-                              width: 4,
-                            ),
+                            border: Border.all(color: Colors.white, width: 4),
                           ),
                           alignment: Alignment.center,
                           child: const Text(
@@ -186,10 +156,7 @@ class ProfilePage extends StatelessWidget {
                               iconSize: 15,
                               tooltip: 'Change Profile Photo',
                               onPressed: () {
-                                _showComingSoon(
-                                  context,
-                                  'Profile photo',
-                                );
+                                _showComingSoon(context, 'Profile photo');
                               },
                               icon: const Icon(
                                 Icons.camera_alt_outlined,
@@ -217,10 +184,7 @@ class ProfilePage extends StatelessWidget {
 
                     const Text(
                       residentEmail,
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 13,
-                      ),
+                      style: TextStyle(color: Colors.white70, fontSize: 13),
                     ),
 
                     const SizedBox(height: 14),
@@ -240,8 +204,7 @@ class ProfilePage extends StatelessWidget {
                           Icon(
                             isTier2Verified
                                 ? Icons.verified_rounded
-                                : Icons
-                                    .verified_user_outlined,
+                                : Icons.verified_user_outlined,
                             size: 17,
                             color: Colors.white,
                           ),
@@ -266,7 +229,6 @@ class ProfilePage extends StatelessWidget {
               // ==================================================
               // VERIFICATION
               // ==================================================
-
               if (!isTier2Verified) ...[
                 const SizedBox(height: 18),
 
@@ -283,8 +245,7 @@ class ProfilePage extends StatelessWidget {
                       const Row(
                         children: [
                           Icon(
-                            Icons
-                                .verified_user_outlined,
+                            Icons.verified_user_outlined,
                             color: AppColors.blueDark,
                           ),
                           SizedBox(width: 10),
@@ -319,16 +280,10 @@ class ProfilePage extends StatelessWidget {
                         width: double.infinity,
                         child: FilledButton.icon(
                           onPressed: () {
-                              context.push(
-                                '/resident/identity-verification',
-                              );
-                            },
-                          icon: const Icon(
-                            Icons.verified_outlined,
-                          ),
-                          label: const Text(
-                            'Get Verified',
-                          ),
+                            context.push('/resident/identity-verification');
+                          },
+                          icon: const Icon(Icons.verified_outlined),
+                          label: const Text('Get Verified'),
                         ),
                       ),
                     ],
@@ -341,22 +296,16 @@ class ProfilePage extends StatelessWidget {
               // ==================================================
               // COMMUNITY
               // ==================================================
-
-              const _SectionTitle(
-                title: 'My Community',
-              ),
+              const _SectionTitle(title: 'My Community'),
 
               const SizedBox(height: 12),
 
               _ProfileMenuCard(
                 icon: Icons.groups_outlined,
                 title: 'My Organizations',
-                subtitle:
-                    'View your memberships and organization roles',
+                subtitle: 'View your memberships and organization roles',
                 onTap: () {
-                  context.push(
-                    '/resident/my-organizations',
-                  );
+                  context.push('/resident/my-organizations');
                 },
               ),
 
@@ -365,12 +314,9 @@ class ProfilePage extends StatelessWidget {
               _ProfileMenuCard(
                 icon: Icons.event_available_outlined,
                 title: 'My Events',
-                subtitle:
-                    'View your event registrations and activity',
+                subtitle: 'View your event registrations and activity',
                 onTap: () {
-                  context.push(
-                    '/resident/my-events',
-                  );
+                  context.push('/resident/my-events');
                 },
               ),
 
@@ -379,13 +325,10 @@ class ProfilePage extends StatelessWidget {
               _ProfileMenuCard(
                 icon: Icons.add_business_outlined,
                 title: 'Request Organization',
-                subtitle:
-                    'Submit a new organization request',
+                subtitle: 'Submit a new organization request',
                 locked: !isTier2Verified,
                 onTap: () {
-                  context.push(
-                    '/resident/request-organization',
-                  );
+                  context.push('/resident/request-organization');
                 },
               ),
 
@@ -394,23 +337,16 @@ class ProfilePage extends StatelessWidget {
               // ==================================================
               // ACCOUNT
               // ==================================================
-
-              const _SectionTitle(
-                title: 'Account',
-              ),
+              const _SectionTitle(title: 'Account'),
 
               const SizedBox(height: 12),
 
               _ProfileMenuCard(
                 icon: Icons.person_outline_rounded,
                 title: 'Personal Information',
-                subtitle:
-                    'View and manage your personal details',
+                subtitle: 'View and manage your personal details',
                 onTap: () {
-                  _showComingSoon(
-                    context,
-                    'Personal information',
-                  );
+                  _showComingSoon(context, 'Personal information');
                 },
               ),
 
@@ -419,29 +355,20 @@ class ProfilePage extends StatelessWidget {
               _ProfileMenuCard(
                 icon: Icons.lock_outline_rounded,
                 title: 'Security',
-                subtitle:
-                    'Password and account security',
+                subtitle: 'Password and account security',
                 onTap: () {
-                  _showComingSoon(
-                    context,
-                    'Security settings',
-                  );
+                  _showComingSoon(context, 'Security settings');
                 },
               ),
 
               const SizedBox(height: 10),
 
               _ProfileMenuCard(
-                icon:
-                    Icons.notifications_none_rounded,
+                icon: Icons.notifications_none_rounded,
                 title: 'Notification Settings',
-                subtitle:
-                    'Manage how KAISA notifies you',
+                subtitle: 'Manage how KAISA notifies you',
                 onTap: () {
-                  _showComingSoon(
-                    context,
-                    'Notification settings',
-                  );
+                  _showComingSoon(context, 'Notification settings');
                 },
               ),
 
@@ -450,23 +377,16 @@ class ProfilePage extends StatelessWidget {
               // ==================================================
               // SUPPORT
               // ==================================================
-
-              const _SectionTitle(
-                title: 'Support',
-              ),
+              const _SectionTitle(title: 'Support'),
 
               const SizedBox(height: 12),
 
               _ProfileMenuCard(
                 icon: Icons.help_outline_rounded,
                 title: 'Help & Support',
-                subtitle:
-                    'Get help using KAISA',
+                subtitle: 'Get help using KAISA',
                 onTap: () {
-                  _showComingSoon(
-                    context,
-                    'Help & Support',
-                  );
+                  _showComingSoon(context, 'Help & Support');
                 },
               ),
 
@@ -475,13 +395,9 @@ class ProfilePage extends StatelessWidget {
               _ProfileMenuCard(
                 icon: Icons.info_outline_rounded,
                 title: 'About KAISA',
-                subtitle:
-                    'Learn more about the application',
+                subtitle: 'Learn more about the application',
                 onTap: () {
-                  _showComingSoon(
-                    context,
-                    'About KAISA',
-                  );
+                  _showComingSoon(context, 'About KAISA');
                 },
               ),
 
@@ -490,7 +406,6 @@ class ProfilePage extends StatelessWidget {
               // ==================================================
               // LOGOUT
               // ==================================================
-
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
@@ -499,16 +414,10 @@ class ProfilePage extends StatelessWidget {
                   },
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.error,
-                    side: const BorderSide(
-                      color: AppColors.error,
-                    ),
+                    side: const BorderSide(color: AppColors.error),
                   ),
-                  icon: const Icon(
-                    Icons.logout_rounded,
-                  ),
-                  label: const Text(
-                    'Log Out',
-                  ),
+                  icon: const Icon(Icons.logout_rounded),
+                  label: const Text('Log Out'),
                 ),
               ),
 
@@ -517,10 +426,7 @@ class ProfilePage extends StatelessWidget {
               const Center(
                 child: Text(
                   'KAISA • Resident Portal',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: AppColors.textMuted,
-                  ),
+                  style: TextStyle(fontSize: 11, color: AppColors.textMuted),
                 ),
               ),
             ],
@@ -528,10 +434,7 @@ class ProfilePage extends StatelessWidget {
         ),
       ),
 
-      bottomNavigationBar:
-          const ResidentBottomNav(
-        currentIndex: 4,
-      ),
+      bottomNavigationBar: const ResidentBottomNav(currentIndex: 4),
     );
   }
 }
@@ -543,9 +446,7 @@ class ProfilePage extends StatelessWidget {
 class _SectionTitle extends StatelessWidget {
   final String title;
 
-  const _SectionTitle({
-    required this.title,
-  });
+  const _SectionTitle({required this.title});
 
   @override
   Widget build(BuildContext context) {
@@ -591,9 +492,7 @@ class _ProfileMenuCard extends StatelessWidget {
           padding: const EdgeInsets.all(15),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(17),
-            border: Border.all(
-              color: AppColors.border,
-            ),
+            border: Border.all(color: AppColors.border),
           ),
           child: Row(
             children: [
@@ -604,19 +503,14 @@ class _ProfileMenuCard extends StatelessWidget {
                   color: AppColors.blueLight,
                   borderRadius: BorderRadius.circular(13),
                 ),
-                child: Icon(
-                  icon,
-                  color: AppColors.blue,
-                  size: 22,
-                ),
+                child: Icon(icon, color: AppColors.blue, size: 22),
               ),
 
               const SizedBox(width: 13),
 
               Expanded(
                 child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
@@ -625,10 +519,8 @@ class _ProfileMenuCard extends StatelessWidget {
                             title,
                             style: const TextStyle(
                               fontSize: 14,
-                              fontWeight:
-                                  FontWeight.w700,
-                              color:
-                                  AppColors.textPrimary,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textPrimary,
                             ),
                           ),
                         ),
@@ -650,8 +542,7 @@ class _ProfileMenuCard extends StatelessWidget {
                       subtitle,
                       style: const TextStyle(
                         fontSize: 12,
-                        color:
-                            AppColors.textSecondary,
+                        color: AppColors.textSecondary,
                       ),
                     ),
                   ],

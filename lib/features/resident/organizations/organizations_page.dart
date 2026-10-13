@@ -5,7 +5,9 @@ import '../../../core/theme/app_colors.dart';
 import '../widgets/resident_bottom_nav.dart';
 import '../widgets/notification_bell.dart';
 
-
+import '../../../shared/repositories/organization_repository.dart';
+import '../../../shared/repositories/organization_membership_repository.dart';
+import '../../../shared/models/organization_membership_model.dart';
 
 class OrganizationsPage extends StatefulWidget {
   const OrganizationsPage({super.key});
@@ -19,6 +21,20 @@ class _OrganizationsPageState extends State<OrganizationsPage> {
 
   String selectedCategory = 'All';
 
+  final organizationRepository = OrganizationRepository.instance;
+  final membershipRepository = OrganizationMembershipRepository.instance;
+
+  @override
+  void initState() {
+    super.initState();
+    organizationRepository.addListener(_refresh);
+    membershipRepository.addListener(_refresh);
+  }
+
+  void _refresh() {
+    if (mounted) setState(() {});
+  }
+
   final List<String> categories = [
     'All',
     'Youth',
@@ -29,57 +45,35 @@ class _OrganizationsPageState extends State<OrganizationsPage> {
   ];
 
   // Prototype data only.
-  final List<_OrganizationData> organizations = const [
-    _OrganizationData(
-      name: 'KAISA Youth Volunteers',
-      category: 'Youth',
-      description:
-          'Empowering young residents through volunteer work, leadership, and meaningful community participation.',
-      members: 128,
-      icon: Icons.volunteer_activism_outlined,
-    ),
-    _OrganizationData(
-      name: 'Community Environment Network',
-      category: 'Environment',
-      description:
-          'Promoting environmental responsibility through clean-up drives, sustainability projects, and community action.',
-      members: 94,
-      icon: Icons.eco_outlined,
-    ),
-    _OrganizationData(
-      name: 'Community Learning Circle',
-      category: 'Education',
-      description:
-          'Supporting residents through learning programs, educational activities, and knowledge-sharing initiatives.',
-      members: 76,
-      icon: Icons.school_outlined,
-    ),
-    _OrganizationData(
-      name: 'KAISA Sports Club',
-      category: 'Sports',
-      description:
-          'Bringing residents together through sports, recreation, fitness, and community tournaments.',
-      members: 156,
-      icon: Icons.sports_basketball_outlined,
-    ),
-    _OrganizationData(
-      name: 'Community Development Council',
-      category: 'Community',
-      description:
-          'Encouraging residents to participate in programs and initiatives that strengthen the local community.',
-      members: 203,
-      icon: Icons.groups_2_outlined,
-    ),
-  ];
+  List<_OrganizationData> get organizations {
+    return organizationRepository.organizations
+        .where((org) => org.status == 'Active')
+        .map(
+          (org) => _OrganizationData(
+            id: org.id,
+            name: org.name,
+            category: org.category,
+            description: org.description,
+            members: membershipRepository.countByStatus(
+              org.id,
+              MembershipStatus.approved,
+            ),
+            icon: Icons.groups_2_outlined,
+          ),
+        )
+        .toList();
+  }
 
   List<_OrganizationData> get filteredOrganizations {
     final query = searchController.text.trim().toLowerCase();
 
     return organizations.where((organization) {
-      final matchesCategory = selectedCategory == 'All' ||
+      final matchesCategory =
+          selectedCategory == 'All' ||
           organization.category == selectedCategory;
 
-      final matchesSearch = query.isEmpty ||
+      final matchesSearch =
+          query.isEmpty ||
           organization.name.toLowerCase().contains(query) ||
           organization.description.toLowerCase().contains(query) ||
           organization.category.toLowerCase().contains(query);
@@ -90,6 +84,8 @@ class _OrganizationsPageState extends State<OrganizationsPage> {
 
   @override
   void dispose() {
+    organizationRepository.removeListener(_refresh);
+    membershipRepository.removeListener(_refresh);
     searchController.dispose();
     super.dispose();
   }
@@ -108,9 +104,7 @@ class _OrganizationsPageState extends State<OrganizationsPage> {
           children: [
             Text(
               'Organizations',
-              style: TextStyle(
-                fontWeight: FontWeight.w800,
-              ),
+              style: TextStyle(fontWeight: FontWeight.w800),
             ),
             Text(
               'Discover your community',
@@ -127,20 +121,14 @@ class _OrganizationsPageState extends State<OrganizationsPage> {
 
           PopupMenuButton<String>(
             tooltip: 'Organization Options',
-            icon: const Icon(
-              Icons.more_vert_rounded,
-            ),
+            icon: const Icon(Icons.more_vert_rounded),
             onSelected: (value) {
               if (value == 'my-organizations') {
-                context.push(
-                  '/resident/my-organizations',
-                );
+                context.push('/resident/my-organizations');
               }
 
               if (value == 'request-organization') {
-                context.push(
-                  '/resident/request-organization',
-                );
+                context.push('/resident/request-organization');
               }
             },
             itemBuilder: (context) => [
@@ -237,18 +225,11 @@ class _OrganizationsPageState extends State<OrganizationsPage> {
               child: displayedOrganizations.isEmpty
                   ? const _EmptyOrganizations()
                   : ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(
-                        20,
-                        14,
-                        20,
-                        100,
-                      ),
+                      padding: const EdgeInsets.fromLTRB(20, 14, 20, 100),
                       itemCount: displayedOrganizations.length,
-                      separatorBuilder: (_, _) =>
-                          const SizedBox(height: 14),
+                      separatorBuilder: (_, _) => const SizedBox(height: 14),
                       itemBuilder: (context, index) {
-                        final organization =
-                            displayedOrganizations[index];
+                        final organization = displayedOrganizations[index];
 
                         return _OrganizationCard(
                           organization: organization,
@@ -256,6 +237,7 @@ class _OrganizationsPageState extends State<OrganizationsPage> {
                             context.push(
                               '/resident/organization-details',
                               extra: {
+                                'id': organization.id,
                                 'name': organization.name,
                                 'category': organization.category,
                                 'description': organization.description,
@@ -271,9 +253,7 @@ class _OrganizationsPageState extends State<OrganizationsPage> {
         ),
       ),
 
-      bottomNavigationBar: const ResidentBottomNav(
-        currentIndex: 2,
-      ),
+      bottomNavigationBar: const ResidentBottomNav(currentIndex: 2),
     );
   }
 }
@@ -283,6 +263,7 @@ class _OrganizationsPageState extends State<OrganizationsPage> {
 // ============================================================================
 
 class _OrganizationData {
+  final String id;
   final String name;
   final String category;
   final String description;
@@ -290,6 +271,7 @@ class _OrganizationData {
   final IconData icon;
 
   const _OrganizationData({
+    required this.id,
     required this.name,
     required this.category,
     required this.description,
@@ -306,10 +288,7 @@ class _OrganizationCard extends StatelessWidget {
   final _OrganizationData organization;
   final VoidCallback onTap;
 
-  const _OrganizationCard({
-    required this.organization,
-    required this.onTap,
-  });
+  const _OrganizationCard({required this.organization, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -331,11 +310,7 @@ class _OrganizationCard extends StatelessWidget {
                   color: AppColors.blueLight,
                   borderRadius: BorderRadius.circular(17),
                 ),
-                child: Icon(
-                  organization.icon,
-                  color: AppColors.blue,
-                  size: 28,
-                ),
+                child: Icon(organization.icon, color: AppColors.blue, size: 28),
               ),
 
               const SizedBox(width: 15),
@@ -448,18 +423,13 @@ class _EmptyOrganizations extends StatelessWidget {
             SizedBox(height: 14),
             Text(
               'No organizations found',
-              style: TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w700,
-              ),
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
             ),
             SizedBox(height: 6),
             Text(
               'Try searching for another organization or category.',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                color: AppColors.textSecondary,
-              ),
+              style: TextStyle(color: AppColors.textSecondary),
             ),
           ],
         ),
