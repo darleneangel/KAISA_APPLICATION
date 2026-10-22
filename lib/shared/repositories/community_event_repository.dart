@@ -1,4 +1,3 @@
-
 import 'package:flutter/foundation.dart';
 
 import '../models/community_event_model.dart';
@@ -6,8 +5,7 @@ import '../models/community_event_model.dart';
 class CommunityEventRepository extends ChangeNotifier {
   CommunityEventRepository._();
 
-  static final CommunityEventRepository instance =
-      CommunityEventRepository._();
+  static final CommunityEventRepository instance = CommunityEventRepository._();
 
   final List<CommunityEvent> _events = [
     CommunityEvent(
@@ -28,8 +26,7 @@ class CommunityEventRepository extends ChangeNotifier {
       id: 'EVT-002',
       organizationId: 'ORG-002',
       title: 'Community Health Awareness Day',
-      description:
-          'A community outreach activity promoting health awareness.',
+      description: 'A community outreach activity promoting health awareness.',
       location: 'Cavite City Covered Court',
       startsAt: DateTime(2026, 10, 28, 8),
       endsAt: DateTime(2026, 10, 28, 15),
@@ -54,35 +51,27 @@ class CommunityEventRepository extends ChangeNotifier {
     ),
   ];
 
-  List<CommunityEvent> get events =>
-      List.unmodifiable(_events);
+  List<CommunityEvent> get events => List.unmodifiable(_events);
 
   int get totalEvents => _events.length;
 
   int get upcomingEvents => _events
-      .where((event) =>
-          event.status == CommunityEventStatus.upcoming)
+      .where((event) => event.status == CommunityEventStatus.upcoming)
       .length;
 
   int get ongoingEvents => _events
-      .where((event) =>
-          event.status == CommunityEventStatus.ongoing)
+      .where((event) => event.status == CommunityEventStatus.ongoing)
       .length;
 
   int get completedEvents => _events
-      .where((event) =>
-          event.status == CommunityEventStatus.completed)
+      .where((event) => event.status == CommunityEventStatus.completed)
       .length;
 
-  int get totalRegistrations => _events.fold<int>(
-        0,
-        (total, event) => total + event.registrationCount,
-      );
+  int get totalRegistrations =>
+      _events.fold<int>(0, (total, event) => total + event.registrationCount);
 
-  int get totalAttendance => _events.fold<int>(
-        0,
-        (total, event) => total + event.attendanceCount,
-      );
+  int get totalAttendance =>
+      _events.fold<int>(0, (total, event) => total + event.attendanceCount);
 
   void addEvent(CommunityEvent event) {
     if (_events.any((existing) => existing.id == event.id)) {
@@ -94,9 +83,7 @@ class CommunityEventRepository extends ChangeNotifier {
   }
 
   void updateEvent(CommunityEvent event) {
-    final index = _events.indexWhere(
-      (existing) => existing.id == event.id,
-    );
+    final index = _events.indexWhere((existing) => existing.id == event.id);
 
     if (index == -1) {
       throw StateError('Event not found.');

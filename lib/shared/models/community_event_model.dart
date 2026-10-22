@@ -1,10 +1,4 @@
-
-enum CommunityEventStatus {
-  upcoming,
-  ongoing,
-  completed,
-  cancelled,
-}
+enum CommunityEventStatus { upcoming, ongoing, completed, cancelled }
 
 class CommunityEvent {
   final String id;

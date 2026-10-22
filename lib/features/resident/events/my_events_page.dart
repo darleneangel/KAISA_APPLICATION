@@ -1,3 +1,5 @@
+import '../../resident/widgets/kaisa_resident_hero.dart';
+import '../../../core/theme/kaisa_backdrop.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -13,11 +15,7 @@ class MyEventsPage extends StatefulWidget {
 class _MyEventsPageState extends State<MyEventsPage> {
   String selectedFilter = 'Upcoming';
 
-  final List<String> filters = [
-    'Upcoming',
-    'Completed',
-    'Cancelled',
-  ];
+  final List<String> filters = ['Upcoming', 'Completed', 'Cancelled'];
 
   // ============================================================
   // PROTOTYPE DATA ONLY
@@ -110,16 +108,12 @@ class _MyEventsPageState extends State<MyEventsPage> {
 
   List<_MyEventData> get filteredEvents {
     return registeredEvents
-        .where(
-          (event) => event.status == selectedFilter,
-        )
+        .where((event) => event.status == selectedFilter)
         .toList();
   }
 
   int _countStatus(String status) {
-    return registeredEvents
-        .where((event) => event.status == status)
-        .length;
+    return registeredEvents.where((event) => event.status == status).length;
   }
 
   @override
@@ -132,19 +126,12 @@ class _MyEventsPageState extends State<MyEventsPage> {
       appBar: AppBar(
         leading: IconButton(
           onPressed: () => context.pop(),
-          icon: const Icon(
-            Icons.arrow_back_rounded,
-          ),
+          icon: const Icon(Icons.arrow_back_rounded),
         ),
         title: const Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'My Events',
-              style: TextStyle(
-                fontWeight: FontWeight.w800,
-              ),
-            ),
+            Text('My Events', style: TextStyle(fontWeight: FontWeight.w800)),
             Text(
               'Your event registrations',
               style: TextStyle(
@@ -157,169 +144,159 @@ class _MyEventsPageState extends State<MyEventsPage> {
         ),
       ),
 
-      body: SafeArea(
-        top: false,
-        child: Column(
-          children: [
-            // ==================================================
-            // SUMMARY
-            // ==================================================
-
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                20,
-                20,
-                20,
-                14,
-              ),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [
-                      AppColors.blue,
-                      AppColors.blueDark,
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 54,
-                      height: 54,
+      body: Stack(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 14),
+            child: KaisaResidentHero(
+              eyebrow: 'YOUR JOURNEY',
+              title: 'Moments that matter.',
+              subtitle: 'Every event is a new way to connect and contribute.',
+              icon: Icons.event_available_rounded,
+              chip: 'My participation',
+            ),
+          ),
+          const Positioned.fill(child: KaisaBackdrop()),
+          Positioned.fill(
+            child: SafeArea(
+              top: false,
+              child: Column(
+                children: [
+                  // ==================================================
+                  // SUMMARY
+                  // ==================================================
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 14),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.16),
-                        borderRadius: BorderRadius.circular(16),
+                        gradient: const LinearGradient(
+                          colors: [AppColors.forest, AppColors.deepForest],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(20),
                       ),
-                      child: const Icon(
-                        Icons.event_available_outlined,
-                        color: Colors.white,
-                        size: 28,
-                      ),
-                    ),
-
-                    const SizedBox(width: 16),
-
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      child: Row(
                         children: [
-                          const Text(
-                            'Event Activity',
-                            style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: 13,
+                          Container(
+                            width: 54,
+                            height: 54,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.16),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: const Icon(
+                              Icons.event_available_outlined,
+                              color: Colors.white,
+                              size: 28,
                             ),
                           ),
 
-                          const SizedBox(height: 4),
+                          const SizedBox(width: 16),
 
-                          Text(
-                            '${_countStatus('Upcoming')} upcoming '
-                            'event${_countStatus('Upcoming') == 1 ? '' : 's'}',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 21,
-                              fontWeight: FontWeight.w800,
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Event Activity',
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 13,
+                                  ),
+                                ),
+
+                                const SizedBox(height: 4),
+
+                                Text(
+                                  '${_countStatus('Upcoming')} upcoming '
+                                  'event${_countStatus('Upcoming') == 1 ? '' : 's'}',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 21,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ],
                       ),
                     ),
-                  ],
-                ),
-              ),
-            ),
+                  ),
 
-            // ==================================================
-            // FILTERS
-            // ==================================================
-
-            SizedBox(
-              height: 58,
-              child: ListView.separated(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 8,
-                ),
-                scrollDirection: Axis.horizontal,
-                itemCount: filters.length,
-                separatorBuilder: (_, _) =>
-                    const SizedBox(width: 8),
-                itemBuilder: (context, index) {
-                  final filter = filters[index];
-
-                  return ChoiceChip(
-                    label: Text(
-                      '$filter (${_countStatus(filter)})',
-                    ),
-                    selected: selectedFilter == filter,
-                    onSelected: (_) {
-                      setState(() {
-                        selectedFilter = filter;
-                      });
-                    },
-                  );
-                },
-              ),
-            ),
-
-            // ==================================================
-            // EVENT LIST
-            // ==================================================
-
-            Expanded(
-              child: events.isEmpty
-                  ? _EmptyMyEvents(
-                      status: selectedFilter,
-                    )
-                  : ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(
-                        20,
-                        10,
-                        20,
-                        50,
+                  // ==================================================
+                  // FILTERS
+                  // ==================================================
+                  SizedBox(
+                    height: 58,
+                    child: ListView.separated(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 8,
                       ),
-                      itemCount: events.length,
-                      separatorBuilder: (_, _) =>
-                          const SizedBox(height: 14),
+                      scrollDirection: Axis.horizontal,
+                      itemCount: filters.length,
+                      separatorBuilder: (_, _) => const SizedBox(width: 8),
                       itemBuilder: (context, index) {
-                        final event = events[index];
+                        final filter = filters[index];
 
-                        return _RegisteredEventCard(
-                          event: event,
-                          onTap: () {
-                            context.push(
-                              '/resident/event-details',
-                              extra: {
-                                'title': event.title,
-                                'organization':
-                                    event.organization,
-                                'category':
-                                    event.category,
-                                'description':
-                                    event.description,
-                                'date': event.date,
-                                'time': event.time,
-                                'location':
-                                    event.location,
-                                'participants':
-                                    event.participants,
-                                'capacity':
-                                    event.capacity,
-                              },
-                            );
+                        return ChoiceChip(
+                          label: Text('$filter (${_countStatus(filter)})'),
+                          selected: selectedFilter == filter,
+                          onSelected: (_) {
+                            setState(() {
+                              selectedFilter = filter;
+                            });
                           },
                         );
                       },
                     ),
+                  ),
+
+                  // ==================================================
+                  // EVENT LIST
+                  // ==================================================
+                  Expanded(
+                    child: events.isEmpty
+                        ? _EmptyMyEvents(status: selectedFilter)
+                        : ListView.separated(
+                            padding: const EdgeInsets.fromLTRB(20, 10, 20, 50),
+                            itemCount: events.length,
+                            separatorBuilder: (_, _) =>
+                                const SizedBox(height: 14),
+                            itemBuilder: (context, index) {
+                              final event = events[index];
+
+                              return _RegisteredEventCard(
+                                event: event,
+                                onTap: () {
+                                  context.push(
+                                    '/resident/event-details',
+                                    extra: {
+                                      'title': event.title,
+                                      'organization': event.organization,
+                                      'category': event.category,
+                                      'description': event.description,
+                                      'date': event.date,
+                                      'time': event.time,
+                                      'location': event.location,
+                                      'participants': event.participants,
+                                      'capacity': event.capacity,
+                                    },
+                                  );
+                                },
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -370,10 +347,7 @@ class _RegisteredEventCard extends StatelessWidget {
   final _MyEventData event;
   final VoidCallback onTap;
 
-  const _RegisteredEventCard({
-    required this.event,
-    required this.onTap,
-  });
+  const _RegisteredEventCard({required this.event, required this.onTap});
 
   Color _statusBackground() {
     switch (event.status) {
@@ -381,10 +355,10 @@ class _RegisteredEventCard extends StatelessWidget {
         return AppColors.greenLight;
 
       case 'Cancelled':
-        return AppColors.blueLight;
+        return AppColors.mint;
 
       default:
-        return AppColors.blueLight;
+        return AppColors.mint;
     }
   }
 
@@ -397,7 +371,7 @@ class _RegisteredEventCard extends StatelessWidget {
         return AppColors.textSecondary;
 
       default:
-        return AppColors.blueDark;
+        return AppColors.deepForest;
     }
   }
 
@@ -432,16 +406,13 @@ class _RegisteredEventCard extends StatelessWidget {
                   // --------------------------------------------
                   // DATE
                   // --------------------------------------------
-
                   Container(
                     width: 60,
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 10,
-                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
                     decoration: BoxDecoration(
                       color: event.status == 'Cancelled'
                           ? AppColors.border
-                          : AppColors.blueLight,
+                          : AppColors.mint,
                       borderRadius: BorderRadius.circular(15),
                     ),
                     child: Column(
@@ -453,7 +424,7 @@ class _RegisteredEventCard extends StatelessWidget {
                             fontWeight: FontWeight.w800,
                             color: event.status == 'Cancelled'
                                 ? AppColors.textMuted
-                                : AppColors.blueDark,
+                                : AppColors.deepForest,
                           ),
                         ),
 
@@ -466,7 +437,7 @@ class _RegisteredEventCard extends StatelessWidget {
                             fontWeight: FontWeight.w800,
                             color: event.status == 'Cancelled'
                                 ? AppColors.textMuted
-                                : AppColors.blueDark,
+                                : AppColors.deepForest,
                           ),
                         ),
                       ],
@@ -478,7 +449,6 @@ class _RegisteredEventCard extends StatelessWidget {
                   // --------------------------------------------
                   // EVENT INFO
                   // --------------------------------------------
-
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -500,7 +470,7 @@ class _RegisteredEventCard extends StatelessWidget {
                           event.organization,
                           style: const TextStyle(
                             fontSize: 12,
-                            color: AppColors.blue,
+                            color: AppColors.forest,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -520,8 +490,7 @@ class _RegisteredEventCard extends StatelessWidget {
                                 event.time,
                                 style: const TextStyle(
                                   fontSize: 12,
-                                  color:
-                                      AppColors.textSecondary,
+                                  color: AppColors.textSecondary,
                                 ),
                               ),
                             ),
@@ -545,8 +514,7 @@ class _RegisteredEventCard extends StatelessWidget {
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
                                   fontSize: 12,
-                                  color:
-                                      AppColors.textSecondary,
+                                  color: AppColors.textSecondary,
                                 ),
                               ),
                             ),
@@ -574,7 +542,6 @@ class _RegisteredEventCard extends StatelessWidget {
               // --------------------------------------------
               // STATUS
               // --------------------------------------------
-
               Row(
                 children: [
                   Container(
@@ -589,11 +556,7 @@ class _RegisteredEventCard extends StatelessWidget {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(
-                          _statusIcon(),
-                          size: 15,
-                          color: _statusColor(),
-                        ),
+                        Icon(_statusIcon(), size: 15, color: _statusColor()),
 
                         const SizedBox(width: 5),
 
@@ -637,9 +600,7 @@ class _RegisteredEventCard extends StatelessWidget {
 class _EmptyMyEvents extends StatelessWidget {
   final String status;
 
-  const _EmptyMyEvents({
-    required this.status,
-  });
+  const _EmptyMyEvents({required this.status});
 
   @override
   Widget build(BuildContext context) {
@@ -653,8 +614,8 @@ class _EmptyMyEvents extends StatelessWidget {
               status == 'Completed'
                   ? Icons.history_rounded
                   : status == 'Cancelled'
-                      ? Icons.event_busy_outlined
-                      : Icons.event_available_outlined,
+                  ? Icons.event_busy_outlined
+                  : Icons.event_available_outlined,
               size: 58,
               color: AppColors.textMuted,
             ),
@@ -663,10 +624,7 @@ class _EmptyMyEvents extends StatelessWidget {
 
             Text(
               'No $status events',
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-              ),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
             ),
 
             const SizedBox(height: 7),
@@ -675,12 +633,10 @@ class _EmptyMyEvents extends StatelessWidget {
               status == 'Upcoming'
                   ? 'Events you register for will appear here.'
                   : status == 'Completed'
-                      ? 'Your completed events will appear here.'
-                      : 'Cancelled event registrations will appear here.',
+                  ? 'Your completed events will appear here.'
+                  : 'Cancelled event registrations will appear here.',
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: AppColors.textSecondary,
-              ),
+              style: const TextStyle(color: AppColors.textSecondary),
             ),
 
             if (status == 'Upcoming') ...[
@@ -690,12 +646,8 @@ class _EmptyMyEvents extends StatelessWidget {
                 onPressed: () {
                   context.pop();
                 },
-                icon: const Icon(
-                  Icons.explore_outlined,
-                ),
-                label: const Text(
-                  'Browse Events',
-                ),
+                icon: const Icon(Icons.explore_outlined),
+                label: const Text('Browse Events'),
               ),
             ],
           ],

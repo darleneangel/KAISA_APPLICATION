@@ -1,18 +1,15 @@
-
 import 'package:flutter/foundation.dart';
 
 class LguSettingsRepository extends ChangeNotifier {
   LguSettingsRepository._();
 
-  static final LguSettingsRepository instance =
-      LguSettingsRepository._();
+  static final LguSettingsRepository instance = LguSettingsRepository._();
 
   bool _administrativeNotifications = true;
   bool _eventNotifications = true;
   bool _assignmentNotifications = true;
 
-  bool get administrativeNotifications =>
-      _administrativeNotifications;
+  bool get administrativeNotifications => _administrativeNotifications;
 
   bool get eventNotifications => _eventNotifications;
 

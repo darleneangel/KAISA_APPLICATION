@@ -1,3 +1,5 @@
+import '../../resident/widgets/kaisa_resident_hero.dart';
+import '../../../core/theme/kaisa_backdrop.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -7,19 +9,13 @@ class MyOrganizationsPage extends StatefulWidget {
   const MyOrganizationsPage({super.key});
 
   @override
-  State<MyOrganizationsPage> createState() =>
-      _MyOrganizationsPageState();
+  State<MyOrganizationsPage> createState() => _MyOrganizationsPageState();
 }
 
 class _MyOrganizationsPageState extends State<MyOrganizationsPage> {
   String selectedFilter = 'All';
 
-  final List<String> filters = [
-    'All',
-    'Member',
-    'Officer',
-    'Admin',
-  ];
+  final List<String> filters = ['All', 'Member', 'Officer', 'Admin'];
 
   // ------------------------------------------------------------
   // PROTOTYPE DATA ONLY
@@ -88,9 +84,7 @@ class _MyOrganizationsPageState extends State<MyOrganizationsPage> {
           children: [
             Text(
               'My Organizations',
-              style: TextStyle(
-                fontWeight: FontWeight.w800,
-              ),
+              style: TextStyle(fontWeight: FontWeight.w800),
             ),
             Text(
               'Your community memberships',
@@ -104,153 +98,151 @@ class _MyOrganizationsPageState extends State<MyOrganizationsPage> {
         ),
       ),
 
-      body: SafeArea(
-        top: false,
-        child: Column(
-          children: [
-            // ========================================================
-            // SUMMARY
-            // ========================================================
-
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [
-                      AppColors.blue,
-                      AppColors.blueDark,
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 54,
-                      height: 54,
+      body: Stack(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 14),
+            child: KaisaResidentHero(
+              eyebrow: 'YOUR COMMUNITY',
+              title: 'Better together.',
+              subtitle: 'See the groups you are building a stronger city with.',
+              icon: Icons.groups_rounded,
+              chip: 'Your memberships',
+            ),
+          ),
+          const Positioned.fill(child: KaisaBackdrop()),
+          Positioned.fill(
+            child: SafeArea(
+              top: false,
+              child: Column(
+                children: [
+                  // ========================================================
+                  // SUMMARY
+                  // ========================================================
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.16),
-                        borderRadius: BorderRadius.circular(16),
+                        gradient: const LinearGradient(
+                          colors: [AppColors.forest, AppColors.deepForest],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(20),
                       ),
-                      child: const Icon(
-                        Icons.groups_2_outlined,
-                        color: Colors.white,
-                        size: 28,
-                      ),
-                    ),
-
-                    const SizedBox(width: 16),
-
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      child: Row(
                         children: [
-                          const Text(
-                            'Your Organizations',
-                            style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: 13,
+                          Container(
+                            width: 54,
+                            height: 54,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.16),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: const Icon(
+                              Icons.groups_2_outlined,
+                              color: Colors.white,
+                              size: 28,
                             ),
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '${memberships.length} memberships',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 21,
-                              fontWeight: FontWeight.w800,
+
+                          const SizedBox(width: 16),
+
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Your Organizations',
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  '${memberships.length} memberships',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 21,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ],
                       ),
                     ),
-                  ],
-                ),
-              ),
-            ),
+                  ),
 
-            // ========================================================
-            // FILTERS
-            // ========================================================
-
-            SizedBox(
-              height: 58,
-              child: ListView.separated(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 8,
-                ),
-                scrollDirection: Axis.horizontal,
-                itemCount: filters.length,
-                separatorBuilder: (_, _) =>
-                    const SizedBox(width: 8),
-                itemBuilder: (context, index) {
-                  final filter = filters[index];
-
-                  return ChoiceChip(
-                    label: Text(filter),
-                    selected: selectedFilter == filter,
-                    onSelected: (_) {
-                      setState(() {
-                        selectedFilter = filter;
-                      });
-                    },
-                  );
-                },
-              ),
-            ),
-
-            // ========================================================
-            // ORGANIZATIONS
-            // ========================================================
-
-            Expanded(
-              child: displayedMemberships.isEmpty
-                  ? _EmptyMemberships(
-                      filter: selectedFilter,
-                    )
-                  : ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(
-                        20,
-                        10,
-                        20,
-                        100,
+                  // ========================================================
+                  // FILTERS
+                  // ========================================================
+                  SizedBox(
+                    height: 58,
+                    child: ListView.separated(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 8,
                       ),
-                      itemCount: displayedMemberships.length,
-                      separatorBuilder: (_, _) =>
-                          const SizedBox(height: 14),
+                      scrollDirection: Axis.horizontal,
+                      itemCount: filters.length,
+                      separatorBuilder: (_, _) => const SizedBox(width: 8),
                       itemBuilder: (context, index) {
-                        final membership =
-                            displayedMemberships[index];
+                        final filter = filters[index];
 
-                        return _MembershipCard(
-                          membership: membership,
-                          onTap: () {
-                            context.push(
-                              '/resident/organization-details',
-                              extra: {
-                                'name':
-                                    membership.organizationName,
-                                'category':
-                                    membership.category,
-                                'description':
-                                    membership.description,
-                                'members':
-                                    membership.members,
-                              },
-                            );
+                        return ChoiceChip(
+                          label: Text(filter),
+                          selected: selectedFilter == filter,
+                          onSelected: (_) {
+                            setState(() {
+                              selectedFilter = filter;
+                            });
                           },
                         );
                       },
                     ),
+                  ),
+
+                  // ========================================================
+                  // ORGANIZATIONS
+                  // ========================================================
+                  Expanded(
+                    child: displayedMemberships.isEmpty
+                        ? _EmptyMemberships(filter: selectedFilter)
+                        : ListView.separated(
+                            padding: const EdgeInsets.fromLTRB(20, 10, 20, 100),
+                            itemCount: displayedMemberships.length,
+                            separatorBuilder: (_, _) =>
+                                const SizedBox(height: 14),
+                            itemBuilder: (context, index) {
+                              final membership = displayedMemberships[index];
+
+                              return _MembershipCard(
+                                membership: membership,
+                                onTap: () {
+                                  context.push(
+                                    '/resident/organization-details',
+                                    extra: {
+                                      'name': membership.organizationName,
+                                      'category': membership.category,
+                                      'description': membership.description,
+                                      'members': membership.members,
+                                    },
+                                  );
+                                },
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -288,34 +280,31 @@ class _MembershipCard extends StatelessWidget {
   final _MembershipData membership;
   final VoidCallback onTap;
 
-  const _MembershipCard({
-    required this.membership,
-    required this.onTap,
-  });
+  const _MembershipCard({required this.membership, required this.onTap});
 
   Color _roleBackground() {
     switch (membership.role) {
       case 'Admin':
-        return AppColors.yellowLight;
+        return AppColors.cream;
 
       case 'Officer':
         return AppColors.greenLight;
 
       default:
-        return AppColors.blueLight;
+        return AppColors.mint;
     }
   }
 
   Color _roleColor() {
     switch (membership.role) {
       case 'Admin':
-        return AppColors.yellowDark;
+        return AppColors.deepForest; //to be changed
 
       case 'Officer':
         return AppColors.greenDark;
 
       default:
-        return AppColors.blueDark;
+        return AppColors.deepForest;
     }
   }
 
@@ -352,12 +341,12 @@ class _MembershipCard extends StatelessWidget {
                     width: 56,
                     height: 56,
                     decoration: BoxDecoration(
-                      color: AppColors.blueLight,
+                      color: AppColors.mint,
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Icon(
                       membership.icon,
-                      color: AppColors.blue,
+                      color: AppColors.forest,
                       size: 27,
                     ),
                   ),
@@ -366,8 +355,7 @@ class _MembershipCard extends StatelessWidget {
 
                   Expanded(
                     child: Column(
-                      crossAxisAlignment:
-                          CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           membership.organizationName,
@@ -413,11 +401,7 @@ class _MembershipCard extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
-                      _roleIcon(),
-                      size: 15,
-                      color: _roleColor(),
-                    ),
+                    Icon(_roleIcon(), size: 15, color: _roleColor()),
 
                     const SizedBox(width: 6),
 
@@ -485,7 +469,7 @@ class _MembershipCard extends StatelessWidget {
                   width: double.infinity,
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: AppColors.yellowLight,
+                    color: AppColors.cream,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Row(
@@ -493,7 +477,7 @@ class _MembershipCard extends StatelessWidget {
                       Icon(
                         Icons.admin_panel_settings_outlined,
                         size: 18,
-                        color: AppColors.yellowDark,
+                        color: AppColors.deepForest,
                       ),
 
                       SizedBox(width: 8),
@@ -503,7 +487,7 @@ class _MembershipCard extends StatelessWidget {
                           'You have administrative access to '
                           'this organization.',
                           style: TextStyle(
-                            color: AppColors.yellowDark,
+                            color: AppColors.deepForest,
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
                           ),
@@ -528,9 +512,7 @@ class _MembershipCard extends StatelessWidget {
 class _EmptyMemberships extends StatelessWidget {
   final String filter;
 
-  const _EmptyMemberships({
-    required this.filter,
-  });
+  const _EmptyMemberships({required this.filter});
 
   @override
   Widget build(BuildContext context) {
@@ -552,10 +534,7 @@ class _EmptyMemberships extends StatelessWidget {
               filter == 'All'
                   ? 'No organizations yet'
                   : 'No $filter organizations',
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-              ),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
             ),
 
             const SizedBox(height: 8),
@@ -564,11 +543,9 @@ class _EmptyMemberships extends StatelessWidget {
               filter == 'All'
                   ? 'Organizations you join will appear here.'
                   : 'You currently have no organizations '
-                      'with this role.',
+                        'with this role.',
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: AppColors.textSecondary,
-              ),
+              style: const TextStyle(color: AppColors.textSecondary),
             ),
 
             if (filter == 'All') ...[

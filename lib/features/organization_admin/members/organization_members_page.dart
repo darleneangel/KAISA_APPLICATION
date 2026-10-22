@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
@@ -8,18 +7,14 @@ import '../../../shared/repositories/organization_membership_repository.dart';
 class OrganizationMembersPage extends StatefulWidget {
   final String organizationId;
 
-  const OrganizationMembersPage({
-    super.key,
-    required this.organizationId,
-  });
+  const OrganizationMembersPage({super.key, required this.organizationId});
 
   @override
   State<OrganizationMembersPage> createState() =>
       _OrganizationMembersPageState();
 }
 
-class _OrganizationMembersPageState
-    extends State<OrganizationMembersPage> {
+class _OrganizationMembersPageState extends State<OrganizationMembersPage> {
   final repository = OrganizationMembershipRepository.instance;
   final searchController = TextEditingController();
 
@@ -45,14 +40,11 @@ class _OrganizationMembersPageState
   List<OrganizationMembership> get filteredMembers {
     final query = searchController.text.trim().toLowerCase();
 
-    final members = repository.forOrganization(
-      widget.organizationId,
-    );
+    final members = repository.forOrganization(widget.organizationId);
 
     return members.where((membership) {
       final matchesFilter =
-          selectedFilter == 'All' ||
-          membership.status.label == selectedFilter;
+          selectedFilter == 'All' || membership.status.label == selectedFilter;
 
       final matchesSearch =
           membership.residentName.toLowerCase().contains(query) ||
@@ -60,24 +52,30 @@ class _OrganizationMembersPageState
           membership.residentId.toLowerCase().contains(query);
 
       return matchesFilter && matchesSearch;
-    }).toList()
-      ..sort((a, b) => b.requestedAt.compareTo(a.requestedAt));
+    }).toList()..sort((a, b) => b.requestedAt.compareTo(a.requestedAt));
   }
 
   String _formatDate(DateTime date) {
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
 
     return '${months[date.month - 1]} '
         '${date.day}, ${date.year}';
   }
 
-  Future<void> _review(
-    OrganizationMembership membership,
-    bool approve,
-  ) async {
+  Future<void> _review(OrganizationMembership membership, bool approve) async {
     final decision = approve ? 'Approve' : 'Reject';
 
     final confirmed = await showDialog<bool>(
@@ -90,13 +88,11 @@ class _OrganizationMembersPageState
         ),
         actions: [
           TextButton(
-            onPressed: () =>
-                Navigator.pop(dialogContext, false),
+            onPressed: () => Navigator.pop(dialogContext, false),
             child: const Text('Cancel'),
           ),
           FilledButton(
-            onPressed: () =>
-                Navigator.pop(dialogContext, true),
+            onPressed: () => Navigator.pop(dialogContext, true),
             child: Text(decision),
           ),
         ],
@@ -107,15 +103,9 @@ class _OrganizationMembersPageState
 
     try {
       if (approve) {
-        repository.approveMembership(
-          membership.id,
-          widget.organizationId,
-        );
+        repository.approveMembership(membership.id, widget.organizationId);
       } else {
-        repository.rejectMembership(
-          membership.id,
-          widget.organizationId,
-        );
+        repository.rejectMembership(membership.id, widget.organizationId);
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -128,9 +118,9 @@ class _OrganizationMembersPageState
         ),
       );
     } on StateError catch (error) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
     }
   }
 
@@ -180,9 +170,7 @@ class _OrganizationMembersPageState
             const Text(
               'Review membership applications and '
               'manage your organization members.',
-              style: TextStyle(
-                color: AppColors.textSecondary,
-              ),
+              style: TextStyle(color: AppColors.textSecondary),
             ),
             const SizedBox(height: 24),
 
@@ -191,13 +179,12 @@ class _OrganizationMembersPageState
                 final columns = constraints.maxWidth >= 850
                     ? 3
                     : constraints.maxWidth >= 520
-                        ? 2
-                        : 1;
+                    ? 2
+                    : 1;
                 const gap = 12.0;
 
-                final width = (constraints.maxWidth -
-                        gap * (columns - 1)) /
-                    columns;
+                final width =
+                    (constraints.maxWidth - gap * (columns - 1)) / columns;
 
                 return Wrap(
                   spacing: gap,
@@ -237,10 +224,7 @@ class _OrganizationMembersPageState
                 children: [
                   const Text(
                     'Membership Records',
-                    style: TextStyle(
-                      fontSize: 19,
-                      fontWeight: FontWeight.w700,
-                    ),
+                    style: TextStyle(fontSize: 19, fontWeight: FontWeight.w700),
                   ),
                   const SizedBox(height: 16),
                   TextField(
@@ -305,10 +289,7 @@ class _OrganizationMembersPageState
             const Text(
               'Prototype records only. Membership decisions '
               'are currently stored in memory.',
-              style: TextStyle(
-                fontSize: 12,
-                color: AppColors.textSecondary,
-              ),
+              style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
             ),
           ],
         ),
@@ -336,10 +317,7 @@ class _OrganizationMembersPageState
             const SizedBox(height: 16),
             Text(
               '$value',
-              style: const TextStyle(
-                fontSize: 29,
-                fontWeight: FontWeight.w800,
-              ),
+              style: const TextStyle(fontSize: 29, fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 5),
             Text(
@@ -370,10 +348,7 @@ class _OrganizationMembersPageState
               children: [
                 const CircleAvatar(
                   backgroundColor: AppColors.blueLight,
-                  child: Icon(
-                    Icons.person_rounded,
-                    color: AppColors.blue,
-                  ),
+                  child: Icon(Icons.person_rounded, color: AppColors.blue),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -390,9 +365,7 @@ class _OrganizationMembersPageState
                       const SizedBox(height: 4),
                       Text(
                         membership.residentEmail,
-                        style: const TextStyle(
-                          color: AppColors.textSecondary,
-                        ),
+                        style: const TextStyle(color: AppColors.textSecondary),
                       ),
                       const SizedBox(height: 4),
                       Text(

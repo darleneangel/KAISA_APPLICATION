@@ -17,7 +17,6 @@ class _LguAdminDashboardPageState extends State<LguAdminDashboardPage> {
   int selectedIndex = 0;
   String searchQuery = '';
 
-
   final CommunityEventRepository eventRepository =
       CommunityEventRepository.instance;
 

@@ -1,3 +1,5 @@
+import '../../resident/widgets/kaisa_resident_hero.dart';
+import '../../../core/theme/kaisa_backdrop.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -7,18 +9,13 @@ class NotificationsPage extends StatefulWidget {
   const NotificationsPage({super.key});
 
   @override
-  State<NotificationsPage> createState() =>
-      _NotificationsPageState();
+  State<NotificationsPage> createState() => _NotificationsPageState();
 }
 
-class _NotificationsPageState
-    extends State<NotificationsPage> {
+class _NotificationsPageState extends State<NotificationsPage> {
   String selectedFilter = 'All';
 
-  final List<String> filters = [
-    'All',
-    'Unread',
-  ];
+  final List<String> filters = ['All', 'Unread'];
 
   // ============================================================
   // PROTOTYPE DATA
@@ -53,8 +50,7 @@ class _NotificationsPageState
       id: 3,
       type: NotificationType.organization,
       title: 'Organization Update',
-      message:
-          'KAISA Youth Volunteers has posted a new community update.',
+      message: 'KAISA Youth Volunteers has posted a new community update.',
       time: '3 hrs ago',
       isRead: false,
       route: '/resident/organizations',
@@ -74,8 +70,7 @@ class _NotificationsPageState
       id: 5,
       type: NotificationType.organization,
       title: 'Organization Request Update',
-      message:
-          'Your organization request is currently being reviewed.',
+      message: 'Your organization request is currently being reviewed.',
       time: 'Yesterday',
       isRead: true,
       route: '/resident/organizations',
@@ -115,9 +110,7 @@ class _NotificationsPageState
   }
 
   int get unreadCount {
-    return notifications
-        .where((notification) => !notification.isRead)
-        .length;
+    return notifications.where((notification) => !notification.isRead).length;
   }
 
   void _markAsRead(_NotificationData notification) {
@@ -129,16 +122,11 @@ class _NotificationsPageState
   }
 
   void _markAllAsRead() {
-    final hasUnread =
-        notifications.any((notification) => !notification.isRead);
+    final hasUnread = notifications.any((notification) => !notification.isRead);
 
     if (!hasUnread) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'All notifications are already read.',
-          ),
-        ),
+        const SnackBar(content: Text('All notifications are already read.')),
       );
       return;
     }
@@ -150,27 +138,15 @@ class _NotificationsPageState
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'All notifications marked as read.',
-        ),
-      ),
+      const SnackBar(content: Text('All notifications marked as read.')),
     );
   }
 
-  void _openNotification(
-    _NotificationData notification,
-  ) {
+  void _openNotification(_NotificationData notification) {
     _markAsRead(notification);
 
-    if (notification.route ==
-        '/resident/verification-status') {
-      context.push(
-        notification.route,
-        extra: {
-          'status': 'Pending',
-        },
-      );
+    if (notification.route == '/resident/verification-status') {
+      context.push(notification.route, extra: {'status': 'Pending'});
 
       return;
     }
@@ -178,28 +154,19 @@ class _NotificationsPageState
     context.push(notification.route);
   }
 
-  void _deleteNotification(
-    _NotificationData notification,
-  ) {
+  void _deleteNotification(_NotificationData notification) {
     setState(() {
-      notifications.removeWhere(
-        (item) => item.id == notification.id,
-      );
+      notifications.removeWhere((item) => item.id == notification.id);
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Notification removed.',
-        ),
-      ),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Notification removed.')));
   }
 
   @override
   Widget build(BuildContext context) {
-    final displayedNotifications =
-        filteredNotifications;
+    final displayedNotifications = filteredNotifications;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -207,19 +174,14 @@ class _NotificationsPageState
       appBar: AppBar(
         leading: IconButton(
           onPressed: () => context.pop(),
-          icon: const Icon(
-            Icons.arrow_back_rounded,
-          ),
+          icon: const Icon(Icons.arrow_back_rounded),
         ),
         title: Column(
-          crossAxisAlignment:
-              CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
               'Notifications',
-              style: TextStyle(
-                fontWeight: FontWeight.w800,
-              ),
+              style: TextStyle(fontWeight: FontWeight.w800),
             ),
             if (unreadCount > 0)
               Text(
@@ -227,8 +189,7 @@ class _NotificationsPageState
                 style: const TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.normal,
-                  color:
-                      AppColors.textSecondary,
+                  color: AppColors.textSecondary,
                 ),
               ),
           ],
@@ -246,13 +207,9 @@ class _NotificationsPageState
                 value: 'mark-all',
                 child: Row(
                   children: [
-                    Icon(
-                      Icons.done_all_rounded,
-                    ),
+                    Icon(Icons.done_all_rounded),
                     SizedBox(width: 12),
-                    Text(
-                      'Mark all as read',
-                    ),
+                    Text('Mark all as read'),
                   ],
                 ),
               ),
@@ -262,141 +219,103 @@ class _NotificationsPageState
         ],
       ),
 
-      body: SafeArea(
-        top: false,
-        child: Column(
-          children: [
-            // ==================================================
-            // FILTERS
-            // ==================================================
-
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                20,
-                16,
-                20,
-                10,
-              ),
-              child: Row(
-                children: filters.map((filter) {
-                  final selected =
-                      selectedFilter == filter;
-
-                  final String label =
-                      filter == 'Unread'
-                          ? 'Unread ($unreadCount)'
-                          : filter;
-
-                  return Padding(
-                    padding:
-                        const EdgeInsets.only(
-                      right: 8,
-                    ),
-                    child: ChoiceChip(
-                      label: Text(label),
-                      selected: selected,
-                      onSelected: (_) {
-                        setState(() {
-                          selectedFilter =
-                              filter;
-                        });
-                      },
-                    ),
-                  );
-                }).toList(),
-              ),
+      body: Stack(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 14),
+            child: KaisaResidentHero(
+              eyebrow: 'STAY CONNECTED',
+              title: 'Never miss a moment.',
+              subtitle: 'Your community updates are all in one place.',
+              icon: Icons.notifications_active_rounded,
+              chip: 'Community inbox',
             ),
+          ),
+          const Positioned.fill(child: KaisaBackdrop()),
+          Positioned.fill(
+            child: SafeArea(
+              top: false,
+              child: Column(
+                children: [
+                  // ==================================================
+                  // FILTERS
+                  // ==================================================
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 10),
+                    child: Row(
+                      children: filters.map((filter) {
+                        final selected = selectedFilter == filter;
 
-            // ==================================================
-            // NOTIFICATIONS
-            // ==================================================
+                        final String label = filter == 'Unread'
+                            ? 'Unread ($unreadCount)'
+                            : filter;
 
-            Expanded(
-              child:
-                  displayedNotifications.isEmpty
-                      ? _EmptyNotifications(
-                          unreadOnly:
-                              selectedFilter ==
-                                  'Unread',
-                        )
-                      : ListView.separated(
-                          padding:
-                              const EdgeInsets
-                                  .fromLTRB(
-                            20,
-                            8,
-                            20,
-                            50,
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: ChoiceChip(
+                            label: Text(label),
+                            selected: selected,
+                            onSelected: (_) {
+                              setState(() {
+                                selectedFilter = filter;
+                              });
+                            },
                           ),
-                          itemCount:
-                              displayedNotifications
-                                  .length,
-                          separatorBuilder:
-                              (_, _) =>
-                                  const SizedBox(
-                            height: 10,
-                          ),
-                          itemBuilder:
-                              (context, index) {
-                            final notification =
-                                displayedNotifications[
-                                    index];
+                        );
+                      }).toList(),
+                    ),
+                  ),
 
-                            return Dismissible(
-                              key: ValueKey(
-                                notification.id,
-                              ),
-                              direction:
-                                  DismissDirection
-                                      .endToStart,
-                              background:
-                                  Container(
-                                alignment: Alignment
-                                    .centerRight,
-                                padding:
-                                    const EdgeInsets
-                                        .only(
-                                  right: 22,
-                                ),
-                                decoration:
-                                    BoxDecoration(
-                                  color: AppColors
-                                      .error,
-                                  borderRadius:
-                                      BorderRadius
-                                          .circular(
-                                    18,
+                  // ==================================================
+                  // NOTIFICATIONS
+                  // ==================================================
+                  Expanded(
+                    child: displayedNotifications.isEmpty
+                        ? _EmptyNotifications(
+                            unreadOnly: selectedFilter == 'Unread',
+                          )
+                        : ListView.separated(
+                            padding: const EdgeInsets.fromLTRB(20, 8, 20, 50),
+                            itemCount: displayedNotifications.length,
+                            separatorBuilder: (_, _) =>
+                                const SizedBox(height: 10),
+                            itemBuilder: (context, index) {
+                              final notification =
+                                  displayedNotifications[index];
+
+                              return Dismissible(
+                                key: ValueKey(notification.id),
+                                direction: DismissDirection.endToStart,
+                                background: Container(
+                                  alignment: Alignment.centerRight,
+                                  padding: const EdgeInsets.only(right: 22),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.error,
+                                    borderRadius: BorderRadius.circular(18),
+                                  ),
+                                  child: const Icon(
+                                    Icons.delete_outline_rounded,
+                                    color: Colors.white,
                                   ),
                                 ),
-                                child:
-                                    const Icon(
-                                  Icons
-                                      .delete_outline_rounded,
-                                  color:
-                                      Colors.white,
-                                ),
-                              ),
-                              onDismissed: (_) {
-                                _deleteNotification(
-                                  notification,
-                                );
-                              },
-                              child:
-                                  _NotificationCard(
-                                notification:
-                                    notification,
-                                onTap: () {
-                                  _openNotification(
-                                    notification,
-                                  );
+                                onDismissed: (_) {
+                                  _deleteNotification(notification);
                                 },
-                              ),
-                            );
-                          },
-                        ),
+                                child: _NotificationCard(
+                                  notification: notification,
+                                  onTap: () {
+                                    _openNotification(notification);
+                                  },
+                                ),
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -447,10 +366,7 @@ class _NotificationCard extends StatelessWidget {
   final _NotificationData notification;
   final VoidCallback onTap;
 
-  const _NotificationCard({
-    required this.notification,
-    required this.onTap,
-  });
+  const _NotificationCard({required this.notification, required this.onTap});
 
   IconData get _icon {
     switch (notification.type) {
@@ -474,35 +390,35 @@ class _NotificationCard extends StatelessWidget {
   Color get _iconBackground {
     switch (notification.type) {
       case NotificationType.verification:
-        return AppColors.blueLight;
+        return AppColors.mint;
 
       case NotificationType.organization:
         return AppColors.greenLight;
 
       case NotificationType.event:
-        return AppColors.blueLight;
+        return AppColors.mint;
 
       case NotificationType.announcement:
-        return AppColors.yellowLight;
+        return AppColors.cream;
 
       case NotificationType.system:
-        return AppColors.blueLight;
+        return AppColors.mint;
     }
   }
 
   Color get _iconColor {
     switch (notification.type) {
       case NotificationType.verification:
-        return AppColors.blueDark;
+        return AppColors.deepForest;
 
       case NotificationType.organization:
         return AppColors.greenDark;
 
       case NotificationType.event:
-        return AppColors.blue;
+        return AppColors.forest;
 
       case NotificationType.announcement:
-        return AppColors.yellowDark;
+        return AppColors.deepForest; // to be removed
 
       case NotificationType.system:
         return AppColors.textSecondary;
@@ -512,9 +428,7 @@ class _NotificationCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: notification.isRead
-          ? AppColors.surface
-          : AppColors.blueLight,
+      color: notification.isRead ? AppColors.surface : AppColors.mint,
       borderRadius: BorderRadius.circular(18),
       child: InkWell(
         onTap: onTap,
@@ -522,37 +436,26 @@ class _NotificationCard extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            borderRadius:
-                BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(18),
             border: Border.all(
-              color: notification.isRead
-                  ? AppColors.border
-                  : AppColors.blue,
-              width:
-                  notification.isRead ? 1 : 1.2,
+              color: notification.isRead ? AppColors.border : AppColors.forest,
+              width: notification.isRead ? 1 : 1.2,
             ),
           ),
           child: Row(
-            crossAxisAlignment:
-                CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // ----------------------------------------------
               // ICON
               // ----------------------------------------------
-
               Container(
                 width: 46,
                 height: 46,
                 decoration: BoxDecoration(
                   color: _iconBackground,
-                  borderRadius:
-                      BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(14),
                 ),
-                child: Icon(
-                  _icon,
-                  size: 22,
-                  color: _iconColor,
-                ),
+                child: Icon(_icon, size: 22, color: _iconColor),
               ),
 
               const SizedBox(width: 13),
@@ -560,29 +463,22 @@ class _NotificationCard extends StatelessWidget {
               // ----------------------------------------------
               // CONTENT
               // ----------------------------------------------
-
               Expanded(
                 child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
-                      crossAxisAlignment:
-                          CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(
                           child: Text(
                             notification.title,
                             style: TextStyle(
                               fontSize: 14,
-                              fontWeight:
-                                  notification.isRead
-                                      ? FontWeight
-                                          .w600
-                                      : FontWeight
-                                          .w800,
-                              color: AppColors
-                                  .textPrimary,
+                              fontWeight: notification.isRead
+                                  ? FontWeight.w600
+                                  : FontWeight.w800,
+                              color: AppColors.textPrimary,
                             ),
                           ),
                         ),
@@ -591,18 +487,10 @@ class _NotificationCard extends StatelessWidget {
                           Container(
                             width: 8,
                             height: 8,
-                            margin:
-                                const EdgeInsets
-                                    .only(
-                              top: 5,
-                              left: 8,
-                            ),
-                            decoration:
-                                const BoxDecoration(
-                              color:
-                                  AppColors.blue,
-                              shape:
-                                  BoxShape.circle,
+                            margin: const EdgeInsets.only(top: 5, left: 8),
+                            decoration: const BoxDecoration(
+                              color: AppColors.forest,
+                              shape: BoxShape.circle,
                             ),
                           ),
                       ],
@@ -613,13 +501,11 @@ class _NotificationCard extends StatelessWidget {
                     Text(
                       notification.message,
                       maxLines: 3,
-                      overflow:
-                          TextOverflow.ellipsis,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontSize: 12,
                         height: 1.45,
-                        color: AppColors
-                            .textSecondary,
+                        color: AppColors.textSecondary,
                       ),
                     ),
 
@@ -629,8 +515,7 @@ class _NotificationCard extends StatelessWidget {
                       notification.time,
                       style: const TextStyle(
                         fontSize: 10,
-                        color:
-                            AppColors.textMuted,
+                        color: AppColors.textMuted,
                       ),
                     ),
                   ],
@@ -640,8 +525,7 @@ class _NotificationCard extends StatelessWidget {
               const SizedBox(width: 5),
 
               const Padding(
-                padding:
-                    EdgeInsets.only(top: 15),
+                padding: EdgeInsets.only(top: 15),
                 child: Icon(
                   Icons.chevron_right_rounded,
                   size: 20,
@@ -663,9 +547,7 @@ class _NotificationCard extends StatelessWidget {
 class _EmptyNotifications extends StatelessWidget {
   final bool unreadOnly;
 
-  const _EmptyNotifications({
-    required this.unreadOnly,
-  });
+  const _EmptyNotifications({required this.unreadOnly});
 
   @override
   Widget build(BuildContext context) {
@@ -676,8 +558,7 @@ class _EmptyNotifications extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             const Icon(
-              Icons
-                  .notifications_none_rounded,
+              Icons.notifications_none_rounded,
               size: 60,
               color: AppColors.textMuted,
             ),
@@ -685,9 +566,7 @@ class _EmptyNotifications extends StatelessWidget {
             const SizedBox(height: 16),
 
             Text(
-              unreadOnly
-                  ? 'You\'re all caught up!'
-                  : 'No notifications yet',
+              unreadOnly ? 'You\'re all caught up!' : 'No notifications yet',
               textAlign: TextAlign.center,
               style: const TextStyle(
                 fontSize: 19,
@@ -703,10 +582,7 @@ class _EmptyNotifications extends StatelessWidget {
                   ? 'You have no unread notifications.'
                   : 'Updates from KAISA will appear here.',
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                color:
-                    AppColors.textSecondary,
-              ),
+              style: const TextStyle(color: AppColors.textSecondary),
             ),
           ],
         ),

@@ -1,4 +1,3 @@
-
 import 'package:flutter/foundation.dart';
 
 import '../models/organization_membership_model.dart';
@@ -66,26 +65,22 @@ class OrganizationMembershipRepository extends ChangeNotifier {
     ),
   ];
 
-  List<OrganizationMembership> forOrganization(
-    String organizationId,
-  ) {
+  List<OrganizationMembership> forOrganization(String organizationId) {
     return List.unmodifiable(
       _memberships.where(
-        (membership) =>
-            membership.organizationId == organizationId,
+        (membership) => membership.organizationId == organizationId,
       ),
     );
   }
 
-  int countByStatus(
-    String organizationId,
-    MembershipStatus status,
-  ) {
-    return _memberships.where(
-      (membership) =>
-          membership.organizationId == organizationId &&
-          membership.status == status,
-    ).length;
+  int countByStatus(String organizationId, MembershipStatus status) {
+    return _memberships
+        .where(
+          (membership) =>
+              membership.organizationId == organizationId &&
+              membership.status == status,
+        )
+        .length;
   }
 
   void requestMembership({
@@ -101,9 +96,7 @@ class OrganizationMembershipRepository extends ChangeNotifier {
     );
 
     if (existing) {
-      throw StateError(
-        'This resident already has a membership record.',
-      );
+      throw StateError('This resident already has a membership record.');
     }
 
     _memberships.add(
@@ -120,26 +113,12 @@ class OrganizationMembershipRepository extends ChangeNotifier {
     notifyListeners();
   }
 
-  void approveMembership(
-    String membershipId,
-    String organizationId,
-  ) {
-    _reviewMembership(
-      membershipId,
-      organizationId,
-      MembershipStatus.approved,
-    );
+  void approveMembership(String membershipId, String organizationId) {
+    _reviewMembership(membershipId, organizationId, MembershipStatus.approved);
   }
 
-  void rejectMembership(
-    String membershipId,
-    String organizationId,
-  ) {
-    _reviewMembership(
-      membershipId,
-      organizationId,
-      MembershipStatus.rejected,
-    );
+  void rejectMembership(String membershipId, String organizationId) {
+    _reviewMembership(membershipId, organizationId, MembershipStatus.rejected);
   }
 
   void _reviewMembership(
@@ -160,9 +139,7 @@ class OrganizationMembershipRepository extends ChangeNotifier {
     final membership = _memberships[index];
 
     if (membership.status != MembershipStatus.pending) {
-      throw StateError(
-        'Only pending applications can be reviewed.',
-      );
+      throw StateError('Only pending applications can be reviewed.');
     }
 
     _memberships[index] = membership.copyWith(

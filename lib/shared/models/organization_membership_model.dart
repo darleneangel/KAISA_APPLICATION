@@ -1,9 +1,4 @@
-
-enum MembershipStatus {
-  pending,
-  approved,
-  rejected,
-}
+enum MembershipStatus { pending, approved, rejected }
 
 extension MembershipStatusLabel on MembershipStatus {
   String get label {

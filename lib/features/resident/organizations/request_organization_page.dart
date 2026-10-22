@@ -1,3 +1,5 @@
+import '../../resident/widgets/kaisa_resident_hero.dart';
+import '../../../core/theme/kaisa_backdrop.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -11,8 +13,7 @@ class RequestOrganizationPage extends StatefulWidget {
       _RequestOrganizationPageState();
 }
 
-class _RequestOrganizationPageState
-    extends State<RequestOrganizationPage> {
+class _RequestOrganizationPageState extends State<RequestOrganizationPage> {
   final _formKey = GlobalKey<FormState>();
 
   final organizationNameController = TextEditingController();
@@ -34,7 +35,7 @@ class _RequestOrganizationPageState
   //
   // Later this will come from the logged-in user's account.
   // ============================================================
-  static const bool isTier2Verified = true;
+  static const bool isTier2Verified = false;
 
   final List<String> categories = [
     'Youth',
@@ -79,9 +80,7 @@ class _RequestOrganizationPageState
 
     // Prototype loading delay.
     // Later this is where the database request will happen.
-    await Future.delayed(
-      const Duration(milliseconds: 800),
-    );
+    await Future.delayed(const Duration(milliseconds: 800));
 
     if (!mounted) return;
 
@@ -101,12 +100,9 @@ class _RequestOrganizationPageState
           icon: const Icon(
             Icons.hourglass_top_rounded,
             size: 46,
-            color: AppColors.blue,
+            color: AppColors.forest,
           ),
-          title: const Text(
-            'Request Submitted',
-            textAlign: TextAlign.center,
-          ),
+          title: const Text('Request Submitted', textAlign: TextAlign.center),
           content: const Text(
             'Your organization request has been submitted for review. '
             'You will be notified once your request has been approved '
@@ -128,10 +124,8 @@ class _RequestOrganizationPageState
   }
 
   void _goToVerification() {
-  context.push(
-    '/resident/identity-verification',
-  );
-}
+    context.push('/resident/identity-verification');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -145,15 +139,20 @@ class _RequestOrganizationPageState
         ),
         title: const Text(
           'Request Organization',
-          style: TextStyle(
-            fontWeight: FontWeight.w800,
-          ),
+          style: TextStyle(fontWeight: FontWeight.w800),
         ),
       ),
 
-      body: isTier2Verified
-          ? _buildRequestForm()
-          : _buildVerificationRequired(),
+      body: Stack(
+        children: [
+          const Positioned.fill(child: KaisaBackdrop()),
+          Positioned.fill(
+            child: isTier2Verified
+                ? _buildRequestForm()
+                : _buildVerificationRequired(),
+          ),
+        ],
+      ),
     );
   }
 
@@ -167,24 +166,27 @@ class _RequestOrganizationPageState
       child: Form(
         key: _formKey,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(
-            20,
-            20,
-            20,
-            50,
-          ),
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 50),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              KaisaResidentHero(
+                eyebrow: 'START SOMETHING',
+                title: 'Your idea can grow here.',
+                subtitle: 'Bring people together around a meaningful cause.',
+                icon: Icons.add_business_rounded,
+                chip: 'Create impact',
+              ),
+              const SizedBox(height: 22),
+
               // --------------------------------------------------
               // INTRODUCTION
               // --------------------------------------------------
-
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
-                  color: AppColors.blueLight,
+                  color: AppColors.mint,
                   borderRadius: BorderRadius.circular(18),
                 ),
                 child: const Row(
@@ -192,7 +194,7 @@ class _RequestOrganizationPageState
                   children: [
                     Icon(
                       Icons.info_outline_rounded,
-                      color: AppColors.blueDark,
+                      color: AppColors.deepForest,
                     ),
                     SizedBox(width: 12),
                     Expanded(
@@ -201,7 +203,7 @@ class _RequestOrganizationPageState
                         'Complete the information below and submit your '
                         'request for review.',
                         style: TextStyle(
-                          color: AppColors.blueDark,
+                          color: AppColors.deepForest,
                           fontSize: 13,
                           height: 1.5,
                         ),
@@ -224,20 +226,16 @@ class _RequestOrganizationPageState
               // --------------------------------------------------
               // ORGANIZATION NAME
               // --------------------------------------------------
-
               TextFormField(
                 controller: organizationNameController,
                 textCapitalization: TextCapitalization.words,
                 decoration: const InputDecoration(
                   labelText: 'Organization Name',
                   hintText: 'Enter organization name',
-                  prefixIcon: Icon(
-                    Icons.groups_2_outlined,
-                  ),
+                  prefixIcon: Icon(Icons.groups_2_outlined),
                 ),
                 validator: (value) {
-                  if (value == null ||
-                      value.trim().isEmpty) {
+                  if (value == null || value.trim().isEmpty) {
                     return 'Please enter an organization name.';
                   }
 
@@ -254,18 +252,13 @@ class _RequestOrganizationPageState
               // --------------------------------------------------
               // CATEGORY
               // --------------------------------------------------
-
               DropdownButtonFormField<String>(
                 initialValue: selectedCategory,
                 decoration: const InputDecoration(
                   labelText: 'Category',
-                  prefixIcon: Icon(
-                    Icons.category_outlined,
-                  ),
+                  prefixIcon: Icon(Icons.category_outlined),
                 ),
-                hint: const Text(
-                  'Select a category',
-                ),
+                hint: const Text('Select a category'),
                 items: categories.map((category) {
                   return DropdownMenuItem<String>(
                     value: category,
@@ -291,7 +284,6 @@ class _RequestOrganizationPageState
               // --------------------------------------------------
               // DESCRIPTION
               // --------------------------------------------------
-
               TextFormField(
                 controller: descriptionController,
                 minLines: 3,
@@ -299,13 +291,11 @@ class _RequestOrganizationPageState
                 maxLength: 300,
                 decoration: const InputDecoration(
                   labelText: 'Organization Description',
-                  hintText:
-                      'Briefly describe your proposed organization...',
+                  hintText: 'Briefly describe your proposed organization...',
                   alignLabelWithHint: true,
                 ),
                 validator: (value) {
-                  if (value == null ||
-                      value.trim().isEmpty) {
+                  if (value == null || value.trim().isEmpty) {
                     return 'Please provide an organization description.';
                   }
 
@@ -322,7 +312,6 @@ class _RequestOrganizationPageState
               // --------------------------------------------------
               // MISSION
               // --------------------------------------------------
-
               TextFormField(
                 controller: missionController,
                 minLines: 3,
@@ -330,13 +319,11 @@ class _RequestOrganizationPageState
                 maxLength: 300,
                 decoration: const InputDecoration(
                   labelText: 'Mission / Purpose',
-                  hintText:
-                      'What does the organization aim to accomplish?',
+                  hintText: 'What does the organization aim to accomplish?',
                   alignLabelWithHint: true,
                 ),
                 validator: (value) {
-                  if (value == null ||
-                      value.trim().isEmpty) {
+                  if (value == null || value.trim().isEmpty) {
                     return 'Please provide the organization mission.';
                   }
 
@@ -349,11 +336,9 @@ class _RequestOrganizationPageState
               // ==================================================
               // REPRESENTATIVE
               // ==================================================
-
               const _FormSectionTitle(
                 title: 'Representative Information',
-                subtitle:
-                    'Provide the person responsible for this request.',
+                subtitle: 'Provide the person responsible for this request.',
               ),
 
               const SizedBox(height: 18),
@@ -364,13 +349,10 @@ class _RequestOrganizationPageState
                 decoration: const InputDecoration(
                   labelText: 'Representative Name',
                   hintText: 'Full name',
-                  prefixIcon: Icon(
-                    Icons.person_outline_rounded,
-                  ),
+                  prefixIcon: Icon(Icons.person_outline_rounded),
                 ),
                 validator: (value) {
-                  if (value == null ||
-                      value.trim().isEmpty) {
+                  if (value == null || value.trim().isEmpty) {
                     return 'Please enter the representative name.';
                   }
 
@@ -383,7 +365,6 @@ class _RequestOrganizationPageState
               // ==================================================
               // REASON
               // ==================================================
-
               const _FormSectionTitle(
                 title: 'Reason for Request',
                 subtitle:
@@ -405,8 +386,7 @@ class _RequestOrganizationPageState
                   alignLabelWithHint: true,
                 ),
                 validator: (value) {
-                  if (value == null ||
-                      value.trim().isEmpty) {
+                  if (value == null || value.trim().isEmpty) {
                     return 'Please provide a reason for your request.';
                   }
 
@@ -423,16 +403,13 @@ class _RequestOrganizationPageState
               // ==================================================
               // REVIEW PROCESS
               // ==================================================
-
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
                   color: AppColors.surface,
                   borderRadius: BorderRadius.circular(18),
-                  border: Border.all(
-                    color: AppColors.border,
-                  ),
+                  border: Border.all(color: AppColors.border),
                 ),
                 child: const Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -451,8 +428,7 @@ class _RequestOrganizationPageState
                     _ProcessStep(
                       number: '1',
                       title: 'Submit Request',
-                      description:
-                          'Your organization proposal is submitted.',
+                      description: 'Your organization proposal is submitted.',
                     ),
 
                     _ProcessDivider(),
@@ -494,19 +470,14 @@ class _RequestOrganizationPageState
               // ==================================================
               // CONFIRMATION
               // ==================================================
-
               CheckboxListTile(
                 value: agreedToTerms,
                 contentPadding: EdgeInsets.zero,
-                controlAffinity:
-                    ListTileControlAffinity.leading,
+                controlAffinity: ListTileControlAffinity.leading,
                 title: const Text(
                   'I confirm that the information provided is '
                   'accurate and complete.',
-                  style: TextStyle(
-                    fontSize: 13,
-                    height: 1.4,
-                  ),
+                  style: TextStyle(fontSize: 13, height: 1.4),
                 ),
                 onChanged: (value) {
                   setState(() {
@@ -520,12 +491,10 @@ class _RequestOrganizationPageState
               // ==================================================
               // SUBMIT
               // ==================================================
-
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
-                  onPressed:
-                      isSubmitting ? null : _submitRequest,
+                  onPressed: isSubmitting ? null : _submitRequest,
                   icon: isSubmitting
                       ? const SizedBox(
                           width: 18,
@@ -535,13 +504,9 @@ class _RequestOrganizationPageState
                             color: Colors.white,
                           ),
                         )
-                      : const Icon(
-                          Icons.send_outlined,
-                        ),
+                      : const Icon(Icons.send_outlined),
                   label: Text(
-                    isSubmitting
-                        ? 'Submitting...'
-                        : 'Submit Request',
+                    isSubmitting ? 'Submitting...' : 'Submit Request',
                   ),
                 ),
               ),
@@ -552,10 +517,7 @@ class _RequestOrganizationPageState
                 'Submitting a request does not automatically create '
                 'or approve an organization.',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: AppColors.textMuted,
-                ),
+                style: TextStyle(fontSize: 11, color: AppColors.textMuted),
               ),
             ],
           ),
@@ -581,13 +543,13 @@ class _RequestOrganizationPageState
                 width: 100,
                 height: 100,
                 decoration: const BoxDecoration(
-                  color: AppColors.blueLight,
+                  color: AppColors.mint,
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
                   Icons.verified_user_outlined,
                   size: 48,
-                  color: AppColors.blue,
+                  color: AppColors.forest,
                 ),
               ),
 
@@ -635,12 +597,8 @@ class _RequestOrganizationPageState
                 width: double.infinity,
                 child: FilledButton.icon(
                   onPressed: _goToVerification,
-                  icon: const Icon(
-                    Icons.verified_outlined,
-                  ),
-                  label: const Text(
-                    'Verify My Identity',
-                  ),
+                  icon: const Icon(Icons.verified_outlined),
+                  label: const Text('Verify My Identity'),
                 ),
               ),
 
@@ -648,9 +606,7 @@ class _RequestOrganizationPageState
 
               TextButton(
                 onPressed: () => context.pop(),
-                child: const Text(
-                  'Maybe Later',
-                ),
+                child: const Text('Maybe Later'),
               ),
             ],
           ),
@@ -668,10 +624,7 @@ class _FormSectionTitle extends StatelessWidget {
   final String title;
   final String subtitle;
 
-  const _FormSectionTitle({
-    required this.title,
-    required this.subtitle,
-  });
+  const _FormSectionTitle({required this.title, required this.subtitle});
 
   @override
   Widget build(BuildContext context) {
@@ -689,10 +642,7 @@ class _FormSectionTitle extends StatelessWidget {
         const SizedBox(height: 5),
         Text(
           subtitle,
-          style: const TextStyle(
-            fontSize: 13,
-            color: AppColors.textSecondary,
-          ),
+          style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
         ),
       ],
     );
@@ -724,13 +674,13 @@ class _ProcessStep extends StatelessWidget {
           height: 28,
           alignment: Alignment.center,
           decoration: const BoxDecoration(
-            color: AppColors.blueLight,
+            color: AppColors.mint,
             shape: BoxShape.circle,
           ),
           child: Text(
             number,
             style: const TextStyle(
-              color: AppColors.blueDark,
+              color: AppColors.deepForest,
               fontSize: 12,
               fontWeight: FontWeight.w800,
             ),
@@ -773,16 +723,8 @@ class _ProcessDivider extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(
-        left: 13,
-        top: 5,
-        bottom: 5,
-      ),
-      child: Container(
-        width: 2,
-        height: 18,
-        color: AppColors.border,
-      ),
+      padding: const EdgeInsets.only(left: 13, top: 5, bottom: 5),
+      child: Container(width: 2, height: 18, color: AppColors.border),
     );
   }
 }

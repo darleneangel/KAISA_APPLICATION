@@ -1,13 +1,11 @@
+import '../../resident/widgets/kaisa_resident_hero.dart';
+import '../../../core/theme/kaisa_backdrop.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
 
-import '../../../shared/models/organization_membership_model.dart';
-import '../../../shared/repositories/organization_membership_repository.dart';
-
 class OrganizationDetailsPage extends StatelessWidget {
-  final String? organizationId;
   final String name;
   final String category;
   final String description;
@@ -15,26 +13,16 @@ class OrganizationDetailsPage extends StatelessWidget {
 
   const OrganizationDetailsPage({
     super.key,
-    this.organizationId,
     required this.name,
     required this.category,
     required this.description,
     required this.members,
   });
 
-  // Prototype resident identity.
-  // Replace with authenticated user data later.
-  static const String demoResidentId = 'RES-DEMO-001';
-  static const String demoResidentName = 'KAISA Demo Resident';
-  static const String demoResidentEmail = 'resident.demo@example.com';
-
-  static final OrganizationMembershipRepository membershipRepository =
-      OrganizationMembershipRepository.instance;
-
-  // LOCAL PROTOTYPE TESTING ONLY.
-  // This temporarily allows testing membership applications.
-  // Replace with actual verification status before deployment.
-  static const bool isTier2Verified = true;
+  // PROTOTYPE ONLY:
+  // Tier 1 = false
+  // Tier 2 = true
+  static const bool isTier2Verified = false;
 
   void _handleJoinOrganization(BuildContext context) {
     if (!isTier2Verified) {
@@ -45,20 +33,6 @@ class OrganizationDetailsPage extends StatelessWidget {
     _showJoinConfirmation(context);
   }
 
-  OrganizationMembership? get currentMembership {
-    if (organizationId == null) return null;
-
-    for (final membership in membershipRepository.forOrganization(
-      organizationId!,
-    )) {
-      if (membership.residentId == demoResidentId) {
-        return membership;
-      }
-    }
-
-    return null;
-  }
-
   void _showVerificationRequiredDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -67,7 +41,7 @@ class OrganizationDetailsPage extends StatelessWidget {
           icon: const Icon(
             Icons.verified_user_outlined,
             size: 42,
-            color: AppColors.blue,
+            color: AppColors.forest,
           ),
           title: const Text(
             'Identity Verification Required',
@@ -102,47 +76,32 @@ class OrganizationDetailsPage extends StatelessWidget {
   }
 
   void _showJoinConfirmation(BuildContext context) {
-    showDialog<void>(
+    showDialog(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
           title: const Text('Join Organization?'),
-          content: Text(
-            'Would you like to submit a membership application to $name?',
-          ),
+          content: Text('Would you like to join $name?'),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
+              onPressed: () {
+                Navigator.pop(dialogContext);
+              },
               child: const Text('Cancel'),
             ),
             FilledButton(
               onPressed: () {
                 Navigator.pop(dialogContext);
 
-                if (organizationId == null) return;
-
-                try {
-                  membershipRepository.requestMembership(
-                    organizationId: organizationId!,
-                    residentId: demoResidentId,
-                    residentName: demoResidentName,
-                    residentEmail: demoResidentEmail,
-                  );
-
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        'Your application to join $name has been submitted.',
-                      ),
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'Your request to join $name has been submitted.',
                     ),
-                  );
-                } on StateError catch (error) {
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(SnackBar(content: Text(error.message)));
-                }
+                  ),
+                );
               },
-              child: const Text('Submit Application'),
+              child: const Text('Join'),
             ),
           ],
         );
@@ -182,220 +141,217 @@ class OrganizationDetailsPage extends StatelessWidget {
         ],
       ),
 
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.only(bottom: 120),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ========================================================
-            // ORGANIZATION HEADER
-            // ========================================================
-
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(24, 28, 24, 30),
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [AppColors.blue, AppColors.blueDark],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-              ),
-              child: Column(
-                children: [
-                  Container(
-                    width: 86,
-                    height: 86,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(24),
-                    ),
-                    child: const Icon(
-                      Icons.groups_2_outlined,
-                      size: 42,
-                      color: AppColors.blue,
-                    ),
-                  ),
-
-                  const SizedBox(height: 18),
-
-                  Text(
-                    name,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-
-                  const SizedBox(height: 8),
-
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.16),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      category,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(
-                        Icons.people_outline_rounded,
-                        color: Colors.white70,
-                        size: 18,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        '$members members',
-                        style: const TextStyle(color: Colors.white70),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+      body: Stack(
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(bottom: 23),
+            child: KaisaResidentHero(
+              eyebrow: 'CONNECT & COLLABORATE',
+              title: 'Stronger as one.',
+              subtitle:
+                  'Get to know the people and purpose behind this organization.',
+              icon: Icons.handshake_rounded,
+              chip: 'Community first',
             ),
-
-            // ========================================================
-            // MAIN CONTENT
-            // ========================================================
-            Padding(
-              padding: const EdgeInsets.all(20),
+          ),
+          const Positioned.fill(child: KaisaBackdrop()),
+          Positioned.fill(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.only(bottom: 120),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Join button
-                  // Join button — connected to the Membership Repository.
-                  AnimatedBuilder(
-                    animation: membershipRepository,
-                    builder: (context, child) {
-                      final membership = currentMembership;
-
-                      final buttonText = switch (membership?.status) {
-                        MembershipStatus.pending => 'Application Pending',
-                        MembershipStatus.approved => 'Already a Member',
-                        MembershipStatus.rejected => 'Application Rejected',
-                        null => 'Join Organization',
-                      };
-
-                      final buttonIcon = switch (membership?.status) {
-                        MembershipStatus.pending => Icons.hourglass_top_rounded,
-                        MembershipStatus.approved => Icons.verified_rounded,
-                        MembershipStatus.rejected => Icons.cancel_outlined,
-                        null => Icons.group_add_outlined,
-                      };
-
-                      return SizedBox(
-                        width: double.infinity,
-                        child: FilledButton.icon(
-                          onPressed:
-                              membership == null && organizationId != null
-                              ? () => _handleJoinOrganization(context)
-                              : null,
-                          icon: Icon(buttonIcon),
-                          label: Text(buttonText),
+                  // ========================================================
+                  // ORGANIZATION HEADER
+                  // ========================================================
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.fromLTRB(24, 28, 24, 30),
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [AppColors.forest, AppColors.deepForest],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        Container(
+                          width: 86,
+                          height: 86,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                          child: const Icon(
+                            Icons.groups_2_outlined,
+                            size: 42,
+                            color: AppColors.forest,
+                          ),
                         ),
-                      );
-                    },
-                  ),
 
-                  const SizedBox(height: 28),
+                        const SizedBox(height: 18),
 
-                  // About
-                  const _SectionTitle(title: 'About'),
+                        Text(
+                          name,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 24,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
 
-                  const SizedBox(height: 10),
+                        const SizedBox(height: 8),
 
-                  Text(
-                    description,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      height: 1.6,
-                      color: AppColors.textSecondary,
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.16),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            category,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.people_outline_rounded,
+                              color: Colors.white70,
+                              size: 18,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              '$members members',
+                              style: const TextStyle(color: Colors.white70),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
 
-                  const SizedBox(height: 30),
+                  // ========================================================
+                  // MAIN CONTENT
+                  // ========================================================
+                  Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Join button
+                        SizedBox(
+                          width: double.infinity,
+                          child: FilledButton.icon(
+                            onPressed: () {
+                              _handleJoinOrganization(context);
+                            },
+                            icon: const Icon(Icons.group_add_outlined),
+                            label: const Text('Join Organization'),
+                          ),
+                        ),
 
-                  // Officers
-                  const _SectionTitle(
-                    title: 'Organization Officers',
-                    action: 'View all',
+                        const SizedBox(height: 28),
+
+                        // About
+                        const _SectionTitle(title: 'About'),
+
+                        const SizedBox(height: 10),
+
+                        Text(
+                          description,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            height: 1.6,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+
+                        const SizedBox(height: 30),
+
+                        // Officers
+                        const _SectionTitle(
+                          title: 'Organization Officers',
+                          action: 'View all',
+                        ),
+
+                        const SizedBox(height: 14),
+
+                        const _OfficerCard(
+                          name: 'Juan Dela Cruz',
+                          role: 'President',
+                          initials: 'JD',
+                        ),
+
+                        const SizedBox(height: 10),
+
+                        const _OfficerCard(
+                          name: 'Maria Santos',
+                          role: 'Vice President',
+                          initials: 'MS',
+                        ),
+
+                        const SizedBox(height: 30),
+
+                        // Upcoming events
+                        const _SectionTitle(
+                          title: 'Upcoming Events',
+                          action: 'See all',
+                        ),
+
+                        const SizedBox(height: 14),
+
+                        const _OrganizationEventCard(
+                          day: '12',
+                          month: 'OCT',
+                          title: 'Community Clean-Up Drive',
+                          time: '8:00 AM',
+                          location: 'Barangay Covered Court',
+                        ),
+
+                        const SizedBox(height: 30),
+
+                        // Recent activity
+                        const _SectionTitle(
+                          title: 'Recent Posts',
+                          action: 'See all',
+                        ),
+
+                        const SizedBox(height: 14),
+
+                        const _RecentPostCard(
+                          time: '2 hours ago',
+                          content:
+                              'Thank you to everyone who participated in our '
+                              'recent community activity! We appreciate your '
+                              'continued support and participation.',
+                        ),
+
+                        const SizedBox(height: 30),
+
+                        // Verification reminder for Tier 1
+                        if (!isTier2Verified) const _VerificationReminder(),
+                      ],
+                    ),
                   ),
-
-                  const SizedBox(height: 14),
-
-                  const _OfficerCard(
-                    name: 'Juan Dela Cruz',
-                    role: 'President',
-                    initials: 'JD',
-                  ),
-
-                  const SizedBox(height: 10),
-
-                  const _OfficerCard(
-                    name: 'Maria Santos',
-                    role: 'Vice President',
-                    initials: 'MS',
-                  ),
-
-                  const SizedBox(height: 30),
-
-                  // Upcoming events
-                  const _SectionTitle(
-                    title: 'Upcoming Events',
-                    action: 'See all',
-                  ),
-
-                  const SizedBox(height: 14),
-
-                  const _OrganizationEventCard(
-                    day: '12',
-                    month: 'OCT',
-                    title: 'Community Clean-Up Drive',
-                    time: '8:00 AM',
-                    location: 'Barangay Covered Court',
-                  ),
-
-                  const SizedBox(height: 30),
-
-                  // Recent activity
-                  const _SectionTitle(title: 'Recent Posts', action: 'See all'),
-
-                  const SizedBox(height: 14),
-
-                  const _RecentPostCard(
-                    time: '2 hours ago',
-                    content:
-                        'Thank you to everyone who participated in our '
-                        'recent community activity! We appreciate your '
-                        'continued support and participation.',
-                  ),
-
-                  const SizedBox(height: 30),
-
-                  // Verification reminder for Tier 1
-                  if (!isTier2Verified) const _VerificationReminder(),
                 ],
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -465,11 +421,11 @@ class _OfficerCard extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 22,
-            backgroundColor: AppColors.blueLight,
+            backgroundColor: AppColors.mint,
             child: Text(
               initials,
               style: const TextStyle(
-                color: AppColors.blueDark,
+                color: AppColors.deepForest,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -709,13 +665,13 @@ class _VerificationReminder extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: AppColors.blueLight,
+        color: AppColors.mint,
         borderRadius: BorderRadius.circular(18),
       ),
       child: const Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.lock_outline_rounded, color: AppColors.blueDark),
+          Icon(Icons.lock_outline_rounded, color: AppColors.deepForest),
           SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -724,7 +680,7 @@ class _VerificationReminder extends StatelessWidget {
                 Text(
                   'Want to participate?',
                   style: TextStyle(
-                    color: AppColors.blueDark,
+                    color: AppColors.deepForest,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -733,7 +689,7 @@ class _VerificationReminder extends StatelessWidget {
                   'Complete Tier 2 identity verification to join '
                   'organizations and participate in community activities.',
                   style: TextStyle(
-                    color: AppColors.blueDark,
+                    color: AppColors.deepForest,
                     fontSize: 12,
                     height: 1.4,
                   ),

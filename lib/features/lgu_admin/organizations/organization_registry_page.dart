@@ -1,12 +1,9 @@
 import 'package:flutter/material.dart';
 
-
 import '../../../core/theme/app_colors.dart';
 
 import '../../../shared/models/organization_model.dart';
 import '../../../shared/repositories/organization_repository.dart';
-
-
 
 class OrganizationRegistryPage extends StatefulWidget {
   const OrganizationRegistryPage({super.key});
@@ -21,13 +18,11 @@ class _OrganizationRegistryPageState extends State<OrganizationRegistryPage> {
 
   String statusFilter = 'All';
 
-  final OrganizationRepository repository =
-    OrganizationRepository.instance;
+  final OrganizationRepository repository = OrganizationRepository.instance;
 
-  List<RegistryOrganization> get organizations =>
-    repository.organizations;
+  List<RegistryOrganization> get organizations => repository.organizations;
 
- @override
+  @override
   void dispose() {
     repository.removeListener(_refresh);
     searchController.dispose();
@@ -73,10 +68,10 @@ class _OrganizationRegistryPageState extends State<OrganizationRegistryPage> {
     if (!mounted || result == null) return;
 
     if (existing == null) {
-        repository.addOrganization(result);
-      } else {
-        repository.updateOrganization(result);
-      }
+      repository.addOrganization(result);
+    } else {
+      repository.updateOrganization(result);
+    }
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(

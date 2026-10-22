@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
@@ -11,8 +10,7 @@ class EventMonitoringPage extends StatefulWidget {
   const EventMonitoringPage({super.key});
 
   @override
-  State<EventMonitoringPage> createState() =>
-      _EventMonitoringPageState();
+  State<EventMonitoringPage> createState() => _EventMonitoringPageState();
 }
 
 class _EventMonitoringPageState extends State<EventMonitoringPage> {
@@ -63,9 +61,7 @@ class _EventMonitoringPageState extends State<EventMonitoringPage> {
           event.title.toLowerCase().contains(query) ||
           event.location.toLowerCase().contains(query) ||
           event.id.toLowerCase().contains(query) ||
-          _organizationName(event.organizationId)
-              .toLowerCase()
-              .contains(query);
+          _organizationName(event.organizationId).toLowerCase().contains(query);
 
       return matchesStatus && matchesSearch;
     }).toList();
@@ -76,8 +72,18 @@ class _EventMonitoringPageState extends State<EventMonitoringPage> {
 
   String _date(DateTime date) {
     final month = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ][date.month - 1];
 
     return '$month ${date.day}, ${date.year}';
@@ -137,10 +143,7 @@ class _EventMonitoringPageState extends State<EventMonitoringPage> {
                   '${event.registrationCount}',
                 ),
                 _detailRow('Capacity', '${event.capacity}'),
-                _detailRow(
-                  'Recorded Attendance',
-                  '${event.attendanceCount}',
-                ),
+                _detailRow('Recorded Attendance', '${event.attendanceCount}'),
                 _detailRow(
                   'Attendance Rate',
                   '${attendanceRate.toStringAsFixed(1)}%',
@@ -180,10 +183,7 @@ class _EventMonitoringPageState extends State<EventMonitoringPage> {
             ),
           ),
           const SizedBox(height: 3),
-          Text(
-            value,
-            style: const TextStyle(fontWeight: FontWeight.w600),
-          ),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
         ],
       ),
     );
@@ -220,12 +220,11 @@ class _EventMonitoringPageState extends State<EventMonitoringPage> {
                 final columns = constraints.maxWidth >= 900
                     ? 4
                     : constraints.maxWidth >= 520
-                        ? 2
-                        : 1;
+                    ? 2
+                    : 1;
                 const spacing = 12.0;
-                final width = (constraints.maxWidth -
-                        spacing * (columns - 1)) /
-                    columns;
+                final width =
+                    (constraints.maxWidth - spacing * (columns - 1)) / columns;
 
                 return Wrap(
                   spacing: spacing,
@@ -276,8 +275,7 @@ class _EventMonitoringPageState extends State<EventMonitoringPage> {
                       controller: searchController,
                       onChanged: (_) => setState(() {}),
                       decoration: const InputDecoration(
-                        hintText:
-                            'Search events, organizations, or locations',
+                        hintText: 'Search events, organizations, or locations',
                         prefixIcon: Icon(Icons.search_rounded),
                         border: OutlineInputBorder(),
                       ),
@@ -289,18 +287,19 @@ class _EventMonitoringPageState extends State<EventMonitoringPage> {
                         labelText: 'Event Status',
                         border: OutlineInputBorder(),
                       ),
-                      items: [
-                        'All',
-                        'Upcoming',
-                        'Ongoing',
-                        'Completed',
-                        'Cancelled',
-                      ].map((status) {
-                        return DropdownMenuItem(
-                          value: status,
-                          child: Text(status),
-                        );
-                      }).toList(),
+                      items:
+                          [
+                            'All',
+                            'Upcoming',
+                            'Ongoing',
+                            'Completed',
+                            'Cancelled',
+                          ].map((status) {
+                            return DropdownMenuItem(
+                              value: status,
+                              child: Text(status),
+                            );
+                          }).toList(),
                       onChanged: (value) {
                         setState(() => statusFilter = value ?? 'All');
                       },
@@ -316,9 +315,7 @@ class _EventMonitoringPageState extends State<EventMonitoringPage> {
               const Card(
                 child: Padding(
                   padding: EdgeInsets.all(40),
-                  child: Center(
-                    child: Text('No matching events found.'),
-                  ),
+                  child: Center(child: Text('No matching events found.')),
                 ),
               )
             else
@@ -360,9 +357,7 @@ class _EventMonitoringPageState extends State<EventMonitoringPage> {
               const SizedBox(height: 4),
               Text(
                 title,
-                style: const TextStyle(
-                  color: AppColors.textSecondary,
-                ),
+                style: const TextStyle(color: AppColors.textSecondary),
               ),
             ],
           ),
@@ -372,8 +367,7 @@ class _EventMonitoringPageState extends State<EventMonitoringPage> {
   }
 
   Widget _eventCard(CommunityEvent event) {
-    final organizationName =
-        _organizationName(event.organizationId);
+    final organizationName = _organizationName(event.organizationId);
     final color = _statusColor(event.status);
 
     return Card(
@@ -402,16 +396,13 @@ class _EventMonitoringPageState extends State<EventMonitoringPage> {
                     const SizedBox(height: 5),
                     Text(
                       '$organizationName • ${event.id}',
-                      style: const TextStyle(
-                        color: AppColors.textSecondary,
-                      ),
+                      style: const TextStyle(color: AppColors.textSecondary),
                     ),
                   ],
                 ),
                 Chip(
                   label: Text(event.status.label),
-                  backgroundColor:
-                      color.withValues(alpha: 0.12),
+                  backgroundColor: color.withValues(alpha: 0.12),
                   labelStyle: TextStyle(
                     color: color,
                     fontWeight: FontWeight.w700,
@@ -430,18 +421,9 @@ class _EventMonitoringPageState extends State<EventMonitoringPage> {
               spacing: 16,
               runSpacing: 8,
               children: [
-                _info(
-                  Icons.calendar_today_rounded,
-                  _date(event.startsAt),
-                ),
-                _info(
-                  Icons.access_time_rounded,
-                  _time(event.startsAt),
-                ),
-                _info(
-                  Icons.location_on_outlined,
-                  event.location,
-                ),
+                _info(Icons.calendar_today_rounded, _date(event.startsAt)),
+                _info(Icons.access_time_rounded, _time(event.startsAt)),
+                _info(Icons.location_on_outlined, event.location),
               ],
             ),
             const Divider(height: 28),
@@ -475,11 +457,7 @@ class _EventMonitoringPageState extends State<EventMonitoringPage> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(
-          icon,
-          size: 17,
-          color: AppColors.textSecondary,
-        ),
+        Icon(icon, size: 17, color: AppColors.textSecondary),
         const SizedBox(width: 6),
         Flexible(
           child: Text(

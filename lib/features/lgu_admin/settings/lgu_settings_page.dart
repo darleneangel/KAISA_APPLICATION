@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
@@ -12,8 +11,7 @@ class LguSettingsPage extends StatefulWidget {
 }
 
 class _LguSettingsPageState extends State<LguSettingsPage> {
-  final LguSettingsRepository settings =
-      LguSettingsRepository.instance;
+  final LguSettingsRepository settings = LguSettingsRepository.instance;
 
   @override
   void initState() {
@@ -51,9 +49,7 @@ class _LguSettingsPageState extends State<LguSettingsPage> {
             const Text(
               'Review administrative access and configure '
               'KAISA management preferences.',
-              style: TextStyle(
-                color: AppColors.textSecondary,
-              ),
+              style: TextStyle(color: AppColors.textSecondary),
             ),
             const SizedBox(height: 24),
 
@@ -65,19 +61,14 @@ class _LguSettingsPageState extends State<LguSettingsPage> {
                 children: [
                   const Text(
                     'Three designated Super Admin positions',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 16,
-                    ),
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
                   ),
                   const SizedBox(height: 8),
                   const Text(
                     'These are planned administrative slots. '
                     'Actual account identities and credentials '
                     'will be configured through authentication.',
-                    style: TextStyle(
-                      color: AppColors.textSecondary,
-                    ),
+                    style: TextStyle(color: AppColors.textSecondary),
                   ),
                   const SizedBox(height: 18),
                   for (int i = 1; i <= 3; i++) ...[
@@ -94,8 +85,7 @@ class _LguSettingsPageState extends State<LguSettingsPage> {
                         const SizedBox(width: 12),
                         Expanded(
                           child: Column(
-                            crossAxisAlignment:
-                                CrossAxisAlignment.start,
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
                                 'Super Administrator $i',
@@ -113,9 +103,7 @@ class _LguSettingsPageState extends State<LguSettingsPage> {
                             ],
                           ),
                         ),
-                        const Chip(
-                          label: Text('Pending Setup'),
-                        ),
+                        const Chip(label: Text('Pending Setup')),
                       ],
                     ),
                   ],
@@ -132,18 +120,13 @@ class _LguSettingsPageState extends State<LguSettingsPage> {
                 children: [
                   const Text(
                     'Proposed KAISA Permission Structure',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                    ),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                   ),
                   const SizedBox(height: 8),
                   const Text(
                     'Reference only. These permissions '
                     'are not enforced by this prototype page.',
-                    style: TextStyle(
-                      color: AppColors.textSecondary,
-                    ),
+                    style: TextStyle(color: AppColors.textSecondary),
                   ),
                   const SizedBox(height: 18),
                   _roleCard(
@@ -209,15 +192,12 @@ class _LguSettingsPageState extends State<LguSettingsPage> {
                       Icons.notifications_active_outlined,
                       color: AppColors.blue,
                     ),
-                    title: const Text(
-                      'Administrative Notifications',
-                    ),
+                    title: const Text('Administrative Notifications'),
                     subtitle: const Text(
                       'Preference for general administrative alerts.',
                     ),
                     value: settings.administrativeNotifications,
-                    onChanged:
-                        settings.setAdministrativeNotifications,
+                    onChanged: settings.setAdministrativeNotifications,
                   ),
                   const Divider(),
                   SwitchListTile(
@@ -240,16 +220,13 @@ class _LguSettingsPageState extends State<LguSettingsPage> {
                       Icons.assignment_ind_outlined,
                       color: AppColors.blue,
                     ),
-                    title: const Text(
-                      'Administrator Assignment Alerts',
-                    ),
+                    title: const Text('Administrator Assignment Alerts'),
                     subtitle: const Text(
                       'Preference for changes in '
                       'organization administrator assignments.',
                     ),
                     value: settings.assignmentNotifications,
-                    onChanged:
-                        settings.setAssignmentNotifications,
+                    onChanged: settings.setAssignmentNotifications,
                   ),
                 ],
               ),
@@ -269,10 +246,7 @@ class _LguSettingsPageState extends State<LguSettingsPage> {
             const Text(
               'Prototype settings are stored in memory '
               'and reset when the application restarts.',
-              style: TextStyle(
-                fontSize: 12,
-                color: AppColors.textSecondary,
-              ),
+              style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
             ),
           ],
         ),
@@ -291,13 +265,11 @@ class _LguSettingsPageState extends State<LguSettingsPage> {
         ),
         actions: [
           TextButton(
-            onPressed: () =>
-                Navigator.pop(dialogContext, false),
+            onPressed: () => Navigator.pop(dialogContext, false),
             child: const Text('Cancel'),
           ),
           FilledButton(
-            onPressed: () =>
-                Navigator.pop(dialogContext, true),
+            onPressed: () => Navigator.pop(dialogContext, true),
             child: const Text('Restore'),
           ),
         ],
@@ -309,9 +281,7 @@ class _LguSettingsPageState extends State<LguSettingsPage> {
     settings.resetDefaults();
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Default preferences restored.'),
-      ),
+      const SnackBar(content: Text('Default preferences restored.')),
     );
   }
 

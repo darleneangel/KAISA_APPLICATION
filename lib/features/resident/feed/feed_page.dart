@@ -1,7 +1,9 @@
+import '../../resident/widgets/kaisa_resident_hero.dart';
+import '../../../core/theme/kaisa_backdrop.dart';
 import 'package:flutter/material.dart';
 
-import '../widgets/resident_bottom_nav.dart';
-import '../widgets/notification_bell.dart';
+// import '../widgets/resident_bottom_nav.dart';
+// import '../widgets/notification_bell.dart';
 
 import '../../../core/theme/app_colors.dart';
 
@@ -34,9 +36,7 @@ class _FeedPageState extends State<FeedPage> {
           children: [
             Text(
               'Community Feed',
-              style: TextStyle(
-                fontWeight: FontWeight.w800,
-              ),
+              style: TextStyle(fontWeight: FontWeight.w800),
             ),
             Text(
               'Stay connected with your community',
@@ -48,104 +48,119 @@ class _FeedPageState extends State<FeedPage> {
             ),
           ],
         ),
-        actions: [
-          const NotificationBell(),
-          const SizedBox(width: 8),
-        ],
+
+        // to be removed: actions: [const NotificationBell(), const SizedBox(width: 8)],
       ),
 
-      body: Column(
+      body: Stack(
         children: [
-          // ---------------------------------------------------------
-          // FILTERS
-          // ---------------------------------------------------------
-          SizedBox(
-            height: 62,
-            child: ListView.separated(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 20,
-                vertical: 10,
-              ),
-              scrollDirection: Axis.horizontal,
-              itemCount: filters.length,
-              separatorBuilder: (_, _) => const SizedBox(width: 8),
-              itemBuilder: (context, index) {
-                final filter = filters[index];
-                final isSelected = selectedFilter == filter;
+          const Positioned.fill(child: KaisaBackdrop()),
+          Positioned.fill(
+            child: Column(
+              children: [
+                // ---------------------------------------------------------
+                // FILTERS
+                // ---------------------------------------------------------
+                SizedBox(
+                  height: 62,
+                  child: ListView.separated(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 10,
+                    ),
+                    scrollDirection: Axis.horizontal,
+                    itemCount: filters.length,
+                    separatorBuilder: (_, _) => const SizedBox(width: 8),
+                    itemBuilder: (context, index) {
+                      final filter = filters[index];
+                      final isSelected = selectedFilter == filter;
 
-                return ChoiceChip(
-                  label: Text(filter),
-                  selected: isSelected,
-                  onSelected: (_) {
-                    setState(() {
-                      selectedFilter = filter;
-                    });
-                  },
-                );
-              },
-            ),
-          ),
-
-          const Divider(height: 1),
-
-          // ---------------------------------------------------------
-          // FEED
-          // ---------------------------------------------------------
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 18, 16, 100),
-              children: const [
-                _FeedPostCard(
-                  organizationName: 'KAISA Youth Volunteers',
-                  organizationType: 'Youth Organization',
-                  time: '2 hours ago',
-                  category: 'Announcement',
-                  icon: Icons.volunteer_activism_outlined,
-                  content:
-                      'We are excited to welcome everyone to another week of community activities! Stay tuned for upcoming volunteer opportunities and announcements.',
-                  likes: 24,
-                  comments: 6,
+                      return ChoiceChip(
+                        label: Text(filter),
+                        selected: isSelected,
+                        onSelected: (_) {
+                          setState(() {
+                            selectedFilter = filter;
+                          });
+                        },
+                      );
+                    },
+                  ),
                 ),
 
-                SizedBox(height: 16),
+                const Divider(height: 1),
 
-                _FeedPostCard(
-                  organizationName: 'Community Environment Network',
-                  organizationType: 'Environmental Organization',
-                  time: '5 hours ago',
-                  category: 'Event',
-                  icon: Icons.eco_outlined,
-                  content:
-                      'Join us for our upcoming Community Clean-Up Drive! Together, we can help make our community cleaner, greener, and more sustainable.',
-                  eventTitle: 'Community Clean-Up Drive',
-                  eventDate: 'October 12, 2026',
-                  eventTime: '8:00 AM',
-                  eventLocation: 'Barangay Covered Court',
-                  likes: 41,
-                  comments: 12,
-                ),
+                // ---------------------------------------------------------
+                // FEED
+                // ---------------------------------------------------------
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(16, 18, 16, 100),
+                    children: const [
+                      Padding(
+                        padding: EdgeInsets.only(bottom: 23),
+                        child: KaisaResidentHero(
+                          eyebrow: 'COMMUNITY PULSE',
+                          title: 'Your city. Your stories.',
+                          subtitle:
+                              'Discover news, updates, and moments from your neighbors.',
+                          icon: Icons.dynamic_feed_rounded,
+                          chip: 'Stay in the loop',
+                        ),
+                      ),
+                      _FeedPostCard(
+                        organizationName: 'KAISA Youth Volunteers',
+                        organizationType: 'Youth Organization',
+                        time: '2 hours ago',
+                        category: 'Announcement',
+                        icon: Icons.volunteer_activism_outlined,
+                        content:
+                            'We are excited to welcome everyone to another week of community activities! Stay tuned for upcoming volunteer opportunities and announcements.',
+                        likes: 24,
+                        comments: 6,
+                      ),
 
-                SizedBox(height: 16),
+                      SizedBox(height: 16),
 
-                _FeedPostCard(
-                  organizationName: 'KAISA Community Council',
-                  organizationType: 'Community Organization',
-                  time: 'Yesterday',
-                  category: 'Announcement',
-                  icon: Icons.groups_2_outlined,
-                  content:
-                      'Thank you to all residents who continue to participate in our community programs. Your involvement helps strengthen our community.',
-                  likes: 67,
-                  comments: 15,
+                      _FeedPostCard(
+                        organizationName: 'Community Environment Network',
+                        organizationType: 'Environmental Organization',
+                        time: '5 hours ago',
+                        category: 'Event',
+                        icon: Icons.eco_outlined,
+                        content:
+                            'Join us for our upcoming Community Clean-Up Drive! Together, we can help make our community cleaner, greener, and more sustainable.',
+                        eventTitle: 'Community Clean-Up Drive',
+                        eventDate: 'October 12, 2026',
+                        eventTime: '8:00 AM',
+                        eventLocation: 'Barangay Covered Court',
+                        likes: 41,
+                        comments: 12,
+                      ),
+
+                      SizedBox(height: 16),
+
+                      _FeedPostCard(
+                        organizationName: 'KAISA Community Council',
+                        organizationType: 'Community Organization',
+                        time: 'Yesterday',
+                        category: 'Announcement',
+                        icon: Icons.groups_2_outlined,
+                        content:
+                            'Thank you to all residents who continue to participate in our community programs. Your involvement helps strengthen our community.',
+                        likes: 67,
+                        comments: 15,
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
           ),
         ],
       ),
-      bottomNavigationBar: const ResidentBottomNav(
-        currentIndex: 1,
-      ),
+
+      // to be removed:
     );
   }
 }
@@ -194,8 +209,7 @@ class _FeedPostCardState extends State<_FeedPostCard> {
 
   @override
   Widget build(BuildContext context) {
-    final displayedLikes =
-        isLiked ? widget.likes + 1 : widget.likes;
+    final displayedLikes = isLiked ? widget.likes + 1 : widget.likes;
 
     return Card(
       margin: EdgeInsets.zero,
@@ -214,13 +228,10 @@ class _FeedPostCardState extends State<_FeedPostCard> {
                   width: 48,
                   height: 48,
                   decoration: BoxDecoration(
-                    color: AppColors.blueLight,
+                    color: AppColors.mint,
                     borderRadius: BorderRadius.circular(14),
                   ),
-                  child: Icon(
-                    widget.icon,
-                    color: AppColors.blue,
-                  ),
+                  child: Icon(widget.icon, color: AppColors.forest),
                 ),
 
                 const SizedBox(width: 12),
@@ -269,18 +280,15 @@ class _FeedPostCardState extends State<_FeedPostCard> {
             // CATEGORY
             // -------------------------------------------------------
             Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 10,
-                vertical: 5,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
-                color: AppColors.blueLight,
+                color: AppColors.mint,
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
                 widget.category,
                 style: const TextStyle(
-                  color: AppColors.blueDark,
+                  color: AppColors.deepForest,
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
                 ),
@@ -370,7 +378,7 @@ class _FeedPostCardState extends State<_FeedPostCard> {
                 const Icon(
                   Icons.favorite_rounded,
                   size: 16,
-                  color: AppColors.blue,
+                  color: AppColors.forest,
                 ),
 
                 const SizedBox(width: 5),
@@ -416,12 +424,10 @@ class _FeedPostCardState extends State<_FeedPostCard> {
                           ? Icons.favorite_rounded
                           : Icons.favorite_border_rounded,
                       color: isLiked
-                          ? AppColors.blue
+                          ? AppColors.forest
                           : AppColors.textSecondary,
                     ),
-                    label: Text(
-                      isLiked ? 'Liked' : 'Like',
-                    ),
+                    label: Text(isLiked ? 'Liked' : 'Like'),
                   ),
                 ),
 
@@ -430,9 +436,7 @@ class _FeedPostCardState extends State<_FeedPostCard> {
                     onPressed: () {
                       // Comments page/details later.
                     },
-                    icon: const Icon(
-                      Icons.chat_bubble_outline_rounded,
-                    ),
+                    icon: const Icon(Icons.chat_bubble_outline_rounded),
                     label: const Text('Comment'),
                   ),
                 ),
@@ -463,28 +467,18 @@ class _EventInfoRow extends StatelessWidget {
   final IconData icon;
   final String text;
 
-  const _EventInfoRow({
-    required this.icon,
-    required this.text,
-  });
+  const _EventInfoRow({required this.icon, required this.text});
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(
-          icon,
-          size: 16,
-          color: AppColors.greenDark,
-        ),
+        Icon(icon, size: 16, color: AppColors.greenDark),
         const SizedBox(width: 8),
         Expanded(
           child: Text(
             text,
-            style: const TextStyle(
-              fontSize: 12,
-              color: AppColors.greenDark,
-            ),
+            style: const TextStyle(fontSize: 12, color: AppColors.greenDark),
           ),
         ),
       ],

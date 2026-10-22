@@ -1,9 +1,13 @@
+import '../widgets/kaisa_theme_switch.dart';
+import '../widgets/kaisa_resident_hero.dart';
+import '../../../core/theme/kaisa_backdrop.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
-import '../widgets/resident_bottom_nav.dart';
-import '../widgets/notification_bell.dart';
+// import '../widgets/resident_bottom_nav.dart';
+// import '../widgets/notification_bell.dart';
+//---------------------------to be accomplished
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
@@ -77,8 +81,8 @@ class ProfilePage extends StatelessWidget {
           style: TextStyle(fontWeight: FontWeight.w800),
         ),
         actions: [
-          const NotificationBell(),
-
+          const KaisaThemeSwitch(),
+          // remove:  const NotificationBell(),
           IconButton(
             tooltip: 'Settings',
             onPressed: () {
@@ -91,350 +95,377 @@ class ProfilePage extends StatelessWidget {
         ],
       ),
 
-      body: SafeArea(
-        top: false,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 110),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // ==================================================
-              // PROFILE HEADER
-              // ==================================================
-
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(22),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [AppColors.blue, AppColors.blueDark],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(24),
-                ),
+      body: Stack(
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(bottom: 23),
+            child: KaisaResidentHero(
+              eyebrow: 'YOUR KAISA STORY',
+              title: 'You make the difference.',
+              subtitle: 'Your community journey starts with you.',
+              icon: Icons.person_rounded,
+              chip: 'Resident profile',
+            ),
+          ),
+          const Positioned.fill(child: KaisaBackdrop()),
+          Positioned.fill(
+            child: SafeArea(
+              top: false,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 110),
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        Container(
-                          width: 92,
-                          height: 92,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 4),
+                    // ==================================================
+                    // PROFILE HEADER
+                    // ==================================================
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(22),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [AppColors.forest, AppColors.deepForest],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      child: Column(
+                        children: [
+                          Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              Container(
+                                width: 92,
+                                height: 92,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: Colors.white,
+                                    width: 4,
+                                  ),
+                                ),
+                                alignment: Alignment.center,
+                                child: const Text(
+                                  'DC',
+                                  style: TextStyle(
+                                    color: AppColors.deepForest,
+                                    fontSize: 27,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
+
+                              Positioned(
+                                right: -2,
+                                bottom: 2,
+                                child: Container(
+                                  width: 29,
+                                  height: 29,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: AppColors.forest,
+                                      width: 2,
+                                    ),
+                                  ),
+                                  child: IconButton(
+                                    padding: EdgeInsets.zero,
+                                    iconSize: 15,
+                                    tooltip: 'Change Profile Photo',
+                                    onPressed: () {
+                                      _showComingSoon(context, 'Profile photo');
+                                    },
+                                    icon: const Icon(
+                                      Icons.camera_alt_outlined,
+                                      color: AppColors.forest,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                          alignment: Alignment.center,
-                          child: const Text(
-                            'DC',
+
+                          const SizedBox(height: 16),
+
+                          const Text(
+                            residentName,
+                            textAlign: TextAlign.center,
                             style: TextStyle(
-                              color: AppColors.blueDark,
-                              fontSize: 27,
+                              color: Colors.white,
+                              fontSize: 23,
                               fontWeight: FontWeight.w800,
                             ),
                           ),
-                        ),
 
-                        Positioned(
-                          right: -2,
-                          bottom: 2,
-                          child: Container(
-                            width: 29,
-                            height: 29,
+                          const SizedBox(height: 5),
+
+                          const Text(
+                            residentEmail,
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 13,
+                            ),
+                          ),
+
+                          const SizedBox(height: 14),
+
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 7,
+                            ),
                             decoration: BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: AppColors.blue,
-                                width: 2,
-                              ),
+                              color: Colors.white.withValues(alpha: 0.16),
+                              borderRadius: BorderRadius.circular(20),
                             ),
-                            child: IconButton(
-                              padding: EdgeInsets.zero,
-                              iconSize: 15,
-                              tooltip: 'Change Profile Photo',
-                              onPressed: () {
-                                _showComingSoon(context, 'Profile photo');
-                              },
-                              icon: const Icon(
-                                Icons.camera_alt_outlined,
-                                color: AppColors.blue,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    const Text(
-                      residentName,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 23,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-
-                    const SizedBox(height: 5),
-
-                    const Text(
-                      residentEmail,
-                      style: TextStyle(color: Colors.white70, fontSize: 13),
-                    ),
-
-                    const SizedBox(height: 14),
-
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 7,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.16),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            isTier2Verified
-                                ? Icons.verified_rounded
-                                : Icons.verified_user_outlined,
-                            size: 17,
-                            color: Colors.white,
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            isTier2Verified
-                                ? 'Tier 2 • Identity Verified'
-                                : 'Tier 1 • Basic Account',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  isTier2Verified
+                                      ? Icons.verified_rounded
+                                      : Icons.verified_user_outlined,
+                                  size: 17,
+                                  color: Colors.white,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  isTier2Verified
+                                      ? 'Tier 2 • Identity Verified'
+                                      : 'Tier 1 • Basic Account',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ],
+                      ),
+                    ),
+
+                    // ==================================================
+                    // VERIFICATION
+                    // ==================================================
+                    if (!isTier2Verified) ...[
+                      const SizedBox(height: 18),
+
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(18),
+                        decoration: BoxDecoration(
+                          color: AppColors.mint,
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Row(
+                              children: [
+                                Icon(
+                                  Icons.verified_user_outlined,
+                                  color: AppColors.deepForest,
+                                ),
+                                SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    'Complete Identity Verification',
+                                    style: TextStyle(
+                                      color: AppColors.deepForest,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+
+                            const SizedBox(height: 10),
+
+                            const Text(
+                              'Verify your identity to join organizations, '
+                              'register for events, and request the creation '
+                              'of an organization.',
+                              style: TextStyle(
+                                color: AppColors.deepForest,
+                                fontSize: 12,
+                                height: 1.5,
+                              ),
+                            ),
+
+                            const SizedBox(height: 14),
+
+                            SizedBox(
+                              width: double.infinity,
+                              child: FilledButton.icon(
+                                onPressed: () {
+                                  context.push(
+                                    '/resident/identity-verification',
+                                  );
+                                },
+                                icon: const Icon(Icons.verified_outlined),
+                                label: const Text('Get Verified'),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+
+                    const SizedBox(height: 28),
+
+                    // ==================================================
+                    // COMMUNITY
+                    // ==================================================
+                    const _SectionTitle(title: 'My Community'),
+
+                    const SizedBox(height: 12),
+
+                    _ProfileMenuCard(
+                      icon: Icons.groups_outlined,
+                      title: 'My Organizations',
+                      subtitle: 'View your memberships and organization roles',
+                      onTap: () {
+                        context.push('/resident/my-organizations');
+                      },
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    _ProfileMenuCard(
+                      icon: Icons.event_available_outlined,
+                      title: 'My Events',
+                      subtitle: 'View your event registrations and activity',
+                      onTap: () {
+                        context.push('/resident/my-events');
+                      },
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    _ProfileMenuCard(
+                      icon: Icons.add_business_outlined,
+                      title: 'Request Organization',
+                      subtitle: 'Submit a new organization request',
+                      locked: !isTier2Verified,
+                      onTap: () {
+                        context.push('/resident/request-organization');
+                      },
+                    ),
+
+                    const SizedBox(height: 28),
+
+                    // ==================================================
+                    // ACCOUNT
+                    // ==================================================
+                    const _SectionTitle(title: 'Account'),
+
+                    const SizedBox(height: 12),
+
+                    _ProfileMenuCard(
+                      icon: Icons.person_outline_rounded,
+                      title: 'Personal Information',
+                      subtitle: 'View and manage your personal details',
+                      onTap: () {
+                        _showComingSoon(context, 'Personal information');
+                      },
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    _ProfileMenuCard(
+                      icon: Icons.lock_outline_rounded,
+                      title: 'Security',
+                      subtitle: 'Password and account security',
+                      onTap: () {
+                        _showComingSoon(context, 'Security settings');
+                      },
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    _ProfileMenuCard(
+                      icon: Icons.notifications_none_rounded,
+                      title: 'Notification Settings',
+                      subtitle: 'Manage how KAISA notifies you',
+                      onTap: () {
+                        _showComingSoon(context, 'Notification settings');
+                      },
+                    ),
+
+                    const SizedBox(height: 28),
+
+                    // ==================================================
+                    // SUPPORT
+                    // ==================================================
+                    const _SectionTitle(title: 'Support'),
+
+                    const SizedBox(height: 12),
+
+                    _ProfileMenuCard(
+                      icon: Icons.help_outline_rounded,
+                      title: 'Help & Support',
+                      subtitle: 'Get help using KAISA',
+                      onTap: () {
+                        _showComingSoon(context, 'Help & Support');
+                      },
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    _ProfileMenuCard(
+                      icon: Icons.info_outline_rounded,
+                      title: 'About KAISA',
+                      subtitle: 'Learn more about the application',
+                      onTap: () {
+                        _showComingSoon(context, 'About KAISA');
+                      },
+                    ),
+
+                    const SizedBox(height: 28),
+
+                    // ==================================================
+                    // LOGOUT
+                    // ==================================================
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          _showLogoutDialog(context);
+                        },
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.error,
+                          side: const BorderSide(color: AppColors.error),
+                        ),
+                        icon: const Icon(Icons.logout_rounded),
+                        label: const Text('Log Out'),
+                      ),
+                    ),
+
+                    const SizedBox(height: 22),
+
+                    const Center(
+                      child: Text(
+                        'KAISA • Resident Portal',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textMuted,
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
-
-              // ==================================================
-              // VERIFICATION
-              // ==================================================
-              if (!isTier2Verified) ...[
-                const SizedBox(height: 18),
-
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    color: AppColors.blueLight,
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Row(
-                        children: [
-                          Icon(
-                            Icons.verified_user_outlined,
-                            color: AppColors.blueDark,
-                          ),
-                          SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              'Complete Identity Verification',
-                              style: TextStyle(
-                                color: AppColors.blueDark,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 10),
-
-                      const Text(
-                        'Verify your identity to join organizations, '
-                        'register for events, and request the creation '
-                        'of an organization.',
-                        style: TextStyle(
-                          color: AppColors.blueDark,
-                          fontSize: 12,
-                          height: 1.5,
-                        ),
-                      ),
-
-                      const SizedBox(height: 14),
-
-                      SizedBox(
-                        width: double.infinity,
-                        child: FilledButton.icon(
-                          onPressed: () {
-                            context.push('/resident/identity-verification');
-                          },
-                          icon: const Icon(Icons.verified_outlined),
-                          label: const Text('Get Verified'),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-
-              const SizedBox(height: 28),
-
-              // ==================================================
-              // COMMUNITY
-              // ==================================================
-              const _SectionTitle(title: 'My Community'),
-
-              const SizedBox(height: 12),
-
-              _ProfileMenuCard(
-                icon: Icons.groups_outlined,
-                title: 'My Organizations',
-                subtitle: 'View your memberships and organization roles',
-                onTap: () {
-                  context.push('/resident/my-organizations');
-                },
-              ),
-
-              const SizedBox(height: 10),
-
-              _ProfileMenuCard(
-                icon: Icons.event_available_outlined,
-                title: 'My Events',
-                subtitle: 'View your event registrations and activity',
-                onTap: () {
-                  context.push('/resident/my-events');
-                },
-              ),
-
-              const SizedBox(height: 10),
-
-              _ProfileMenuCard(
-                icon: Icons.add_business_outlined,
-                title: 'Request Organization',
-                subtitle: 'Submit a new organization request',
-                locked: !isTier2Verified,
-                onTap: () {
-                  context.push('/resident/request-organization');
-                },
-              ),
-
-              const SizedBox(height: 28),
-
-              // ==================================================
-              // ACCOUNT
-              // ==================================================
-              const _SectionTitle(title: 'Account'),
-
-              const SizedBox(height: 12),
-
-              _ProfileMenuCard(
-                icon: Icons.person_outline_rounded,
-                title: 'Personal Information',
-                subtitle: 'View and manage your personal details',
-                onTap: () {
-                  _showComingSoon(context, 'Personal information');
-                },
-              ),
-
-              const SizedBox(height: 10),
-
-              _ProfileMenuCard(
-                icon: Icons.lock_outline_rounded,
-                title: 'Security',
-                subtitle: 'Password and account security',
-                onTap: () {
-                  _showComingSoon(context, 'Security settings');
-                },
-              ),
-
-              const SizedBox(height: 10),
-
-              _ProfileMenuCard(
-                icon: Icons.notifications_none_rounded,
-                title: 'Notification Settings',
-                subtitle: 'Manage how KAISA notifies you',
-                onTap: () {
-                  _showComingSoon(context, 'Notification settings');
-                },
-              ),
-
-              const SizedBox(height: 28),
-
-              // ==================================================
-              // SUPPORT
-              // ==================================================
-              const _SectionTitle(title: 'Support'),
-
-              const SizedBox(height: 12),
-
-              _ProfileMenuCard(
-                icon: Icons.help_outline_rounded,
-                title: 'Help & Support',
-                subtitle: 'Get help using KAISA',
-                onTap: () {
-                  _showComingSoon(context, 'Help & Support');
-                },
-              ),
-
-              const SizedBox(height: 10),
-
-              _ProfileMenuCard(
-                icon: Icons.info_outline_rounded,
-                title: 'About KAISA',
-                subtitle: 'Learn more about the application',
-                onTap: () {
-                  _showComingSoon(context, 'About KAISA');
-                },
-              ),
-
-              const SizedBox(height: 28),
-
-              // ==================================================
-              // LOGOUT
-              // ==================================================
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    _showLogoutDialog(context);
-                  },
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.error,
-                    side: const BorderSide(color: AppColors.error),
-                  ),
-                  icon: const Icon(Icons.logout_rounded),
-                  label: const Text('Log Out'),
-                ),
-              ),
-
-              const SizedBox(height: 22),
-
-              const Center(
-                child: Text(
-                  'KAISA • Resident Portal',
-                  style: TextStyle(fontSize: 11, color: AppColors.textMuted),
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
 
-      bottomNavigationBar: const ResidentBottomNav(currentIndex: 4),
+      //----- remove:
     );
   }
 }
@@ -500,10 +531,10 @@ class _ProfileMenuCard extends StatelessWidget {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: AppColors.blueLight,
+                  color: AppColors.mint,
                   borderRadius: BorderRadius.circular(13),
                 ),
-                child: Icon(icon, color: AppColors.blue, size: 22),
+                child: Icon(icon, color: AppColors.forest, size: 22),
               ),
 
               const SizedBox(width: 13),

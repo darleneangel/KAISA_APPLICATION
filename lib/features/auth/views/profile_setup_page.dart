@@ -1,3 +1,4 @@
+import '../../../core/theme/kaisa_backdrop.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -353,18 +354,25 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final desktop = constraints.maxWidth >= 900;
+      body: Stack(
+        children: [
+          const Positioned.fill(child: KaisaBackdrop()),
+          Positioned.fill(
+            child: SafeArea(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final desktop = constraints.maxWidth >= 900;
 
-            if (desktop) {
-              return _buildDesktop();
-            }
+                  if (desktop) {
+                    return _buildDesktop();
+                  }
 
-            return _buildMobile();
-          },
-        ),
+                  return _buildMobile();
+                },
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -529,7 +537,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
           height: 43,
           padding: const EdgeInsets.all(5),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppColors.surface,
             borderRadius: BorderRadius.circular(13),
             border: Border.all(color: AppColors.border),
           ),
@@ -544,7 +552,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
         const Text(
           'KAISA',
           style: TextStyle(
-            color: AppColors.blueDark,
+            color: AppColors.deepForest,
             fontSize: 18,
             fontWeight: FontWeight.w900,
             letterSpacing: 1.1,
@@ -818,7 +826,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                 Icon(
                   Icons.location_on_rounded,
                   size: 18,
-                  color: AppColors.blue,
+                  color: AppColors.forest,
                 ),
                 SizedBox(width: 9),
                 Expanded(
@@ -949,20 +957,17 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
       padding: const EdgeInsets.all(17),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [
-            AppColors.blueLight,
-            AppColors.greenLight.withValues(alpha: .65),
-          ],
+          colors: [AppColors.mint, AppColors.greenLight.withValues(alpha: .65)],
         ),
         borderRadius: BorderRadius.circular(17),
-        border: Border.all(color: AppColors.blue.withValues(alpha: .12)),
+        border: Border.all(color: AppColors.forest.withValues(alpha: .12)),
       ),
       child: const Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(
             Icons.verified_user_outlined,
-            color: AppColors.blueDark,
+            color: AppColors.deepForest,
             size: 24,
           ),
 
@@ -975,7 +980,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                 Text(
                   'Basic Resident Account',
                   style: TextStyle(
-                    color: AppColors.blueDark,
+                    color: AppColors.deepForest,
                     fontSize: 13,
                     fontWeight: FontWeight.w900,
                   ),
@@ -1096,7 +1101,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [AppColors.blueDark, AppColors.blue, AppColors.greenDark],
+          colors: [AppColors.deepForest, AppColors.forest, AppColors.greenDark],
         ),
       ),
       child: Stack(
@@ -1176,13 +1181,13 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                     vertical: 7,
                   ),
                   decoration: BoxDecoration(
-                    color: AppColors.yellow,
+                    color: AppColors.lime,
                     borderRadius: BorderRadius.circular(30),
                   ),
                   child: const Text(
                     'FINAL STEP',
                     style: TextStyle(
-                      color: AppColors.blueDark,
+                      color: AppColors.deepForest,
                       fontSize: 10,
                       fontWeight: FontWeight.w900,
                       letterSpacing: .8,
@@ -1295,10 +1300,10 @@ class _ProfileCard extends StatelessWidget {
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: AppColors.blueLight,
+                  color: AppColors.mint,
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(icon, size: 19, color: AppColors.blue),
+                child: Icon(icon, size: 19, color: AppColors.forest),
               ),
 
               const SizedBox(width: 10),
@@ -1365,10 +1370,10 @@ class _SelectableChip extends StatelessWidget {
           duration: const Duration(milliseconds: 180),
           padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
           decoration: BoxDecoration(
-            color: selected ? AppColors.blueLight : AppColors.surfaceSoft,
+            color: selected ? AppColors.mint : AppColors.surfaceSoft,
             borderRadius: BorderRadius.circular(30),
             border: Border.all(
-              color: selected ? AppColors.blue : AppColors.border,
+              color: selected ? AppColors.forest : AppColors.border,
               width: selected ? 1.4 : 1,
             ),
           ),
@@ -1378,7 +1383,7 @@ class _SelectableChip extends StatelessWidget {
               Icon(
                 selected ? Icons.check_circle_rounded : item.icon,
                 size: 16,
-                color: selected ? AppColors.blue : AppColors.textSecondary,
+                color: selected ? AppColors.forest : AppColors.textSecondary,
               ),
 
               const SizedBox(width: 6),
@@ -1387,7 +1392,7 @@ class _SelectableChip extends StatelessWidget {
                 item.label,
                 style: TextStyle(
                   color: selected
-                      ? AppColors.blueDark
+                      ? AppColors.deepForest
                       : AppColors.textSecondary,
                   fontSize: 11,
                   fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
@@ -1422,7 +1427,7 @@ class _SideFeature extends StatelessWidget {
             color: Colors.white.withValues(alpha: .12),
             borderRadius: BorderRadius.circular(11),
           ),
-          child: Icon(icon, size: 19, color: AppColors.yellow),
+          child: Icon(icon, size: 19, color: AppColors.lime),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -1459,7 +1464,7 @@ class _ProgressDot extends StatelessWidget {
         color: completed
             ? AppColors.green
             : active
-            ? AppColors.blue
+            ? AppColors.forest
             : AppColors.border,
         borderRadius: BorderRadius.circular(20),
       ),

@@ -4,10 +4,7 @@ import 'package:go_router/go_router.dart';
 class ResidentBottomNav extends StatelessWidget {
   final int currentIndex;
 
-  const ResidentBottomNav({
-    super.key,
-    required this.currentIndex,
-  });
+  const ResidentBottomNav({super.key, required this.currentIndex});
 
   void _navigate(BuildContext context, int index) {
     // Don't navigate again if the user taps
