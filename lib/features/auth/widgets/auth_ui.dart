@@ -68,93 +68,95 @@ class _DesktopAuthLayout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 1400),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Row(
-            children: [
-              Expanded(
-                flex: 11,
-                child: Container(
-                  margin: const EdgeInsets.only(right: 18),
-                  padding: const EdgeInsets.fromLTRB(38, 34, 38, 34),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        Color(0xFF0A3E32),
-                        Color(0xFF0F5C46),
-                        Color(0xFF146B4C),
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(36),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: .10),
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: .18),
-                        blurRadius: 34,
-                        offset: const Offset(0, 16),
+    return SingleChildScrollView(
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1400),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Row(
+              children: [
+                Expanded(
+                  flex: 11,
+                  child: Container(
+                    margin: const EdgeInsets.only(right: 18),
+                    padding: const EdgeInsets.fromLTRB(38, 34, 38, 34),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          Color(0xFF0A3E32),
+                          Color(0xFF0F5C46),
+                          Color(0xFF146B4C),
+                        ],
                       ),
-                    ],
-                  ),
-                  child: hero,
-                ),
-              ),
-              Expanded(
-                flex: 8,
-                child: Container(
-                  constraints: const BoxConstraints(minHeight: 720),
-                  padding: const EdgeInsets.fromLTRB(30, 26, 30, 30),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF9FBF7),
-                    borderRadius: BorderRadius.circular(34),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: .72),
-                      width: 1.2,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: .10),
-                        blurRadius: 30,
-                        offset: const Offset(0, 18),
+                      borderRadius: BorderRadius.circular(36),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: .10),
                       ),
-                    ],
-                  ),
-                  child: SingleChildScrollView(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            if (showBack)
-                              _BackButton(
-                                onTap: () {
-                                  if (backRoute != null) {
-                                    context.go(backRoute!);
-                                  } else {
-                                    context.pop();
-                                  }
-                                },
-                              ),
-                            if (showBack) const SizedBox(width: 16),
-                            const Expanded(
-                              child: AuthBrandHeader(darkText: true),
-                            ),
-                          ],
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: .18),
+                          blurRadius: 34,
+                          offset: const Offset(0, 16),
                         ),
-                        const SizedBox(height: 24),
-                        panel,
                       ],
+                    ),
+                    child: hero,
+                  ),
+                ),
+                Expanded(
+                  flex: 8,
+                  child: Container(
+                    constraints: const BoxConstraints(minHeight: 720),
+                    padding: const EdgeInsets.fromLTRB(30, 26, 30, 30),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF9FBF7),
+                      borderRadius: BorderRadius.circular(34),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: .72),
+                        width: 1.2,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: .10),
+                          blurRadius: 30,
+                          offset: const Offset(0, 18),
+                        ),
+                      ],
+                    ),
+                    child: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              if (showBack)
+                                _BackButton(
+                                  onTap: () {
+                                    if (backRoute != null) {
+                                      context.go(backRoute!);
+                                    } else {
+                                      context.pop();
+                                    }
+                                  },
+                                ),
+                              if (showBack) const SizedBox(width: 16),
+                              const Expanded(
+                                child: AuthBrandHeader(darkText: true),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 24),
+                          AuthFormSurface(child: panel),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -259,7 +261,7 @@ class _MobileAuthLayout extends StatelessWidget {
                     ),
                   ],
                 ),
-                child: panel,
+                child: AuthFormSurface(child: panel),
               ),
             ],
           ),
@@ -523,4 +525,158 @@ class _BackButton extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Keep cream auth forms readable even if the application's global theme is dark.
+class AuthFormSurface extends StatelessWidget {
+  final Widget child;
+  const AuthFormSurface({super.key, required this.child});
+  @override
+  Widget build(BuildContext context) {
+    final base = ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.light,
+      fontFamily: 'Montserrat',
+    );
+    return Theme(
+      data: base.copyWith(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: AppColors.forest,
+          brightness: Brightness.light,
+        ),
+        textTheme: base.textTheme.apply(
+          bodyColor: const Color(0xFF183B2D),
+          displayColor: const Color(0xFF183B2D),
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 17,
+          ),
+          labelStyle: const TextStyle(color: Color(0xFF52695A)),
+          hintStyle: const TextStyle(color: Color(0xFF819287)),
+          prefixIconColor: AppColors.forest,
+          suffixIconColor: AppColors.forest,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(15),
+            borderSide: const BorderSide(color: Color(0xFFD6E4DA)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(15),
+            borderSide: const BorderSide(color: Color(0xFFD6E4DA)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(15),
+            borderSide: const BorderSide(color: AppColors.forest, width: 2),
+          ),
+        ),
+        filledButtonTheme: FilledButtonThemeData(
+          style: FilledButton.styleFrom(
+            backgroundColor: AppColors.forest,
+            foregroundColor: Colors.white,
+            minimumSize: const Size(0, 54),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+          ),
+        ),
+        textButtonTheme: TextButtonThemeData(
+          style: TextButton.styleFrom(foregroundColor: AppColors.forest),
+        ),
+      ),
+      child: child,
+    );
+  }
+}
+
+/// Abstract civic landscape artwork inspired by layered editorial mobile UI.
+class AuthScenicArtwork extends StatelessWidget {
+  const AuthScenicArtwork({super.key});
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    height: 165,
+    width: double.infinity,
+    child: ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: CustomPaint(painter: _ScenicPainter()),
+    ),
+  );
+}
+
+class _ScenicPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    canvas.drawRect(
+      rect,
+      Paint()
+        ..shader = const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFFBCE0C8), Color(0xFF5FB39A), Color(0xFF1C6D5B)],
+        ).createShader(rect),
+    );
+    canvas.drawCircle(
+      Offset(size.width * .77, size.height * .26),
+      30,
+      Paint()..color = const Color(0xFFFFE38A),
+    );
+    final far = Path()
+      ..moveTo(0, size.height * .68)
+      ..lineTo(size.width * .18, size.height * .35)
+      ..lineTo(size.width * .36, size.height * .70)
+      ..lineTo(size.width * .55, size.height * .36)
+      ..lineTo(size.width * .73, size.height * .74)
+      ..lineTo(size.width, size.height * .40)
+      ..lineTo(size.width, size.height)
+      ..lineTo(0, size.height)
+      ..close();
+    canvas.drawPath(far, Paint()..color = const Color(0xFF4E9E87));
+    final front = Path()
+      ..moveTo(0, size.height * .78)
+      ..quadraticBezierTo(
+        size.width * .28,
+        size.height * .40,
+        size.width * .56,
+        size.height * .77,
+      )
+      ..quadraticBezierTo(
+        size.width * .76,
+        size.height * .97,
+        size.width,
+        size.height * .61,
+      )
+      ..lineTo(size.width, size.height)
+      ..lineTo(0, size.height)
+      ..close();
+    canvas.drawPath(front, Paint()..color = const Color(0xFF155A48));
+    final road = Path()
+      ..moveTo(size.width * .48, size.height)
+      ..quadraticBezierTo(
+        size.width * .55,
+        size.height * .83,
+        size.width * .66,
+        size.height * .75,
+      )
+      ..quadraticBezierTo(
+        size.width * .54,
+        size.height * .91,
+        size.width * .58,
+        size.height,
+      )
+      ..close();
+    canvas.drawPath(
+      road,
+      Paint()..color = const Color(0xFFFFD54F).withValues(alpha: .75),
+    );
+    final dot = Paint()..color = Colors.white.withValues(alpha: .30);
+    for (double x = 20; x < size.width; x += 56) {
+      canvas.drawCircle(Offset(x, 18), 1.3, dot);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
