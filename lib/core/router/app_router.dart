@@ -1,17 +1,16 @@
+import 'dart:async';
+import 'package:flutter/foundation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/resident/widgets/kaisa_responsive_shell.dart';
 import '../../features/resident/about/about_kaisa_page.dart';
 
-// Auth Pages
 import '../../features/auth/views/welcome_page.dart';
 import '../../features/auth/views/login_page.dart';
 import '../../features/auth/views/signup_page.dart';
 import '../../features/auth/views/forgot_password_page.dart';
 import '../../features/auth/views/profile_setup_page.dart';
 import '../../features/auth/views/verification_page.dart';
-import '../../features/auth/views/loading_screen.dart';
-
-// Resident Pages
 import '../../features/resident/home/resident_home_page.dart';
 import '../../features/resident/feed/feed_page.dart';
 import '../../features/resident/organizations/organizations_page.dart';
@@ -26,41 +25,38 @@ import '../../features/resident/verification/identity_verification_page.dart';
 import '../../features/resident/verification/verification_status_page.dart';
 import '../../features/resident/notifications/notifications_page.dart';
 
-/*
-// LGU Pages
-import '../../features/lgu/home/lgu_home_page.dart';
-import '../../features/lgu/organizations/lgu_organizations_page.dart';
-import '../../features/lgu/organizations/lgu_organization_details_page.dart';
-import '../../features/lgu/events/lgu_events_page.dart';
-import '../../features/lgu/events/lgu_event_details_page.dart';
-import '../../features/lgu/profile/lgu_profile_page.dart';
-import '../../features/lgu/verification/lgu_identity_verification_page.dart';
-import '../../features/lgu/verification/lgu_verification_status_page.dart';
-import '../../features/lgu/notifications/lgu_notifications_page.dart';
-import '../../features/lgu/about/about_lgu_page.dart';
-import '../../features/lgu/organizations/lgu_my_organizations_page.dart';
-import '../../features/lgu/organizations/lgu_request_organization_page.dart';
-import '../../features/lgu/events/lgu_my_events_page.dart';
-import '../../features/lgu/organizations/lgu_organization_members_page.dart';
-import '../../features/lgu/organizations/lgu_organization_requests_page.dart';
-import '../../features/lgu/organizations/lgu_organization_membership_requests_page.dart';
-import '../../features/lgu/organizations/lgu_organization_membership_request_details_page.dart';
-import '../../features/lgu/organizations/lgu_organization_membership_request_approval_page.dart';
-import '../../features/lgu/organizations/lgu_organization_membership_request_rejection_page.dart';
-import '../../features/lgu/organizations/lgu_organization_membership_request_approval_confirmation_page.dart';
-import '../../features/lgu/organizations/lgu_organization_membership_request_rejection_confirmation_page.dart';
-import '../../features/lgu/organizations/lgu_organization_membership_request_approval_rejection_page.dart';
- import '../../features/lgu/organizations/lgu_organization_membership_request_approval_rejection_confirmation_page.dart';
-*/
+final _authRefresh = _AuthRouterRefresh();
+
+class _AuthRouterRefresh extends ChangeNotifier {
+  late final StreamSubscription<AuthState> _subscription;
+  _AuthRouterRefresh() {
+    _subscription = Supabase.instance.client.auth.onAuthStateChange.listen((_) {
+      notifyListeners();
+    });
+  }
+  @override
+  void dispose() {
+    _subscription.cancel();
+    super.dispose();
+  }
+}
 
 final appRouter = GoRouter(
-  initialLocation: '/loading',
+  initialLocation: '/welcome',
+  refreshListenable: _authRefresh,
+  redirect: (context, state) {
+    final signedIn = Supabase.instance.client.auth.currentSession != null;
+    final path = state.matchedLocation;
+    // Protect resident routes at the UI level. Database tables must ALSO use RLS.
+    if (!signedIn && path.startsWith('/resident/')) return '/login';
+    // Returning from Google/Facebook OAuth to an auth route should show the app.
+    if (signedIn &&
+        (path == '/login' || path == '/signup' || path == '/welcome')) {
+      return '/resident/home';
+    }
+    return null;
+  },
   routes: [
-    GoRoute(
-      path: '/loading',
-      builder: (context, state) => const LoadingScreen(),
-    ),
-
     GoRoute(path: '/welcome', builder: (context, state) => const WelcomePage()),
 
     GoRoute(path: '/login', builder: (context, state) => const LoginPage()),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/services/kaisa_auth_service.dart';
 import '../../../shared/repositories/resident_account_repository.dart';
 import '../widgets/compact_auth_shell.dart';
 
@@ -25,8 +26,9 @@ class _SignUpPageState extends State<SignUpPage> {
     super.dispose();
   }
 
-  void _submit() {
-    if (!_form.currentState!.validate()) return;
+  bool _emailBusy = false;
+  Future<void> _submit() async {
+    if (_emailBusy || !_form.currentState!.validate()) return;
     if (!_agreed) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -35,8 +37,44 @@ class _SignUpPageState extends State<SignUpPage> {
       );
       return;
     }
-    ResidentAccountRepository.instance.setPrototypeAccount(_email.text.trim());
-    context.go('/verification');
+    setState(() => _emailBusy = true);
+    try {
+      final result = await KaisaAuthService.instance.signUp(
+        _email.text.trim(),
+        _password.text,
+      );
+      if (!mounted) return;
+      if (result.user == null) {
+        throw const AuthException(
+          'Could not create account. Please try again.',
+        );
+      }
+      ResidentAccountRepository.instance.setPrototypeAccount(
+        _email.text.trim(),
+      );
+      if (result.session != null) {
+        ResidentAccountRepository.instance.markEmailVerified();
+        context.go('/profile-setup');
+      } else {
+        context.go('/verification');
+      }
+    } on AuthException catch (e) {
+      if (mounted)
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.message)));
+    } catch (_) {
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Unable to register. Check your connection and try again.',
+            ),
+          ),
+        );
+    } finally {
+      if (mounted) setState(() => _emailBusy = false);
+    }
   }
 
   bool _socialBusy = false;
@@ -46,19 +84,8 @@ class _SignUpPageState extends State<SignUpPage> {
     setState(() => _socialBusy = true);
     try {
       // Requires Google/Facebook provider configuration and redirect URLs in Supabase.
-      final launched = await Supabase.instance.client.auth.signInWithOAuth(
-        provider,
-      );
+      await KaisaAuthService.instance.socialSignIn(provider);
       if (!mounted) return;
-      if (!launched) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Could not open the social sign-in page. Check OAuth settings.',
-            ),
-          ),
-        );
-      }
       // OAuth login completes on redirect. Do not fake verification or account creation.
     } catch (error) {
       if (!mounted) return;
@@ -161,9 +188,11 @@ class _SignUpPageState extends State<SignUpPage> {
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
-              onPressed: _submit,
+              onPressed: _emailBusy ? null : _submit,
               icon: const Icon(Icons.arrow_forward_rounded),
-              label: const Text('Create account'),
+              label: Text(
+                _emailBusy ? 'Creating account...' : 'Create account',
+              ),
             ),
           ),
           const SizedBox(height: 22),
@@ -227,7 +256,7 @@ class _SignUpPageState extends State<SignUpPage> {
           ),
           const SizedBox(height: 12),
           const Text(
-            'Prototype: account creation and email verification will connect to Supabase in the production version.',
+            'Check your email for the confirmation code after signing up. Social sign-in returns to KAISA once completed.',
             style: TextStyle(
               fontSize: 11,
               color: Color(0xFF6D7A72),

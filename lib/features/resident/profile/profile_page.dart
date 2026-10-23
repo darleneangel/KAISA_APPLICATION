@@ -1,10 +1,11 @@
-import '../widgets/kaisa_theme_switch.dart';
 import '../widgets/kaisa_resident_hero.dart';
 import '../../../core/theme/kaisa_backdrop.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/services/kaisa_auth_service.dart';
+import '../../../shared/repositories/resident_account_repository.dart';
 // import '../widgets/resident_bottom_nav.dart';
 // import '../widgets/notification_bell.dart';
 //---------------------------to be accomplished
@@ -17,8 +18,13 @@ class ProfilePage extends StatelessWidget {
   // Later these values will come from Supabase.
   // ============================================================
 
-  static const String residentName = 'Darlene Custodio';
-  static const String residentEmail = 'darlene@example.com';
+  String get residentName =>
+      ResidentAccountRepository.instance.fullName.isNotEmpty
+      ? ResidentAccountRepository.instance.fullName
+      : (KaisaAuthService.instance.user?.userMetadata?['full_name']
+                ?.toString() ??
+            'KAISA Resident');
+  String get residentEmail => KaisaAuthService.instance.user?.email ?? '';
 
   // false = Tier 1
   // true  = Tier 2
@@ -47,12 +53,19 @@ class ProfilePage extends StatelessWidget {
               child: const Text('Cancel'),
             ),
             TextButton(
-              onPressed: () {
+              onPressed: () async {
                 Navigator.pop(dialogContext);
-
-                // Prototype logout only.
-                // Supabase signOut() will be added later.
-                context.go('/login');
+                try {
+                  await KaisaAuthService.instance.signOut();
+                  if (context.mounted) context.go('/login');
+                } catch (_) {
+                  if (context.mounted)
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Unable to log out. Please try again.'),
+                      ),
+                    );
+                }
               },
               style: TextButton.styleFrom(foregroundColor: AppColors.error),
               child: const Text('Log Out'),
@@ -81,7 +94,6 @@ class ProfilePage extends StatelessWidget {
           style: TextStyle(fontWeight: FontWeight.w800),
         ),
         actions: [
-          const KaisaThemeSwitch(),
           // remove:  const NotificationBell(),
           IconButton(
             tooltip: 'Settings',
@@ -190,7 +202,7 @@ class ProfilePage extends StatelessWidget {
 
                           const SizedBox(height: 16),
 
-                          const Text(
+                          Text(
                             residentName,
                             textAlign: TextAlign.center,
                             style: TextStyle(
@@ -202,7 +214,7 @@ class ProfilePage extends StatelessWidget {
 
                           const SizedBox(height: 5),
 
-                          const Text(
+                          Text(
                             residentEmail,
                             style: TextStyle(
                               color: Colors.white70,

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/foundation.dart';
 import '../widgets/auth_ui.dart';
 
 class ForgotPasswordPage extends StatefulWidget {
@@ -18,23 +20,36 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     super.dispose();
   }
 
-  void _continue() {
-    if (!_form.currentState!.validate()) return;
-    showDialog<void>(
-      context: context,
-      builder: (dialog) => AlertDialog(
-        title: const Text('Recovery preview'),
-        content: const Text(
-          'Password reset delivery is not connected in this prototype. No email has been sent.',
-        ),
-        actions: [
-          FilledButton(
-            onPressed: () => Navigator.pop(dialog),
-            child: const Text('Got it'),
+  bool _busy = false;
+  Future<void> _continue() async {
+    if (_busy || !_form.currentState!.validate()) return;
+    setState(() => _busy = true);
+    try {
+      await Supabase.instance.client.auth.resetPasswordForEmail(
+        _email.text.trim(),
+        redirectTo: kIsWeb ? null : 'com.kaisa.app://login-callback/',
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'If this account exists, check its email for reset instructions.',
           ),
-        ],
-      ),
-    );
+        ),
+      );
+    } on AuthException catch (e) {
+      if (mounted)
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.message)));
+    } catch (_) {
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Unable to send recovery email.')),
+        );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   @override
@@ -92,7 +107,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
           ),
           const SizedBox(height: 10),
           const Text(
-            'Enter your account email address. Once email delivery is configured, this page will send a reset link.',
+            'Enter your account email address. We will send you a password reset link by email.',
             style: TextStyle(color: Color(0xFF68786E), height: 1.6),
           ),
           const SizedBox(height: 26),
@@ -113,7 +128,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
-              onPressed: _continue,
+              onPressed: _busy ? null : _continue,
               icon: const Icon(Icons.arrow_forward_rounded),
               label: const Text('Continue'),
             ),

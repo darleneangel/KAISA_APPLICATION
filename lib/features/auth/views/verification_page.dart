@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../shared/repositories/resident_account_repository.dart';
 import '../widgets/auth_ui.dart';
 
@@ -55,47 +56,70 @@ class _VerificationPageState extends State<VerificationPage> {
 
   Future<void> _verify() async {
     if (_fields.any((c) => c.text.isEmpty)) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Enter all six digits.')));
+      return;
+    }
+    final email = ResidentAccountRepository.instance.email;
+    if (email == null || email.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter all six digits.')),
+        const SnackBar(content: Text('Please return to Sign Up.')),
       );
       return;
     }
     setState(() => _busy = true);
-    await Future<void>.delayed(const Duration(milliseconds: 650));
-    if (!mounted) return;
-    setState(() => _busy = false);
-    showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialog) => AlertDialog(
-        title: const Text('Verification preview complete'),
-        content: const Text(
-          'This prototype accepted a six-digit code without checking an email service. Real verification will be enabled with Supabase Auth.',
-        ),
-        actions: [
-          FilledButton(
-            onPressed: () {
-              Navigator.pop(dialog);
-              ResidentAccountRepository.instance.markEmailVerified();
-              context.go('/profile-setup');
-            },
-            child: const Text('Continue setup'),
-          ),
-        ],
-      ),
-    );
+    try {
+      final result = await Supabase.instance.client.auth.verifyOTP(
+        email: email,
+        token: _fields.map((c) => c.text).join(),
+        type: OtpType.signup,
+      );
+      if (!mounted) return;
+      if (result.session == null) {
+        throw const AuthException('Verification did not establish a session.');
+      }
+      ResidentAccountRepository.instance.markEmailVerified();
+      context.go('/profile-setup');
+    } on AuthException catch (e) {
+      if (mounted)
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.message)));
+    } catch (_) {
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not verify this code.')),
+        );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
-  void _resend() {
+  Future<void> _resend() async {
     if (_seconds > 0) return;
-    for (final c in _fields) {
-      c.clear();
+    final email = ResidentAccountRepository.instance.email;
+    if (email == null || email.isEmpty) return;
+    try {
+      await Supabase.instance.client.auth.resend(
+        type: OtpType.signup,
+        email: email,
+      );
+      if (!mounted) return;
+      for (final c in _fields) {
+        c.clear();
+      }
+      _focus.first.requestFocus();
+      _startTimer();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Verification email requested.')),
+      );
+    } on AuthException catch (e) {
+      if (mounted)
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.message)));
     }
-    _focus.first.requestFocus();
-    _startTimer();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Resend preview only: no email was sent.')),
-    );
   }
 
   @override
@@ -232,7 +256,7 @@ class _VerificationPageState extends State<VerificationPage> {
           ),
           const SizedBox(height: 10),
           const Text(
-            'Prototype mode: the six-digit code is simulated and is not validated by Supabase.',
+            'Use the code sent by Supabase. For six-digit codes, set the Supabase Confirm Signup email template to include {{ .Token }}.',
             style: TextStyle(
               fontSize: 11,
               color: Color(0xFF68786E),

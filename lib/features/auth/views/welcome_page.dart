@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/kaisa_brand.dart';
+import '../../../core/theme/kaisa_backdrop.dart';
 
 /// Compact introduction: four feature slides, one persistent CTA.
 class WelcomePage extends StatefulWidget {
@@ -82,11 +84,16 @@ class _WelcomePageState extends State<WelcomePage> {
             children: [
               Row(
                 children: [
-                  _Logo('assets/images/LGU.png', Icons.account_balance_rounded),
+                  const KaisaLogoTile(
+                    asset: KaisaAssets.lguSeal,
+                    size: 42,
+                    fallbackIcon: Icons.account_balance_rounded,
+                  ),
                   const SizedBox(width: 7),
-                  _Logo(
-                    'assets/images/kaisa_logo.png',
-                    Icons.diversity_3_rounded,
+                  const KaisaLogoTile(
+                    asset: KaisaAssets.kaisaLogo,
+                    size: 42,
+                    fallbackIcon: Icons.diversity_3_rounded,
                   ),
                   const SizedBox(width: 12),
                   const Column(
@@ -247,96 +254,103 @@ class _FeatureSlide extends StatelessWidget {
           colors: [feature.background, const Color(0xFF073C32)],
         ),
       ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final available = constraints.maxHeight;
-          final small = available < 530;
-          final content = Padding(
-            padding: EdgeInsets.all(desktop ? 50 : (small ? 20 : 26)),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: .14),
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                  child: Text(
-                    feature.eyebrow.toUpperCase(),
-                    style: TextStyle(
-                      color: feature.accent,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 11,
-                      letterSpacing: 1.3,
-                    ),
-                  ),
-                ),
-                SizedBox(height: desktop ? 26 : 16),
-                Text(
-                  feature.title,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: desktop ? 52 : (small ? 27 : 36),
-                    height: 1.04,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -1.2,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  feature.description,
-                  style: TextStyle(
-                    color: const Color(0xFFE5F2E9),
-                    fontSize: small ? 13 : 15,
-                    height: 1.55,
-                  ),
-                ),
-                if (desktop) ...[
-                  const SizedBox(height: 32),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
+      child: Stack(
+        children: [
+          const Positioned.fill(child: KaisaBackdrop()),
+          Positioned.fill(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final available = constraints.maxHeight;
+                final small = available < 530;
+                final content = Padding(
+                  padding: EdgeInsets.all(desktop ? 50 : (small ? 20 : 26)),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.circle, size: 9, color: feature.accent),
-                      const SizedBox(width: 9),
-                      const Text(
-                        'CONNECT  •  PARTICIPATE  •  IMPACT',
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 1,
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: .14),
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                        child: Text(
+                          feature.eyebrow.toUpperCase(),
+                          style: TextStyle(
+                            color: feature.accent,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 11,
+                            letterSpacing: 1.3,
+                          ),
                         ),
                       ),
+                      SizedBox(height: desktop ? 26 : 16),
+                      Text(
+                        feature.title,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: desktop ? 52 : (small ? 27 : 36),
+                          height: 1.04,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -1.2,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        feature.description,
+                        style: TextStyle(
+                          color: const Color(0xFFE5F2E9),
+                          fontSize: small ? 13 : 15,
+                          height: 1.55,
+                        ),
+                      ),
+                      if (desktop) ...[
+                        const SizedBox(height: 32),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.circle, size: 9, color: feature.accent),
+                            const SizedBox(width: 9),
+                            const Text(
+                              'CONNECT  •  PARTICIPATE  •  IMPACT',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 1,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ],
                   ),
-                ],
-              ],
+                );
+                final visual = _Illustration(
+                  icon: feature.icon,
+                  accent: feature.accent,
+                  small: small,
+                );
+                if (desktop)
+                  return Row(
+                    children: [
+                      Expanded(flex: 6, child: content),
+                      Expanded(flex: 5, child: visual),
+                    ],
+                  );
+                return Column(
+                  children: [
+                    Expanded(flex: small ? 3 : 5, child: visual),
+                    Expanded(flex: small ? 5 : 6, child: content),
+                  ],
+                );
+              },
             ),
-          );
-          final visual = _Illustration(
-            icon: feature.icon,
-            accent: feature.accent,
-            small: small,
-          );
-          if (desktop)
-            return Row(
-              children: [
-                Expanded(flex: 6, child: content),
-                Expanded(flex: 5, child: visual),
-              ],
-            );
-          return Column(
-            children: [
-              Expanded(flex: small ? 3 : 5, child: visual),
-              Expanded(flex: small ? 5 : 6, child: content),
-            ],
-          );
-        },
+          ),
+        ],
       ),
     );
   }
@@ -408,28 +422,6 @@ class _Illustration extends StatelessWidget {
           ],
         );
       },
-    ),
-  );
-}
-
-class _Logo extends StatelessWidget {
-  final String path;
-  final IconData fallback;
-  const _Logo(this.path, this.fallback);
-  @override
-  Widget build(BuildContext context) => Container(
-    height: 42,
-    width: 42,
-    padding: const EdgeInsets.all(5),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: const Color(0xFFE1E9E2)),
-    ),
-    child: Image.asset(
-      path,
-      fit: BoxFit.contain,
-      errorBuilder: (_, __, ___) => Icon(fallback, color: AppColors.forest),
     ),
   );
 }
