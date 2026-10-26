@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/resident/widgets/kaisa_responsive_shell.dart';
+import '../services/social_otp_service.dart';
 import '../../features/resident/about/about_kaisa_page.dart';
 
 import '../../features/auth/views/welcome_page.dart';
@@ -44,14 +45,39 @@ class _AuthRouterRefresh extends ChangeNotifier {
 final appRouter = GoRouter(
   initialLocation: '/welcome',
   refreshListenable: _authRefresh,
-  redirect: (context, state) {
-    final signedIn = Supabase.instance.client.auth.currentSession != null;
+  redirect: (context, state) async {
+    final user = Supabase.instance.client.auth.currentUser;
     final path = state.matchedLocation;
-    // Protect resident routes at the UI level. Database tables must ALSO use RLS.
-    if (!signedIn && path.startsWith('/resident/')) return '/login';
-    // Returning from Google/Facebook OAuth to an auth route should show the app.
-    if (signedIn &&
-        (path == '/login' || path == '/signup' || path == '/welcome')) {
+    if (user == null) {
+      if (path.startsWith('/resident/') || path == '/profile-setup')
+        return '/login';
+      return null;
+    }
+    // Only a backend-verified record can satisfy this gate.
+    // IMPORTANT: Apply equivalent RLS policies to every sensitive resident table.
+    if (SocialOtpService.instance.isSocial(user)) {
+      try {
+        final verified = await SocialOtpService.instance.hasCompleted(user);
+        if (!verified &&
+            (path != '/verification' ||
+                state.uri.queryParameters['mode'] != 'social')) {
+          return '/verification?mode=social';
+        }
+        if (verified &&
+            path == '/verification' &&
+            state.uri.queryParameters['mode'] == 'social') {
+          return '/profile-setup';
+        }
+      } catch (error) {
+        debugPrint('KAISA social OTP status unavailable: $error');
+        // Fail closed: never grant access because the database lookup failed.
+        if (path != '/verification' ||
+            state.uri.queryParameters['mode'] != 'social') {
+          return '/verification?mode=social';
+        }
+      }
+    }
+    if (path == '/login' || path == '/signup' || path == '/welcome') {
       return '/resident/home';
     }
     return null;
@@ -75,7 +101,9 @@ final appRouter = GoRouter(
 
     GoRoute(
       path: '/verification',
-      builder: (context, state) => const VerificationPage(),
+      builder: (context, state) => VerificationPage(
+        social: state.uri.queryParameters['mode'] == 'social',
+      ),
     ),
 
     ShellRoute(
