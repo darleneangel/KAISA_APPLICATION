@@ -1,5 +1,3 @@
-import '../widgets/kaisa_resident_hero.dart';
-import '../../../core/theme/kaisa_backdrop.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -85,7 +83,6 @@ class ProfilePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
 
       appBar: AppBar(
         automaticallyImplyLeading: false,
@@ -107,27 +104,16 @@ class ProfilePage extends StatelessWidget {
         ],
       ),
 
-      body: Stack(
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(bottom: 23),
-            child: KaisaResidentHero(
-              eyebrow: 'YOUR KAISA STORY',
-              title: 'You make the difference.',
-              subtitle: 'Your community journey starts with you.',
-              icon: Icons.person_rounded,
-              chip: 'Resident profile',
-            ),
-          ),
-          const Positioned.fill(child: KaisaBackdrop()),
-          Positioned.fill(
-            child: SafeArea(
-              top: false,
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 110),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+      body: SafeArea(
+        top: false,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 110),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1000),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                     // ==================================================
                     // PROFILE HEADER
                     // ==================================================
@@ -159,10 +145,10 @@ class ProfilePage extends StatelessWidget {
                                   ),
                                 ),
                                 alignment: Alignment.center,
-                                child: const Text(
+                                child: Text(
                                   'DC',
                                   style: TextStyle(
-                                    color: AppColors.deepForest,
+                                    color: Theme.of(context).colorScheme.onSurface,
                                     fontSize: 27,
                                     fontWeight: FontWeight.w800,
                                   ),
@@ -271,24 +257,24 @@ class ProfilePage extends StatelessWidget {
                         width: double.infinity,
                         padding: const EdgeInsets.all(18),
                         decoration: BoxDecoration(
-                          color: AppColors.mint,
+                          color: Theme.of(context).colorScheme.surfaceContainerLow,
                           borderRadius: BorderRadius.circular(18),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Row(
+                            Row(
                               children: [
                                 Icon(
                                   Icons.verified_user_outlined,
-                                  color: AppColors.deepForest,
+                                  color: Theme.of(context).colorScheme.onSurface,
                                 ),
                                 SizedBox(width: 10),
                                 Expanded(
                                   child: Text(
                                     'Complete Identity Verification',
                                     style: TextStyle(
-                                      color: AppColors.deepForest,
+                                      color: Theme.of(context).colorScheme.onSurface,
                                       fontWeight: FontWeight.w700,
                                     ),
                                   ),
@@ -298,12 +284,12 @@ class ProfilePage extends StatelessWidget {
 
                             const SizedBox(height: 10),
 
-                            const Text(
+                            Text(
                               'Verify your identity to join organizations, '
                               'register for events, and request the creation '
                               'of an organization.',
                               style: TextStyle(
-                                color: AppColors.deepForest,
+                                color: Theme.of(context).colorScheme.onSurface,
                                 fontSize: 12,
                                 height: 1.5,
                               ),
@@ -460,24 +446,22 @@ class ProfilePage extends StatelessWidget {
 
                     const SizedBox(height: 22),
 
-                    const Center(
+                    Center(
                       child: Text(
                         'KAISA • Resident Portal',
                         style: TextStyle(
                           fontSize: 11,
-                          color: AppColors.textMuted,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
                     ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
+                ], // Column children
+              ), // Column
+            ), // ConstrainedBox
+          ), // Center
+        ), // SingleChildScrollView
+      ), // SafeArea
 
-      //----- remove:
     );
   }
 }
@@ -495,10 +479,10 @@ class _SectionTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       title,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 18,
         fontWeight: FontWeight.w700,
-        color: AppColors.textPrimary,
+        color: Theme.of(context).colorScheme.onSurface,
       ),
     );
   }
@@ -526,7 +510,7 @@ class _ProfileMenuCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: AppColors.surface,
+      color: Theme.of(context).colorScheme.surface,
       borderRadius: BorderRadius.circular(17),
       child: InkWell(
         onTap: onTap,
@@ -535,7 +519,7 @@ class _ProfileMenuCard extends StatelessWidget {
           padding: const EdgeInsets.all(15),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(17),
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
           ),
           child: Row(
             children: [
@@ -543,10 +527,10 @@ class _ProfileMenuCard extends StatelessWidget {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: AppColors.mint,
+                  color: Theme.of(context).colorScheme.primaryContainer,
                   borderRadius: BorderRadius.circular(13),
                 ),
-                child: Icon(icon, color: AppColors.forest, size: 22),
+                child: Icon(icon, color: Theme.of(context).colorScheme.onPrimaryContainer, size: 22),
               ),
 
               const SizedBox(width: 13),
@@ -560,20 +544,20 @@ class _ProfileMenuCard extends StatelessWidget {
                         Flexible(
                           child: Text(
                             title,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w700,
-                              color: AppColors.textPrimary,
+                              color: Theme.of(context).colorScheme.onSurface,
                             ),
                           ),
                         ),
 
                         if (locked) ...[
                           const SizedBox(width: 7),
-                          const Icon(
+                          Icon(
                             Icons.lock_outline_rounded,
                             size: 14,
-                            color: AppColors.textMuted,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
                         ],
                       ],
@@ -583,9 +567,9 @@ class _ProfileMenuCard extends StatelessWidget {
 
                     Text(
                       subtitle,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
-                        color: AppColors.textSecondary,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ],
@@ -594,9 +578,9 @@ class _ProfileMenuCard extends StatelessWidget {
 
               const SizedBox(width: 8),
 
-              const Icon(
+              Icon(
                 Icons.chevron_right_rounded,
-                color: AppColors.textMuted,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ],
           ),
