@@ -1,678 +1,394 @@
-import '../widgets/kaisa_resident_hero.dart';
-import '../../../core/theme/kaisa_backdrop.dart';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'kaisa_camera_capture.dart';
 
-import '../../../core/theme/app_colors.dart';
+const _forest = Color(0xFF14532D);
+const _green = Color(0xFF237A50);
+const _muted = Color(0xFF63786B);
 
 class IdentityVerificationPage extends StatefulWidget {
   const IdentityVerificationPage({super.key});
-
   @override
   State<IdentityVerificationPage> createState() =>
       _IdentityVerificationPageState();
 }
 
 class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
-  final _formKey = GlobalKey<FormState>();
-
-  final fullNameController = TextEditingController(text: 'Darlene Custodio');
-  final addressController = TextEditingController();
-  final idNumberController = TextEditingController();
-
-  String? selectedIdType;
-  bool informationConfirmed = false;
-  bool isSubmitting = false;
-
-  final List<String> acceptedIds = [
-    'Philippine National ID',
-    'Driver\'s License',
-    'Passport',
-    'UMID',
-    'Postal ID',
-    'Voter\'s ID',
-    'Other Government-Issued ID',
-  ];
+  final db = Supabase.instance.client;
+  final extractedName = TextEditingController();
+  final extractedAddress = TextEditingController();
+  final form = GlobalKey<FormState>();
+  String idType = 'Philippine National ID';
+  Uint8List? image;
+  String mime = 'image/jpeg';
+  bool confirmed = false, busy = false, ocrAvailable = true;
+  String? status;
+  @override
+  void initState() {
+    super.initState();
+    _status();
+  }
 
   @override
   void dispose() {
-    fullNameController.dispose();
-    addressController.dispose();
-    idNumberController.dispose();
+    extractedName.dispose();
+    extractedAddress.dispose();
     super.dispose();
   }
 
-  Future<void> _submitVerification() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
+  Future<void> _status() async {
+    try {
+      final rows = await db
+          .from('kaisa_identity_requests')
+          .select('status')
+          .eq('user_id', db.auth.currentUser!.id)
+          .order('submitted_at', ascending: false)
+          .limit(1);
+      if (mounted)
+        setState(
+          () => status = rows.isEmpty ? null : rows.first['status'] as String,
+        );
+    } catch (_) {
+      /* Display application without blocking on status error. */
     }
+  }
 
-    if (!informationConfirmed) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Please confirm that the information you provided is correct.',
-          ),
-        ),
+  Future<void> _pick(ImageSource source) async {
+    try {
+      final f = await ImagePicker().pickImage(
+        source: source,
+        maxWidth: 2048,
+        imageQuality: 88,
+      );
+      if (f == null) return;
+      final bytes = await f.readAsBytes();
+      final contentType = f.mimeType ?? 'image/jpeg';
+      if (!['image/jpeg', 'image/png', 'image/webp'].contains(contentType))
+        throw Exception('Use a JPG, PNG, or WEBP image.');
+      if (bytes.lengthInBytes > 5 * 1024 * 1024)
+        throw Exception('ID photo must be under 5 MB.');
+      if (mounted)
+        setState(() {
+          image = bytes;
+          mime = contentType;
+        });
+    } catch (e) {
+      _notice('$e');
+    }
+  }
+
+  void _notice(String s) {
+    if (mounted)
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s)));
+  }
+
+  Future<void> _camera() async {
+    try {
+      final bytes = await Navigator.of(context).push<Uint8List>(
+        MaterialPageRoute(builder: (_) => const KaisaCameraCapture()),
+      );
+      if (bytes == null) return;
+      if (bytes.lengthInBytes > 5 * 1024 * 1024) {
+        throw Exception('Image exceeds 5 MB; use a smaller image.');
+      }
+      if (mounted)
+        setState(() {
+          image = bytes;
+          mime = 'image/jpeg';
+        });
+    } catch (e) {
+      _notice('$e');
+    }
+  }
+
+  Future<void> _submit() async {
+    if (image == null || !confirmed || busy || !_validate()) {
+      _notice(
+        'Add a clear ID photo, review its details, and confirm your consent.',
       );
       return;
     }
-
-    setState(() {
-      isSubmitting = true;
-    });
-
-    // PROTOTYPE ONLY.
-    // Later, this is where the verification request
-    // will be inserted into Supabase.
-    await Future.delayed(const Duration(milliseconds: 900));
-
-    if (!mounted) return;
-
-    setState(() {
-      isSubmitting = false;
-    });
-
-    _showSubmissionConfirmation();
-  }
-
-  void _showSubmissionConfirmation() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) {
-        return AlertDialog(
-          icon: const Icon(
-            Icons.verified_user_outlined,
-            size: 46,
-            color: AppColors.forest,
-          ),
-          title: const Text(
-            'Submit Verification?',
-            textAlign: TextAlign.center,
-          ),
-          content: const Text(
-            'Your identity information will be submitted for review. '
-            'Your account will remain Tier 1 while verification is pending.',
-            textAlign: TextAlign.center,
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(dialogContext);
-              },
-              child: const Text('Review'),
-            ),
-            FilledButton(
-              onPressed: () {
-                Navigator.pop(dialogContext);
-
-                context.go(
-                  '/resident/verification-status',
-                  extra: {'status': 'Pending'},
-                );
-              },
-              child: const Text('Submit'),
-            ),
-          ],
+    setState(() => busy = true);
+    try {
+      final uid = db.auth.currentUser!.id;
+      final ext = mime == 'image/png'
+          ? 'png'
+          : mime == 'image/webp'
+          ? 'webp'
+          : 'jpg';
+      final path = '$uid/${DateTime.now().microsecondsSinceEpoch}.$ext';
+      await db.storage
+          .from('kaisa-identity')
+          .uploadBinary(
+            path,
+            image!,
+            fileOptions: FileOptions(contentType: mime, upsert: false),
+          );
+      final result = await db
+          .from('kaisa_identity_requests')
+          .insert({
+            'user_id': uid,
+            'id_type': idType,
+            'id_path': path,
+            'extracted_name': extractedName.text.trim(),
+            'extracted_address': extractedAddress.text.trim(),
+          })
+          .select('id')
+          .single();
+      // OCR: Edge Function is OPTIONAL until a private server-side Vision secret is configured.
+      // Failed OCR must not silently cancel a successfully saved verification request.
+      try {
+        await db.functions.invoke(
+          'kaisa-id-ocr',
+          body: {'request_id': result['id']},
         );
-      },
-    );
+      } catch (_) {
+        ocrAvailable = false;
+      }
+      if (!mounted) return;
+      _notice('ID submitted. A KAISA Super Admin will review your request.');
+      context.go('/resident/verification-status', extra: {'status': 'Pending'});
+    } on PostgrestException catch (e) {
+      _notice(
+        e.code == '23505'
+            ? 'You already have a pending verification request.'
+            : e.message,
+      );
+    } catch (e) {
+      _notice('Unable to submit verification: $e');
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
   }
 
-  void _showIdUploadInfo() {
-    showModalBottomSheet(
-      context: context,
-      showDragHandle: true,
-      builder: (sheetContext) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(24, 10, 24, 32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 64,
-                height: 64,
-                decoration: const BoxDecoration(
-                  color: AppColors.mint,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.add_a_photo_outlined,
-                  color: AppColors.forest,
-                  size: 30,
-                ),
-              ),
-              const SizedBox(height: 18),
-              const Text(
-                'Valid ID Upload',
-                style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'For the prototype, document upload is not connected yet. '
-                'When the database and storage are connected, residents '
-                'will upload a clear image of their selected valid ID here.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: AppColors.textSecondary, height: 1.5),
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: () {
-                    Navigator.pop(sheetContext);
-                  },
-                  child: const Text('Got It'),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
+  bool _validate() => form.currentState?.validate() ?? false;
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-
-      appBar: AppBar(
-        leading: IconButton(
-          onPressed: () => context.pop(),
-          icon: const Icon(Icons.arrow_back_rounded),
-        ),
-        title: const Text(
-          'Identity Verification',
-          style: TextStyle(fontWeight: FontWeight.w800),
-        ),
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: const Color(0xFFF8FAF8),
+    appBar: AppBar(
+      backgroundColor: Colors.transparent,
+      title: const Text(
+        'Identity verification',
+        style: TextStyle(color: _forest, fontWeight: FontWeight.w800),
       ),
-
-      body: Stack(
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(bottom: 23),
-            child: KaisaResidentHero(
-              eyebrow: 'YOUR SAFETY MATTERS',
-              title: 'Build trust together.',
-              subtitle:
-                  'Verify your identity to unlock more ways to participate.',
-              icon: Icons.verified_user_rounded,
-              chip: 'Identity verification',
-            ),
-          ),
-          const Positioned.fill(child: KaisaBackdrop()),
-          Positioned.fill(
-            child: SafeArea(
-              top: false,
-              child: Form(
-                key: _formKey,
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 50),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+    ),
+    body: SafeArea(
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 760),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: Form(
+              key: form,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Become a Tier 2 Resident',
+                    style: TextStyle(
+                      color: _forest,
+                      fontSize: 27,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Submit a clear government-issued ID. Only an authorized KAISA Super Admin can approve Tier 2 access.',
+                    style: TextStyle(color: _muted, height: 1.5),
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEAF5ED),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.privacy_tip_outlined, color: _green),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Your ID is stored privately. It will never appear in the community feed.',
+                            style: TextStyle(color: _forest),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (status == 'pending') ...[
+                    const SizedBox(height: 12),
+                    const Card(
+                      child: ListTile(
+                        leading: Icon(Icons.hourglass_top, color: _green),
+                        title: Text('Verification pending'),
+                        subtitle: Text(
+                          'Your latest request is awaiting Super Admin review.',
+                        ),
+                      ),
+                    ),
+                  ],
+                  if (status == 'approved') ...[
+                    const SizedBox(height: 12),
+                    const Card(
+                      child: ListTile(
+                        leading: Icon(Icons.verified, color: _green),
+                        title: Text('Tier 2 approved'),
+                        subtitle: Text(
+                          'Your community publishing access is active.',
+                        ),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 20),
+                  DropdownButtonFormField<String>(
+                    initialValue: idType,
+                    decoration: const InputDecoration(
+                      labelText: 'Type of valid ID',
+                      border: OutlineInputBorder(),
+                    ),
+                    items:
+                        const [
+                              'Philippine National ID',
+                              'Driver’s License',
+                              'Passport',
+                              'UMID',
+                              'Postal ID',
+                              'Voter’s ID',
+                              'Other Government-Issued ID',
+                            ]
+                            .map(
+                              (v) => DropdownMenuItem(value: v, child: Text(v)),
+                            )
+                            .toList(),
+                    onChanged: (v) => setState(() => idType = v ?? idType),
+                  ),
+                  const SizedBox(height: 16),
+                  if (image == null)
+                    Container(
+                      width: double.infinity,
+                      height: 160,
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: const Color(0xFFD7E9DC),
+                          width: 2,
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: const Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.badge_outlined, size: 46, color: _green),
+                          SizedBox(height: 8),
+                          Text(
+                            'No ID photo selected',
+                            style: TextStyle(color: _muted),
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(14),
+                      child: Image.memory(
+                        image!,
+                        height: 230,
+                        width: double.infinity,
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 8,
                     children: [
-                      // ==============================================
-                      // HEADER
-                      // ==============================================
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [AppColors.forest, AppColors.deepForest],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(22),
-                        ),
-                        child: const Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Icon(
-                              Icons.verified_user_outlined,
-                              color: Colors.white,
-                              size: 34,
-                            ),
-                            SizedBox(height: 16),
-                            Text(
-                              'Become a Tier 2 Resident',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 22,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                            SizedBox(height: 8),
-                            Text(
-                              'Verify your identity to unlock community '
-                              'participation features in KAISA.',
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 13,
-                                height: 1.5,
-                              ),
-                            ),
-                          ],
-                        ),
+                      OutlinedButton.icon(
+                        onPressed: busy
+                            ? null
+                            : () => _pick(ImageSource.gallery),
+                        icon: const Icon(Icons.upload_file),
+                        label: const Text('Upload ID image'),
                       ),
-
-                      const SizedBox(height: 22),
-
-                      // ==============================================
-                      // BENEFITS
-                      // ==============================================
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(17),
-                        decoration: BoxDecoration(
-                          color: AppColors.surface,
-                          borderRadius: BorderRadius.circular(18),
-                          border: Border.all(color: AppColors.border),
-                        ),
-                        child: const Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Tier 2 Access',
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            SizedBox(height: 13),
-                            _BenefitItem(
-                              icon: Icons.groups_outlined,
-                              text: 'Join community organizations',
-                            ),
-                            SizedBox(height: 10),
-                            _BenefitItem(
-                              icon: Icons.event_available_outlined,
-                              text: 'Register for community events',
-                            ),
-                            SizedBox(height: 10),
-                            _BenefitItem(
-                              icon: Icons.add_business_outlined,
-                              text: 'Request a new organization',
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      const SizedBox(height: 28),
-
-                      const _SectionHeader(
-                        title: 'Personal Information',
-                        subtitle:
-                            'Make sure your information matches your valid ID.',
-                      ),
-
-                      const SizedBox(height: 18),
-
-                      TextFormField(
-                        controller: fullNameController,
-                        textCapitalization: TextCapitalization.words,
-                        decoration: const InputDecoration(
-                          labelText: 'Full Name',
-                          prefixIcon: Icon(Icons.person_outline_rounded),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Please enter your full name.';
-                          }
-
-                          return null;
-                        },
-                      ),
-
-                      const SizedBox(height: 16),
-
-                      TextFormField(
-                        controller: addressController,
-                        textCapitalization: TextCapitalization.words,
-                        minLines: 2,
-                        maxLines: 3,
-                        decoration: const InputDecoration(
-                          labelText: 'Residential Address',
-                          hintText: 'Enter your complete address',
-                          alignLabelWithHint: true,
-                          prefixIcon: Icon(Icons.home_outlined),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Please enter your residential address.';
-                          }
-
-                          return null;
-                        },
-                      ),
-
-                      const SizedBox(height: 28),
-
-                      // ==============================================
-                      // ID INFORMATION
-                      // ==============================================
-                      const _SectionHeader(
-                        title: 'Valid ID',
-                        subtitle:
-                            'Provide a government-issued identification document.',
-                      ),
-
-                      const SizedBox(height: 18),
-
-                      DropdownButtonFormField<String>(
-                        initialValue: selectedIdType,
-                        decoration: const InputDecoration(
-                          labelText: 'ID Type',
-                          prefixIcon: Icon(Icons.badge_outlined),
-                        ),
-                        hint: const Text('Select valid ID'),
-                        items: acceptedIds.map((id) {
-                          return DropdownMenuItem<String>(
-                            value: id,
-                            child: Text(id),
-                          );
-                        }).toList(),
-                        onChanged: (value) {
-                          setState(() {
-                            selectedIdType = value;
-                          });
-                        },
-                        validator: (value) {
-                          if (value == null) {
-                            return 'Please select an ID type.';
-                          }
-
-                          return null;
-                        },
-                      ),
-
-                      const SizedBox(height: 16),
-
-                      TextFormField(
-                        controller: idNumberController,
-                        decoration: const InputDecoration(
-                          labelText: 'ID Number',
-                          hintText: 'Enter identification number',
-                          prefixIcon: Icon(Icons.numbers_rounded),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Please enter your ID number.';
-                          }
-
-                          return null;
-                        },
-                      ),
-
-                      const SizedBox(height: 18),
-
-                      // ==============================================
-                      // ID UPLOAD PLACEHOLDER
-                      // ==============================================
-                      InkWell(
-                        onTap: _showIdUploadInfo,
-                        borderRadius: BorderRadius.circular(18),
-                        child: Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(24),
-                          decoration: BoxDecoration(
-                            color: AppColors.surface,
-                            borderRadius: BorderRadius.circular(18),
-                            border: Border.all(color: AppColors.border),
-                          ),
-                          child: const Column(
-                            children: [
-                              Icon(
-                                Icons.cloud_upload_outlined,
-                                size: 38,
-                                color: AppColors.forest,
-                              ),
-                              SizedBox(height: 12),
-                              Text(
-                                'Upload Valid ID',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.textPrimary,
-                                ),
-                              ),
-                              SizedBox(height: 5),
-                              Text(
-                                'Tap to add a clear photo of your ID',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: AppColors.textSecondary,
-                                ),
-                              ),
-                              SizedBox(height: 8),
-                              Text(
-                                'Prototype placeholder',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  color: AppColors.textMuted,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 26),
-
-                      // ==============================================
-                      // REVIEW PROCESS
-                      // ==============================================
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(18),
-                        decoration: BoxDecoration(
-                          color: AppColors.mint,
-                          borderRadius: BorderRadius.circular(18),
-                        ),
-                        child: const Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Verification Process',
-                              style: TextStyle(
-                                color: AppColors.deepForest,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            SizedBox(height: 14),
-                            _VerificationStep(
-                              number: '1',
-                              text: 'Submit your information and valid ID',
-                            ),
-                            SizedBox(height: 12),
-                            _VerificationStep(
-                              number: '2',
-                              text: 'Your request is reviewed',
-                            ),
-                            SizedBox(height: 12),
-                            _VerificationStep(
-                              number: '3',
-                              text:
-                                  'You receive an approval or rejection notification',
-                            ),
-                            SizedBox(height: 12),
-                            _VerificationStep(
-                              number: '4',
-                              text: 'Approved accounts are upgraded to Tier 2',
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      const SizedBox(height: 20),
-
-                      CheckboxListTile(
-                        value: informationConfirmed,
-                        contentPadding: EdgeInsets.zero,
-                        controlAffinity: ListTileControlAffinity.leading,
-                        title: const Text(
-                          'I confirm that the information provided is '
-                          'accurate and belongs to me.',
-                          style: TextStyle(fontSize: 13, height: 1.4),
-                        ),
-                        onChanged: (value) {
-                          setState(() {
-                            informationConfirmed = value ?? false;
-                          });
-                        },
-                      ),
-
-                      const SizedBox(height: 18),
-
-                      SizedBox(
-                        width: double.infinity,
-                        child: FilledButton.icon(
-                          onPressed: isSubmitting ? null : _submitVerification,
-                          icon: isSubmitting
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : const Icon(Icons.send_outlined),
-                          label: Text(
-                            isSubmitting
-                                ? 'Submitting...'
-                                : 'Submit for Verification',
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 12),
-
-                      const Text(
-                        'Submitting a verification request does not '
-                        'immediately upgrade your account to Tier 2.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: AppColors.textMuted,
-                        ),
+                      OutlinedButton.icon(
+                        onPressed: busy ? null : _camera,
+                        icon: const Icon(Icons.camera_alt_outlined),
+                        label: const Text('Use camera'),
                       ),
                     ],
                   ),
-                ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Live capture works with phone cameras and permitted webcams on HTTPS or localhost. Upload is the fallback.',
+                    style: TextStyle(color: _muted, fontSize: 12),
+                  ),
+                  const SizedBox(height: 18),
+                  TextFormField(
+                    controller: extractedName,
+                    decoration: const InputDecoration(
+                      labelText: 'Name as shown on ID',
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (v) => v == null || v.trim().isEmpty
+                        ? 'Please enter the ID name'
+                        : null,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: extractedAddress,
+                    maxLines: 2,
+                    decoration: const InputDecoration(
+                      labelText: 'Address shown on ID (if available)',
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (_) => null,
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Review these details carefully. Automatic text extraction is an optional aid, not proof that an ID is valid.',
+                    style: TextStyle(fontSize: 12, color: _muted),
+                  ),
+                  const SizedBox(height: 14),
+                  CheckboxListTile(
+                    contentPadding: EdgeInsets.zero,
+                    activeColor: _forest,
+                    title: const Text(
+                      'I consent to KAISA processing this ID for identity verification and understand it will be reviewed by authorized LGU personnel.',
+                    ),
+                    value: confirmed,
+                    onChanged: busy
+                        ? null
+                        : (v) => setState(() => confirmed = v ?? false),
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: _forest,
+                        padding: const EdgeInsets.all(17),
+                      ),
+                      onPressed:
+                          busy || status == 'pending' || status == 'approved'
+                          ? null
+                          : _submit,
+                      icon: const Icon(Icons.verified_user_outlined),
+                      label: Text(
+                        busy
+                            ? 'Submitting securely...'
+                            : 'Submit for LGU review',
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 28),
+                ],
               ),
             ),
           ),
-        ],
+        ),
       ),
-    );
-  }
-}
-
-// ============================================================================
-// SECTION HEADER
-// ============================================================================
-
-class _SectionHeader extends StatelessWidget {
-  final String title;
-  final String subtitle;
-
-  const _SectionHeader({required this.title, required this.subtitle});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 19,
-            fontWeight: FontWeight.w700,
-            color: AppColors.textPrimary,
-          ),
-        ),
-        const SizedBox(height: 5),
-        Text(
-          subtitle,
-          style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
-        ),
-      ],
-    );
-  }
-}
-
-class _BenefitItem extends StatelessWidget {
-  final IconData icon;
-  final String text;
-
-  const _BenefitItem({required this.icon, required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, size: 19, color: AppColors.forest),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Text(
-            text,
-            style: const TextStyle(
-              fontSize: 13,
-              color: AppColors.textSecondary,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _VerificationStep extends StatelessWidget {
-  final String number;
-  final String text;
-
-  const _VerificationStep({required this.number, required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 25,
-          height: 25,
-          alignment: Alignment.center,
-          decoration: const BoxDecoration(
-            color: AppColors.forest,
-            shape: BoxShape.circle,
-          ),
-          child: Text(
-            number,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 11,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.only(top: 3),
-            child: Text(
-              text,
-              style: const TextStyle(
-                color: AppColors.deepForest,
-                fontSize: 12,
-                height: 1.4,
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
+    ),
+  );
 }
