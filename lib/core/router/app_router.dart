@@ -11,6 +11,7 @@ import '../../features/auth/views/welcome_page.dart';
 import '../../features/auth/views/login_page.dart';
 import '../../features/auth/views/signup_page.dart';
 import '../../features/auth/views/forgot_password_page.dart';
+import '../../features/auth/views/reset_password_page.dart';
 import '../../features/auth/views/profile_setup_page.dart';
 import '../../features/auth/views/verification_page.dart';
 import '../../features/resident/home/resident_home_page.dart';
@@ -49,8 +50,13 @@ final appRouter = GoRouter(
   redirect: (context, state) async {
     final user = Supabase.instance.client.auth.currentUser;
     final path = state.matchedLocation;
-    // Public entry screens are always accessible, even with a saved session.
-    if (path == '/loading' || path == '/welcome') return null;
+    // Recovery screens are public even if Supabase creates a temporary
+    // recovery session. Never redirect them to resident or social OTP.
+    if (path == '/loading' ||
+        path == '/welcome' ||
+        path == '/forgot-password' ||
+        path == '/reset-password')
+      return null;
     if (user == null) {
       if (path.startsWith('/resident/') || path == '/profile-setup')
         return '/login';
@@ -99,6 +105,12 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/forgot-password',
       builder: (context, state) => const ForgotPasswordPage(),
+    ),
+
+    GoRoute(
+      path: '/reset-password',
+      builder: (context, state) =>
+          ResetPasswordPage(email: state.uri.queryParameters['email'] ?? ''),
     ),
 
     GoRoute(
