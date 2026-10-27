@@ -6,6 +6,7 @@ import '../../features/resident/widgets/kaisa_responsive_shell.dart';
 import '../services/social_otp_service.dart';
 import '../../features/resident/about/about_kaisa_page.dart';
 
+import '../../features/auth/views/loading_screen.dart';
 import '../../features/auth/views/welcome_page.dart';
 import '../../features/auth/views/login_page.dart';
 import '../../features/auth/views/signup_page.dart';
@@ -43,11 +44,13 @@ class _AuthRouterRefresh extends ChangeNotifier {
 }
 
 final appRouter = GoRouter(
-  initialLocation: '/welcome',
+  initialLocation: '/loading',
   refreshListenable: _authRefresh,
   redirect: (context, state) async {
     final user = Supabase.instance.client.auth.currentUser;
     final path = state.matchedLocation;
+    // Public entry screens are always accessible, even with a saved session.
+    if (path == '/loading' || path == '/welcome') return null;
     if (user == null) {
       if (path.startsWith('/resident/') || path == '/profile-setup')
         return '/login';
@@ -77,12 +80,16 @@ final appRouter = GoRouter(
         }
       }
     }
-    if (path == '/login' || path == '/signup' || path == '/welcome') {
-      return '/resident/home';
-    }
+    // Do not automatically bypass the public login/signup pages.
+    // A saved Supabase session still exists until the user signs out.
+    if (path == '/login' || path == '/signup') return null;
     return null;
   },
   routes: [
+    GoRoute(
+      path: '/loading',
+      builder: (context, state) => const LoadingScreen(),
+    ),
     GoRoute(path: '/welcome', builder: (context, state) => const WelcomePage()),
 
     GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
