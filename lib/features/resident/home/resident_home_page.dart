@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../widgets/resident_bottom_nav.dart';
+import '../widgets/kaisa_resident_design.dart';
 
 const _forest = Color(0xFF14532D);
 const _green = Color(0xFF237A50);
@@ -214,81 +215,16 @@ class _ResidentHomePageState extends State<ResidentHomePage> {
       builder: (context, constraints) {
         final wide = constraints.maxWidth >= 800;
         final compact = constraints.maxWidth < 540;
-        final pad = compact ? 18.0 : 32.0;
+        final pad = KaisaResidentDesign.pagePadding(constraints.maxWidth);
         return Scaffold(
           backgroundColor: _paper,
-          appBar: AppBar(
-            backgroundColor: _paper,
-            surfaceTintColor: Colors.transparent,
-            titleSpacing: pad,
-            title: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 34,
-                  height: 34,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: _forest,
-                    borderRadius: BorderRadius.circular(11),
-                  ),
-                  child: const Icon(
-                    Icons.diversity_3_rounded,
-                    color: _gold,
-                    size: 19,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                const Text(
-                  'KAISA',
-                  style: TextStyle(
-                    color: _forest,
-                    fontSize: 21,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 1,
-                  ),
-                ),
-              ],
-            ),
-            actions: [
-              IconButton(
-                tooltip: 'Explore',
-                onPressed: _search,
-                icon: const Icon(Icons.search_rounded, color: _ink),
-              ),
-              IconButton(
-                tooltip: 'Refresh dashboard',
-                onPressed: _refreshing ? null : _refresh,
-                icon: const Icon(Icons.refresh_rounded, color: _ink),
-              ),
-              IconButton(
-                tooltip: 'Notifications',
-                onPressed: () => context.go('/resident/notifications'),
-                icon: const Icon(Icons.notifications_none_rounded, color: _ink),
-              ),
-              PopupMenuButton<String>(
-                tooltip: 'Account',
-                icon: const CircleAvatar(
-                  radius: 17,
-                  backgroundColor: Color(0xFFE5F2E9),
-                  child: Icon(Icons.person_rounded, color: _forest, size: 19),
-                ),
-                onSelected: (value) => value == 'logout'
-                    ? _logout(context)
-                    : context.go('/resident/profile'),
-                itemBuilder: (_) => const [
-                  PopupMenuItem(value: 'profile', child: Text('My profile')),
-                  PopupMenuItem(value: 'logout', child: Text('Sign out')),
-                ],
-              ),
-              SizedBox(width: compact ? 9 : 24),
-            ],
-          ),
           body: SafeArea(
             top: false,
             child: Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 1180),
+                constraints: const BoxConstraints(
+                  maxWidth: KaisaResidentDesign.desktopWidth,
+                ),
                 child: RefreshIndicator(
                   onRefresh: _refresh,
                   child: SingleChildScrollView(

@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../widgets/kaisa_resident_design.dart';
 
 const _forest = Color(0xFF14532D);
 const _green = Color(0xFF237A50);
@@ -131,7 +132,7 @@ class _FeedPageState extends State<FeedPage> {
         .where((p) => filter == 'All' || p['category'] == filter)
         .toList();
     return Scaffold(
-      backgroundColor: const Color(0xFFF7FAF8),
+      backgroundColor: KaisaResidentDesign.paper,
       floatingActionButton: width < 650 && tier2
           ? FloatingActionButton.extended(
               backgroundColor: _forest,
@@ -149,12 +150,14 @@ class _FeedPageState extends State<FeedPage> {
               SliverToBoxAdapter(
                 child: Center(
                   child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 950),
+                    constraints: const BoxConstraints(
+                      maxWidth: KaisaResidentDesign.desktopWidth,
+                    ),
                     child: Padding(
                       padding: EdgeInsets.fromLTRB(
-                        width < 650 ? 16 : 28,
-                        24,
-                        width < 650 ? 16 : 28,
+                        KaisaResidentDesign.pagePadding(width),
+                        width < 540 ? 12 : 28,
+                        KaisaResidentDesign.pagePadding(width),
                         8,
                       ),
                       child: Column(
@@ -172,21 +175,25 @@ class _FeedPageState extends State<FeedPage> {
                                         color: _green,
                                         fontSize: 11,
                                         fontWeight: FontWeight.w800,
-                                        letterSpacing: 1.5,
+                                        letterSpacing: 2,
                                       ),
                                     ),
-                                    SizedBox(height: 5),
+                                    SizedBox(height: 9),
                                     Text(
                                       'Community Feed',
                                       style: TextStyle(
                                         color: _ink,
                                         fontSize: 29,
-                                        fontWeight: FontWeight.w800,
+                                        fontWeight: FontWeight.w900,
                                       ),
                                     ),
                                     Text(
                                       'Stories, voices and updates from your community.',
-                                      style: TextStyle(color: _muted),
+                                      style: TextStyle(
+                                        color: _muted,
+                                        fontSize: 14,
+                                        height: 1.5,
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -196,15 +203,6 @@ class _FeedPageState extends State<FeedPage> {
                                 onPressed: _load,
                                 icon: const Icon(
                                   Icons.refresh_rounded,
-                                  color: _forest,
-                                ),
-                              ),
-                              IconButton(
-                                tooltip: 'Notifications',
-                                onPressed: () =>
-                                    context.push('/resident/notifications'),
-                                icon: const Icon(
-                                  Icons.notifications_none_rounded,
                                   color: _forest,
                                 ),
                               ),
@@ -368,12 +366,14 @@ class _FeedPageState extends State<FeedPage> {
                   itemCount: shown.length,
                   itemBuilder: (context, i) => Center(
                     child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 900),
+                      constraints: const BoxConstraints(
+                        maxWidth: KaisaResidentDesign.desktopWidth,
+                      ),
                       child: Padding(
                         padding: EdgeInsets.fromLTRB(
-                          width < 650 ? 14 : 26,
+                          KaisaResidentDesign.pagePadding(width),
                           0,
-                          width < 650 ? 14 : 26,
+                          KaisaResidentDesign.pagePadding(width),
                           16,
                         ),
                         child: _PostCard(
@@ -413,11 +413,11 @@ class _PostCard extends StatelessWidget {
       elevation: 0,
       color: Colors.white,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: const BorderSide(color: Color(0xFFE3EBE5)),
+        borderRadius: BorderRadius.circular(KaisaResidentDesign.cardRadius),
+        side: const BorderSide(color: KaisaResidentDesign.border),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(18),
+        padding: const EdgeInsets.all(KaisaResidentDesign.cardPadding),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

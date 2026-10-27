@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'kaisa_resident_design.dart';
 
 /// Responsive navigation for existing resident routes.
 /// Phone: existing page-level bottom navigation is preserved.
@@ -49,7 +51,14 @@ class KaisaResponsiveShell extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
-        if (width < 600) return child;
+        if (width < 600) {
+          return Column(
+            children: [
+              const KaisaResidentTopBar(),
+              Expanded(child: child),
+            ],
+          );
+        }
         final desktop = width >= 1024;
         return Scaffold(
           backgroundColor: const Color(0xFFF8FAF8),
@@ -239,11 +248,18 @@ class KaisaResponsiveShell extends StatelessWidget {
                   ),
                 ),
                 Expanded(
-                  child: Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 1440),
-                      child: child,
-                    ),
+                  child: Column(
+                    children: [
+                      const KaisaResidentTopBar(),
+                      Expanded(
+                        child: Center(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 1440),
+                            child: child,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -251,6 +267,201 @@ class KaisaResponsiveShell extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+/// Shared, single top header for resident screens. Put it in the ShellRoute
+/// wrapper rather than adding a separate AppBar to every screen.
+class KaisaResidentTopBar extends StatelessWidget {
+  const KaisaResidentTopBar({super.key});
+
+  static const _options = <(String, IconData, String)>[
+    ('Community Feed', Icons.forum_outlined, '/resident/feed'),
+    ('Organizations', Icons.groups_2_outlined, '/resident/organizations'),
+    ('Events', Icons.event_available_outlined, '/resident/events'),
+    ('My Events', Icons.bookmark_added_outlined, '/resident/my-events'),
+  ];
+
+  Future<void> _logout(BuildContext context) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Sign out of KAISA?'),
+        content: const Text('You will return to the welcome screen.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Sign out'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true || !context.mounted) return;
+    try {
+      await Supabase.instance.client.auth.signOut();
+      if (context.mounted) context.go('/welcome');
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+          const SnackBar(
+            content: Text('Could not sign out. Please try again.'),
+          ),
+        );
+      }
+    }
+  }
+
+  void _search(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      useSafeArea: true,
+      showDragHandle: true,
+      builder: (sheetContext) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const KaisaResidentSectionHeading(
+              title: 'Explore KAISA',
+              subtitle: 'Find what matters to your community.',
+            ),
+            const SizedBox(height: 12),
+            for (final option in _options)
+              ListTile(
+                leading: Icon(option.$2, color: KaisaResidentDesign.green),
+                title: Text(option.$1),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  context.go(option.$3);
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final compact = MediaQuery.sizeOf(context).width < 420;
+    final rawName =
+        Supabase.instance.client.auth.currentUser?.userMetadata?['first_name']
+            ?.toString() ??
+        '';
+    final initial = rawName.trim().isEmpty
+        ? 'R'
+        : rawName.trim()[0].toUpperCase();
+    return Material(
+      color: KaisaResidentDesign.paper,
+      child: SafeArea(
+        bottom: false,
+        child: Container(
+          height: 66,
+          padding: EdgeInsets.symmetric(horizontal: compact ? 12 : 24),
+          decoration: const BoxDecoration(
+            border: Border(
+              bottom: BorderSide(color: KaisaResidentDesign.border),
+            ),
+          ),
+          child: Row(
+            children: [
+              InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: () => context.go('/resident/home'),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 34,
+                      height: 34,
+                      decoration: BoxDecoration(
+                        color: KaisaResidentDesign.forest,
+                        borderRadius: BorderRadius.circular(11),
+                      ),
+                      child: const Icon(
+                        Icons.diversity_3_rounded,
+                        color: KaisaResidentDesign.yellow,
+                        size: 19,
+                      ),
+                    ),
+                    const SizedBox(width: 9),
+                    const Text(
+                      'KAISA',
+                      style: TextStyle(
+                        color: KaisaResidentDesign.forest,
+                        fontSize: 21,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Spacer(),
+              IconButton(
+                tooltip: 'Explore KAISA',
+                iconSize: KaisaResidentDesign.iconSize,
+                onPressed: () => _search(context),
+                icon: const Icon(
+                  Icons.search_rounded,
+                  color: KaisaResidentDesign.ink,
+                ),
+              ),
+              IconButton(
+                tooltip: 'Notifications',
+                iconSize: KaisaResidentDesign.iconSize,
+                onPressed: () => context.go('/resident/notifications'),
+                icon: const Icon(
+                  Icons.notifications_none_rounded,
+                  color: KaisaResidentDesign.ink,
+                ),
+              ),
+              PopupMenuButton<String>(
+                tooltip: 'Account',
+                onSelected: (value) {
+                  if (value == 'logout') {
+                    _logout(context);
+                  } else {
+                    context.go(value);
+                  }
+                },
+                itemBuilder: (_) => const [
+                  PopupMenuItem(
+                    value: '/resident/profile',
+                    child: Text('My profile'),
+                  ),
+                  PopupMenuItem(
+                    value: '/resident/identity-verification',
+                    child: Text('Identity verification'),
+                  ),
+                  PopupMenuItem(value: 'logout', child: Text('Sign out')),
+                ],
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: CircleAvatar(
+                    radius: 17,
+                    backgroundColor: const Color(0xFFE5F2E9),
+                    child: Text(
+                      initial,
+                      style: const TextStyle(
+                        color: KaisaResidentDesign.forest,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
