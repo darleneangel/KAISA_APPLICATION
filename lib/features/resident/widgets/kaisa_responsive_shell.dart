@@ -4,7 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'kaisa_resident_design.dart';
 
 /// Responsive navigation for existing resident routes.
-/// Phone: existing page-level bottom navigation is preserved.
+/// Phone: one shared bottom navigation bar for every resident route.
 /// Tablet: compact icon rail. Desktop: expanded KAISA sidebar.
 /// No changes to authentication or router definitions are required.
 class KaisaResponsiveShell extends StatelessWidget {
@@ -19,6 +19,7 @@ class KaisaResponsiveShell extends StatelessWidget {
     '/resident/feed',
     '/resident/organizations',
     '/resident/events',
+    '/resident/messages',
     '/resident/profile',
   ];
   static const _names = [
@@ -26,6 +27,7 @@ class KaisaResponsiveShell extends StatelessWidget {
     'Community Feed',
     'Organizations',
     'Events',
+    'Messages',
     'My Profile',
   ];
   static const _icons = [
@@ -33,13 +35,18 @@ class KaisaResponsiveShell extends StatelessWidget {
     Icons.forum_outlined,
     Icons.groups_2_outlined,
     Icons.event_outlined,
+    Icons.chat_bubble_outline_rounded,
     Icons.person_outline_rounded,
   ];
 
   int _selected(String route) {
     if (route.contains('/event')) return 3;
     if (route.contains('/organization')) return 2;
-    if (route.contains('/profile') || route.contains('/verification')) return 4;
+    if (route.contains('/profile') ||
+        route.contains('/verification') ||
+        route.contains('/user/'))
+      return 5;
+    if (route.contains('/messages')) return 4;
     if (route.contains('/feed')) return 1;
     return 0;
   }
@@ -52,11 +59,61 @@ class KaisaResponsiveShell extends StatelessWidget {
       builder: (context, constraints) {
         final width = constraints.maxWidth;
         if (width < 600) {
-          return Column(
-            children: [
-              const KaisaResidentTopBar(),
-              Expanded(child: child),
-            ],
+          return Scaffold(
+            backgroundColor: KaisaResidentDesign.paper,
+            body: Column(
+              children: [
+                const KaisaResidentTopBar(),
+                Expanded(child: child),
+              ],
+            ),
+            bottomNavigationBar: SafeArea(
+              top: false,
+              child: NavigationBar(
+                height: 70,
+                elevation: 0,
+                backgroundColor: Colors.white,
+                indicatorColor: const Color(0xFFE5F2E9),
+                selectedIndex: index,
+                labelBehavior:
+                    NavigationDestinationLabelBehavior.onlyShowSelected,
+                onDestinationSelected: (next) {
+                  if (next != index) context.go(_paths[next]);
+                },
+                destinations: const [
+                  NavigationDestination(
+                    icon: Icon(Icons.home_outlined),
+                    selectedIcon: Icon(Icons.home_rounded),
+                    label: 'Home',
+                  ),
+                  NavigationDestination(
+                    icon: Icon(Icons.forum_outlined),
+                    selectedIcon: Icon(Icons.forum_rounded),
+                    label: 'Feed',
+                  ),
+                  NavigationDestination(
+                    icon: Icon(Icons.groups_2_outlined),
+                    selectedIcon: Icon(Icons.groups_2_rounded),
+                    label: 'Groups',
+                  ),
+                  NavigationDestination(
+                    icon: Icon(Icons.event_outlined),
+                    selectedIcon: Icon(Icons.event_rounded),
+                    label: 'Events',
+                  ),
+                  NavigationDestination(
+                    icon: Icon(Icons.chat_bubble_outline_rounded),
+                    selectedIcon: Icon(Icons.chat_bubble_rounded),
+                    label: 'Messages',
+                  ),
+                  NavigationDestination(
+                    icon: Icon(Icons.person_outline_rounded),
+                    selectedIcon: Icon(Icons.person_rounded),
+                    label: 'Profile',
+                  ),
+                ],
+              ),
+            ),
           );
         }
         final desktop = width >= 1024;
@@ -254,7 +311,9 @@ class KaisaResponsiveShell extends StatelessWidget {
                       Expanded(
                         child: Center(
                           child: ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 1440),
+                            constraints: const BoxConstraints(
+                              maxWidth: KaisaResidentDesign.desktopWidth,
+                            ),
                             child: child,
                           ),
                         ),
@@ -281,6 +340,7 @@ class KaisaResidentTopBar extends StatelessWidget {
     ('Organizations', Icons.groups_2_outlined, '/resident/organizations'),
     ('Events', Icons.event_available_outlined, '/resident/events'),
     ('My Events', Icons.bookmark_added_outlined, '/resident/my-events'),
+    ('Messages', Icons.chat_bubble_outline_rounded, '/resident/messages'),
   ];
 
   Future<void> _logout(BuildContext context) async {
@@ -411,6 +471,15 @@ class KaisaResidentTopBar extends StatelessWidget {
                 onPressed: () => _search(context),
                 icon: const Icon(
                   Icons.search_rounded,
+                  color: KaisaResidentDesign.ink,
+                ),
+              ),
+              IconButton(
+                tooltip: 'Messages',
+                iconSize: KaisaResidentDesign.iconSize,
+                onPressed: () => context.go('/resident/messages'),
+                icon: const Icon(
+                  Icons.chat_bubble_outline_rounded,
                   color: KaisaResidentDesign.ink,
                 ),
               ),

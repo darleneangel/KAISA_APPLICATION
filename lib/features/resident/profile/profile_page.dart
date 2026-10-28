@@ -1,591 +1,537 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../widgets/kaisa_resident_design.dart';
+import 'kaisa_profile_repository.dart';
+import 'kaisa_profile_widgets.dart';
 
-import '../../../core/theme/app_colors.dart';
-import '../../../core/services/kaisa_auth_service.dart';
-import '../../../shared/repositories/resident_account_repository.dart';
-// import '../widgets/resident_bottom_nav.dart';
-// import '../widgets/notification_bell.dart';
-//---------------------------to be accomplished
-
-class ProfilePage extends StatelessWidget {
+class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
+  @override
+  State<ProfilePage> createState() => _ProfilePageState();
+}
 
-  // ============================================================
-  // PROTOTYPE USER DATA
-  // Later these values will come from Supabase.
-  // ============================================================
+class _ProfilePageState extends State<ProfilePage> {
+  final repo = KaisaProfileRepository.instance;
+  Map<String, dynamic>? data, privateData;
+  List<Map<String, dynamic>> posts = [], attendance = [], certificates = [];
+  bool loading = true, saving = false, verified = false;
+  String? error;
+  String get uid => Supabase.instance.client.auth.currentUser!.id;
+  String get name => '${data?['display_name'] ?? 'KAISA Resident'}';
+  String get photoPath => '${data?['avatar_path'] ?? ''}';
+  String? get photoUrl => photoPath.isEmpty ? null : repo.avatarUrl(photoPath);
 
-  String get residentName =>
-      ResidentAccountRepository.instance.fullName.isNotEmpty
-      ? ResidentAccountRepository.instance.fullName
-      : (KaisaAuthService.instance.user?.userMetadata?['full_name']
-                ?.toString() ??
-            'KAISA Resident');
-  String get residentEmail => KaisaAuthService.instance.user?.email ?? '';
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
 
-  // false = Tier 1
-  // true  = Tier 2
-  static const bool isTier2Verified = false;
+  Future<void> _load() async {
+    setState(() {
+      loading = true;
+      error = null;
+    });
+    try {
+      final result = await Future.wait<dynamic>([
+        repo.publicProfile(uid),
+        repo.privateProfile(),
+        repo.posts(uid),
+        repo.isTier2(),
+        repo.attendance(),
+        repo.certificates(),
+      ]);
+      if (!mounted) return;
+      setState(() {
+        data = result[0] as Map<String, dynamic>?;
+        privateData = result[1] as Map<String, dynamic>?;
+        posts = result[2] as List<Map<String, dynamic>>;
+        verified = result[3] == true;
+        attendance = result[4] as List<Map<String, dynamic>>;
+        certificates = result[5] as List<Map<String, dynamic>>;
+      });
+    } catch (e) {
+      if (mounted)
+        setState(
+          () => error =
+              'Unable to load profile. Check the SQL migration and your connection. ($e)',
+        );
+    } finally {
+      if (mounted) setState(() => loading = false);
+    }
+  }
 
-  void _showLogoutDialog(BuildContext context) {
-    showDialog(
+  void _toast(String message) {
+    if (mounted)
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _editProfile() async {
+    final controller = TextEditingController(text: '${data?['bio'] ?? ''}');
+    String? newPath = photoPath.isEmpty ? null : photoPath;
+    bool photoBusy = false;
+    final saved = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          icon: const Icon(
-            Icons.logout_rounded,
-            size: 40,
-            color: AppColors.error,
-          ),
-          title: const Text('Log Out?', textAlign: TextAlign.center),
-          content: const Text(
-            'Are you sure you want to log out of your KAISA account?',
-            textAlign: TextAlign.center,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          title: const Text('Edit public profile'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Your photo, name and bio can be seen by other KAISA residents. Your address and account details stay private.',
+                  style: TextStyle(fontSize: 12),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: controller,
+                  maxLength: 300,
+                  maxLines: 4,
+                  decoration: const InputDecoration(
+                    labelText: 'Bio',
+                    hintText: 'Tell your community a little about yourself',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                OutlinedButton.icon(
+                  onPressed: photoBusy
+                      ? null
+                      : () async {
+                          try {
+                            final file = await ImagePicker().pickImage(
+                              source: ImageSource.gallery,
+                              imageQuality: 75,
+                              maxWidth: 1200,
+                            );
+                            if (file == null) return;
+                            setDialogState(() => photoBusy = true);
+                            final bytes = await file.readAsBytes();
+                            final path = await repo.uploadAvatar(
+                              bytes,
+                              file.mimeType ?? 'image/jpeg',
+                            );
+                            if (dialogContext.mounted)
+                              setDialogState(() => newPath = path);
+                          } catch (e) {
+                            _toast('Could not upload photo: $e');
+                          } finally {
+                            if (dialogContext.mounted)
+                              setDialogState(() => photoBusy = false);
+                          }
+                        },
+                  icon: photoBusy
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.add_a_photo_outlined),
+                  label: Text(
+                    newPath == photoPath
+                        ? 'Choose profile photo'
+                        : 'New photo selected',
+                  ),
+                ),
+              ],
+            ),
           ),
           actions: [
             TextButton(
-              onPressed: () {
-                Navigator.pop(dialogContext);
-              },
+              onPressed: photoBusy
+                  ? null
+                  : () => Navigator.pop(dialogContext, false),
               child: const Text('Cancel'),
             ),
-            TextButton(
-              onPressed: () async {
-                Navigator.pop(dialogContext);
-                try {
-                  await KaisaAuthService.instance.signOut();
-                  if (context.mounted) context.go('/login');
-                } catch (_) {
-                  if (context.mounted)
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Unable to log out. Please try again.'),
-                      ),
-                    );
-                }
-              },
-              style: TextButton.styleFrom(foregroundColor: AppColors.error),
-              child: const Text('Log Out'),
+            FilledButton(
+              onPressed: photoBusy
+                  ? null
+                  : () => Navigator.pop(dialogContext, true),
+              child: const Text('Save profile'),
             ),
           ],
-        );
-      },
+        ),
+      ),
     );
+    if (saved == true) {
+      setState(() => saving = true);
+      try {
+        await repo.saveProfile(
+          bio: controller.text.trim(),
+          avatarPath: newPath,
+        );
+        await _load();
+        _toast('Profile updated successfully.');
+      } catch (e) {
+        _toast('Could not save profile: $e');
+      } finally {
+        if (mounted) setState(() => saving = false);
+      }
+    }
+    controller.dispose();
   }
 
-  void _showComingSoon(BuildContext context, String feature) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('$feature will be connected soon.')));
+  Future<void> _logout() async {
+    final yes = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Sign out of KAISA?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Sign out'),
+          ),
+        ],
+      ),
+    );
+    if (yes != true) return;
+    try {
+      await Supabase.instance.client.auth.signOut();
+      if (mounted) context.go('/welcome');
+    } catch (e) {
+      _toast('Unable to sign out: $e');
+    }
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        title: const Text(
-          'Profile',
-          style: TextStyle(fontWeight: FontWeight.w800),
-        ),
-        actions: [
-          // remove:  const NotificationBell(),
-          IconButton(
-            tooltip: 'Settings',
-            onPressed: () {
-              _showComingSoon(context, 'Settings');
-            },
-            icon: const Icon(Icons.settings_outlined),
-          ),
-
-          const SizedBox(width: 8),
-        ],
-      ),
-
-      body: SafeArea(
-        top: false,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 110),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1000),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                    // ==================================================
-                    // PROFILE HEADER
-                    // ==================================================
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(22),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [AppColors.forest, AppColors.deepForest],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(24),
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: KaisaResidentDesign.paper,
+    body: RefreshIndicator(
+      onRefresh: _load,
+      child: LayoutBuilder(
+        builder: (context, c) {
+          final compact = c.maxWidth < 600;
+          return SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: EdgeInsets.fromLTRB(
+              compact ? 16 : 28,
+              20,
+              compact ? 16 : 28,
+              80,
+            ),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1040),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'YOUR COMMUNITY IDENTITY',
+                      style: TextStyle(
+                        color: KaisaResidentDesign.green,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 1.4,
                       ),
-                      child: Column(
-                        children: [
-                          Stack(
-                            clipBehavior: Clip.none,
-                            children: [
-                              Container(
-                                width: 92,
-                                height: 92,
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'My Profile',
+                      style: TextStyle(
+                        color: KaisaResidentDesign.ink,
+                        fontSize: 29,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Your story, activities and community journey.',
+                      style: TextStyle(
+                        color: KaisaResidentDesign.muted,
+                        fontSize: 13,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    if (loading)
+                      const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(40),
+                          child: CircularProgressIndicator(),
+                        ),
+                      )
+                    else if (error != null)
+                      KaisaResidentCard(
+                        child: Column(
+                          children: [
+                            Text(error!),
+                            TextButton(
+                              onPressed: _load,
+                              child: const Text('Retry'),
+                            ),
+                          ],
+                        ),
+                      )
+                    else ...[
+                      Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.all(compact ? 21 : 30),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [
+                              KaisaResidentDesign.forest,
+                              Color(0xFF267A50),
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                        child: Wrap(
+                          spacing: 20,
+                          runSpacing: 14,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            KaisaProfileAvatar(
+                              name: name,
+                              url: photoUrl,
+                              radius: 48,
+                            ),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  name,
+                                  style: const TextStyle(
                                     color: Colors.white,
-                                    width: 4,
+                                    fontSize: 23,
+                                    fontWeight: FontWeight.w900,
                                   ),
                                 ),
-                                alignment: Alignment.center,
-                                child: Text(
-                                  'DC',
-                                  style: TextStyle(
-                                    color: Theme.of(context).colorScheme.onSurface,
-                                    fontSize: 27,
-                                    fontWeight: FontWeight.w800,
+                                const SizedBox(height: 6),
+                                Text(
+                                  Supabase
+                                          .instance
+                                          .client
+                                          .auth
+                                          .currentUser
+                                          ?.email ??
+                                      '',
+                                  style: const TextStyle(
+                                    color: Color(0xFFE1F1E6),
+                                    fontSize: 12,
                                   ),
+                                ),
+                                const SizedBox(height: 9),
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      verified
+                                          ? Icons.verified_rounded
+                                          : Icons.shield_outlined,
+                                      color: KaisaResidentDesign.yellow,
+                                      size: 19,
+                                    ),
+                                    const SizedBox(width: 5),
+                                    Text(
+                                      verified
+                                          ? 'Tier 2 · Verified resident'
+                                          : 'Tier 1 · Basic account',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            FilledButton.icon(
+                              onPressed: saving ? null : _editProfile,
+                              style: FilledButton.styleFrom(
+                                backgroundColor: KaisaResidentDesign.yellow,
+                                foregroundColor: KaisaResidentDesign.forest,
+                              ),
+                              icon: const Icon(Icons.edit_outlined),
+                              label: const Text('Edit photo & bio'),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      if (!verified)
+                        KaisaResidentCard(
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.verified_user_outlined,
+                                color: KaisaResidentDesign.green,
+                              ),
+                              const SizedBox(width: 10),
+                              const Expanded(
+                                child: Text(
+                                  'Unlock Tier 2 by completing LGU identity verification.',
                                 ),
                               ),
-
-                              Positioned(
-                                right: -2,
-                                bottom: 2,
-                                child: Container(
-                                  width: 29,
-                                  height: 29,
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: AppColors.forest,
-                                      width: 2,
-                                    ),
-                                  ),
-                                  child: IconButton(
-                                    padding: EdgeInsets.zero,
-                                    iconSize: 15,
-                                    tooltip: 'Change Profile Photo',
-                                    onPressed: () {
-                                      _showComingSoon(context, 'Profile photo');
-                                    },
-                                    icon: const Icon(
-                                      Icons.camera_alt_outlined,
-                                      color: AppColors.forest,
-                                    ),
-                                  ),
+                              TextButton(
+                                onPressed: () => context.push(
+                                  '/resident/identity-verification',
                                 ),
+                                child: const Text('Verify'),
                               ),
                             ],
                           ),
-
-                          const SizedBox(height: 16),
-
-                          Text(
-                            residentName,
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 23,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-
-                          const SizedBox(height: 5),
-
-                          Text(
-                            residentEmail,
-                            style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: 13,
-                            ),
-                          ),
-
-                          const SizedBox(height: 14),
-
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 7,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.16),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  isTier2Verified
-                                      ? Icons.verified_rounded
-                                      : Icons.verified_user_outlined,
-                                  size: 17,
-                                  color: Colors.white,
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  isTier2Verified
-                                      ? 'Tier 2 • Identity Verified'
-                                      : 'Tier 1 • Basic Account',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    // ==================================================
-                    // VERIFICATION
-                    // ==================================================
-                    if (!isTier2Verified) ...[
-                      const SizedBox(height: 18),
-
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(18),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.surfaceContainerLow,
-                          borderRadius: BorderRadius.circular(18),
                         ),
+                      const SizedBox(height: 16),
+                      KaisaResidentCard(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(
-                              children: [
-                                Icon(
-                                  Icons.verified_user_outlined,
-                                  color: Theme.of(context).colorScheme.onSurface,
-                                ),
-                                SizedBox(width: 10),
-                                Expanded(
-                                  child: Text(
-                                    'Complete Identity Verification',
-                                    style: TextStyle(
-                                      color: Theme.of(context).colorScheme.onSurface,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ),
-                              ],
+                            const KaisaResidentSectionHeading(
+                              title: 'About me',
                             ),
-
-                            const SizedBox(height: 10),
-
+                            const SizedBox(height: 9),
                             Text(
-                              'Verify your identity to join organizations, '
-                              'register for events, and request the creation '
-                              'of an organization.',
-                              style: TextStyle(
-                                color: Theme.of(context).colorScheme.onSurface,
-                                fontSize: 12,
+                              '${data?['bio'] ?? ''}'.trim().isEmpty
+                                  ? 'No bio yet. Add a short introduction to your community.'
+                                  : '${data?['bio']}',
+                              style: const TextStyle(
+                                color: KaisaResidentDesign.ink,
                                 height: 1.5,
-                              ),
-                            ),
-
-                            const SizedBox(height: 14),
-
-                            SizedBox(
-                              width: double.infinity,
-                              child: FilledButton.icon(
-                                onPressed: () {
-                                  context.push(
-                                    '/resident/identity-verification',
-                                  );
-                                },
-                                icon: const Icon(Icons.verified_outlined),
-                                label: const Text('Get Verified'),
                               ),
                             ),
                           ],
                         ),
                       ),
-                    ],
-
-                    const SizedBox(height: 28),
-
-                    // ==================================================
-                    // COMMUNITY
-                    // ==================================================
-                    const _SectionTitle(title: 'My Community'),
-
-                    const SizedBox(height: 12),
-
-                    _ProfileMenuCard(
-                      icon: Icons.groups_outlined,
-                      title: 'My Organizations',
-                      subtitle: 'View your memberships and organization roles',
-                      onTap: () {
-                        context.push('/resident/my-organizations');
-                      },
-                    ),
-
-                    const SizedBox(height: 10),
-
-                    _ProfileMenuCard(
-                      icon: Icons.event_available_outlined,
-                      title: 'My Events',
-                      subtitle: 'View your event registrations and activity',
-                      onTap: () {
-                        context.push('/resident/my-events');
-                      },
-                    ),
-
-                    const SizedBox(height: 10),
-
-                    _ProfileMenuCard(
-                      icon: Icons.add_business_outlined,
-                      title: 'Request Organization',
-                      subtitle: 'Submit a new organization request',
-                      locked: !isTier2Verified,
-                      onTap: () {
-                        context.push('/resident/request-organization');
-                      },
-                    ),
-
-                    const SizedBox(height: 28),
-
-                    // ==================================================
-                    // ACCOUNT
-                    // ==================================================
-                    const _SectionTitle(title: 'Account'),
-
-                    const SizedBox(height: 12),
-
-                    _ProfileMenuCard(
-                      icon: Icons.person_outline_rounded,
-                      title: 'Personal Information',
-                      subtitle: 'View and manage your personal details',
-                      onTap: () {
-                        _showComingSoon(context, 'Personal information');
-                      },
-                    ),
-
-                    const SizedBox(height: 10),
-
-                    _ProfileMenuCard(
-                      icon: Icons.lock_outline_rounded,
-                      title: 'Security',
-                      subtitle: 'Password and account security',
-                      onTap: () {
-                        _showComingSoon(context, 'Security settings');
-                      },
-                    ),
-
-                    const SizedBox(height: 10),
-
-                    _ProfileMenuCard(
-                      icon: Icons.notifications_none_rounded,
-                      title: 'Notification Settings',
-                      subtitle: 'Manage how KAISA notifies you',
-                      onTap: () {
-                        _showComingSoon(context, 'Notification settings');
-                      },
-                    ),
-
-                    const SizedBox(height: 28),
-
-                    // ==================================================
-                    // SUPPORT
-                    // ==================================================
-                    const _SectionTitle(title: 'Support'),
-
-                    const SizedBox(height: 12),
-
-                    _ProfileMenuCard(
-                      icon: Icons.help_outline_rounded,
-                      title: 'Help & Support',
-                      subtitle: 'Get help using KAISA',
-                      onTap: () {
-                        _showComingSoon(context, 'Help & Support');
-                      },
-                    ),
-
-                    const SizedBox(height: 10),
-
-                    _ProfileMenuCard(
-                      icon: Icons.info_outline_rounded,
-                      title: 'About KAISA',
-                      subtitle: 'Learn more about the application',
-                      onTap: () {
-                        _showComingSoon(context, 'About KAISA');
-                      },
-                    ),
-
-                    const SizedBox(height: 28),
-
-                    // ==================================================
-                    // LOGOUT
-                    // ==================================================
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: () {
-                          _showLogoutDialog(context);
-                        },
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.error,
-                          side: const BorderSide(color: AppColors.error),
-                        ),
-                        icon: const Icon(Icons.logout_rounded),
-                        label: const Text('Log Out'),
+                      const SizedBox(height: 20),
+                      Wrap(
+                        spacing: 10,
+                        runSpacing: 10,
+                        children: [
+                          _nav(
+                            'My Events',
+                            Icons.event_available_outlined,
+                            '/resident/my-events',
+                          ),
+                          _nav(
+                            'My Organizations',
+                            Icons.groups_2_outlined,
+                            '/resident/my-organizations',
+                          ),
+                          _nav(
+                            'Identity Status',
+                            Icons.shield_outlined,
+                            '/resident/verification-status',
+                          ),
+                          _nav(
+                            'Notifications',
+                            Icons.notifications_none_outlined,
+                            '/resident/notifications',
+                          ),
+                        ],
                       ),
-                    ),
-
-                    const SizedBox(height: 22),
-
-                    Center(
-                      child: Text(
-                        'KAISA • Resident Portal',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
+                      const SizedBox(height: 25),
+                      KaisaResidentSectionHeading(
+                        title: 'My posts',
+                        subtitle:
+                            'Your public Community Feed contributions · ${posts.length} post(s)',
                       ),
-                    ),
-                ], // Column children
-              ), // Column
-            ), // ConstrainedBox
-          ), // Center
-        ), // SingleChildScrollView
-      ), // SafeArea
-
-    );
-  }
-}
-
-// ============================================================================
-// SECTION TITLE
-// ============================================================================
-
-class _SectionTitle extends StatelessWidget {
-  final String title;
-
-  const _SectionTitle({required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      title,
-      style: TextStyle(
-        fontSize: 18,
-        fontWeight: FontWeight.w700,
-        color: Theme.of(context).colorScheme.onSurface,
-      ),
-    );
-  }
-}
-
-// ============================================================================
-// PROFILE MENU CARD
-// ============================================================================
-
-class _ProfileMenuCard extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final VoidCallback onTap;
-  final bool locked;
-
-  const _ProfileMenuCard({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
-    this.locked = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Theme.of(context).colorScheme.surface,
-      borderRadius: BorderRadius.circular(17),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(17),
-        child: Container(
-          padding: const EdgeInsets.all(15),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(17),
-            border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(13),
-                ),
-                child: Icon(icon, color: Theme.of(context).colorScheme.onPrimaryContainer, size: 22),
-              ),
-
-              const SizedBox(width: 13),
-
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Flexible(
+                      const SizedBox(height: 12),
+                      if (posts.isEmpty)
+                        const KaisaResidentCard(
                           child: Text(
-                            title,
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: Theme.of(context).colorScheme.onSurface,
+                            'No posts yet. Approved Tier 2 residents can publish in Community Feed.',
+                          ),
+                        ),
+                      for (final post in posts)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: KaisaProfilePostCard(
+                            post: post,
+                            imageUrl: repo.feedImageUrl,
+                          ),
+                        ),
+                      const SizedBox(height: 25),
+                      const KaisaResidentSectionHeading(
+                        title: 'Events attended',
+                        subtitle: 'Private participation history',
+                      ),
+                      const SizedBox(height: 12),
+                      if (attendance.isEmpty)
+                        const KaisaResidentCard(
+                          child: Text(
+                            'No attended events recorded yet. Events appear here after an authorized attendance check-in.',
+                          ),
+                        ),
+                      for (final reg in attendance)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: KaisaResidentCard(
+                            child: ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              leading: const Icon(
+                                Icons.event_available_rounded,
+                                color: KaisaResidentDesign.green,
+                              ),
+                              title: Text(
+                                '${(reg['event'] as Map?)?['title'] ?? 'Community event'}',
+                              ),
+                              subtitle: const Text('Attendance confirmed'),
                             ),
                           ),
                         ),
-
-                        if (locked) ...[
-                          const SizedBox(width: 7),
-                          Icon(
-                            Icons.lock_outline_rounded,
-                            size: 14,
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          ),
-                        ],
-                      ],
-                    ),
-
-                    const SizedBox(height: 4),
-
-                    Text(
-                      subtitle,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      const SizedBox(height: 25),
+                      const KaisaResidentSectionHeading(
+                        title: 'My e-certificates',
+                        subtitle:
+                            'Certificates issued by authorized organizers',
                       ),
-                    ),
+                      const SizedBox(height: 12),
+                      if (certificates.isEmpty)
+                        const KaisaResidentCard(
+                          child: Text(
+                            'No e-certificates issued yet. Only official certificates will appear here.',
+                          ),
+                        ),
+                      for (final cert in certificates)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: KaisaResidentCard(
+                            child: ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              leading: const Icon(
+                                Icons.workspace_premium_outlined,
+                                color: KaisaResidentDesign.green,
+                              ),
+                              title: Text('${cert['title']}'),
+                              subtitle: const Text(
+                                'Issued certificate · Download support to follow',
+                              ),
+                            ),
+                          ),
+                        ),
+                      const SizedBox(height: 26),
+                      OutlinedButton.icon(
+                        onPressed: _logout,
+                        icon: const Icon(Icons.logout_rounded),
+                        label: const Text('Sign out'),
+                      ),
+                    ],
                   ],
                 ),
               ),
-
-              const SizedBox(width: 8),
-
-              Icon(
-                Icons.chevron_right_rounded,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
-    );
-  }
+    ),
+  );
+
+  Widget _nav(String text, IconData icon, String path) => OutlinedButton.icon(
+    onPressed: () => context.push(path),
+    icon: Icon(icon, size: 19),
+    label: Text(text),
+    style: OutlinedButton.styleFrom(
+      foregroundColor: KaisaResidentDesign.forest,
+      backgroundColor: Colors.white,
+      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 14),
+    ),
+  );
 }

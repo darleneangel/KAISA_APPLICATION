@@ -28,6 +28,11 @@ import '../../features/resident/verification/identity_verification_page.dart';
 import '../../features/resident/verification/verification_status_page.dart';
 import '../../features/resident/notifications/notifications_page.dart';
 
+import '../../features/resident/profile/public_resident_profile_page.dart';
+import '../../features/resident/profile/resident_chat_page.dart';
+
+import '../../features/resident/messaging/messages_page.dart';
+
 final _authRefresh = _AuthRouterRefresh();
 
 class _AuthRouterRefresh extends ChangeNotifier {
@@ -136,6 +141,27 @@ final appRouter = GoRouter(
           path: '/resident/feed',
           builder: (context, state) => const FeedPage(),
         ),
+
+        //FOR MESSAGE
+        GoRoute(
+          path: '/resident/user/:userId',
+          builder: (context, state) => PublicResidentProfilePage(
+            userId: state.pathParameters['userId']!,
+          ),
+        ),
+
+        GoRoute(
+          path: '/resident/messages/:recipientId',
+          builder: (context, state) => ResidentChatPage(
+            recipientId: state.pathParameters['recipientId']!,
+          ),
+        ),
+
+        GoRoute(
+          path: '/resident/messages',
+          builder: (context, state) => const MessagesPage(),
+        ),
+
         GoRoute(
           path: '/resident/organizations',
           builder: (context, state) => const OrganizationsPage(),
@@ -165,12 +191,14 @@ final appRouter = GoRouter(
           path: '/resident/events',
           builder: (context, state) => const EventsPage(),
         ),
+
         GoRoute(
           path: '/resident/event-details',
           builder: (context, state) {
             final data = state.extra as Map<String, dynamic>;
 
             return EventDetailsPage(
+              eventId: data['event_id'] as String?,
               title: data['title'],
               organization: data['organization'],
               category: data['category'],
@@ -183,6 +211,7 @@ final appRouter = GoRouter(
             );
           },
         ),
+
         GoRoute(
           path: '/resident/my-events',
           builder: (context, state) => const MyEventsPage(),

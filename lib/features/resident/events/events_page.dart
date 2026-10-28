@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/theme/app_colors.dart';
-import '../widgets/kaisa_ui.dart';
+import '../widgets/kaisa_resident_design.dart';
+import 'kaisa_event_widgets.dart';
+import 'kaisa_events_repository.dart';
 
 class EventsPage extends StatefulWidget {
   const EventsPage({super.key});
@@ -10,169 +11,247 @@ class EventsPage extends StatefulWidget {
 }
 
 class _EventsPageState extends State<EventsPage> {
-  final search = TextEditingController();
-  String category = 'All';
-  final events = const [
-    (
-      'Community Clean-Up Drive',
-      'Community Environment Network',
-      'Environment',
-      'October 12, 2026',
-      '8:00 AM - 11:00 AM',
-      'Barangay Covered Court',
-      42,
-      80,
-      Icons.eco_rounded,
-    ),
-    (
-      'Youth Leadership Workshop',
-      'KAISA Youth Volunteers',
-      'Youth',
-      'October 18, 2026',
-      '1:00 PM - 5:00 PM',
-      'Community Hall',
-      35,
-      50,
-      Icons.groups_rounded,
-    ),
-    (
-      'Community Basketball Tournament',
-      'KAISA Sports Club',
-      'Sports',
-      'October 24, 2026',
-      '7:00 AM - 4:00 PM',
-      'Community Sports Center',
-      64,
-      100,
-      Icons.sports_basketball_rounded,
-    ),
-    (
-      'Free Learning Session',
-      'Community Learning Circle',
-      'Education',
-      'November 5, 2026',
-      '9:00 AM - 12:00 PM',
-      'Community Learning Center',
-      28,
-      60,
-      Icons.school_rounded,
-    ),
-    (
-      'Community Consultation',
-      'Community Development Council',
-      'Community',
-      'November 14, 2026',
-      '2:00 PM - 5:00 PM',
-      'Barangay Hall',
-      51,
-      100,
-      Icons.forum_rounded,
-    ),
-  ];
+  final _search = TextEditingController();
+  List<KaisaEvent> _events = [];
+  String _category = 'All';
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _reload();
+  }
+
   @override
   void dispose() {
-    search.dispose();
+    _search.dispose();
     super.dispose();
+  }
+
+  Future<void> _reload() async {
+    if (!mounted) return;
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final result = await KaisaEventsRepository.instance.listEvents();
+      if (mounted) setState(() => _events = result);
+    } catch (e) {
+      debugPrint('KAISA events load: $e');
+      if (mounted)
+        setState(
+          () => _error =
+              'Could not load events from Supabase. Check your connection or Events migration.',
+        );
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final matches = events
-        .where(
-          (e) =>
-              (category == 'All' || e.$3 == category) &&
-              ('${e.$1} ${e.$2} ${e.$6}'.toLowerCase().contains(
-                search.text.trim().toLowerCase(),
-              )),
-        )
-        .toList();
+    final eventCategories = _events.map((e) => e.category).toSet().toList()
+      ..sort();
+    final categories = ['All', ...eventCategories];
+    final term = _search.text.trim().toLowerCase();
+    final shown =
+        _events
+            .where(
+              (e) =>
+                  !e.isPast &&
+                  (_category == 'All' || e.category == _category) &&
+                  (term.isEmpty ||
+                      '${e.title} ${e.organization} ${e.location} ${e.category}'
+                          .toLowerCase()
+                          .contains(term)),
+            )
+            .toList()
+          ..sort((a, b) => a.startsAt.compareTo(b.startsAt));
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Events'),
-        actions: [
-          IconButton(
-            tooltip: 'My Events',
-            onPressed: () => context.push('/resident/my-events'),
-            icon: const Icon(Icons.event_available_outlined),
-          ),
-          const SizedBox(width: 12),
-        ],
-      ),
-      body: KaisaPageLayout(
-        children: [
-          const KaisaHero(
-            eyebrow: 'DISCOVER LOCAL ACTIVITIES',
-            title: 'Find your next\ncommunity moment.',
-            subtitle:
-                'Explore upcoming programs and activities in Cavite City.',
-            icon: Icons.calendar_month_rounded,
-          ),
-          const SizedBox(height: 24),
-          TextField(
-            controller: search,
-            onChanged: (_) => setState(() {}),
-            decoration: const InputDecoration(
-              hintText: 'Search events or locations',
-              prefixIcon: Icon(Icons.search_rounded),
-            ),
-          ),
-          const SizedBox(height: 14),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final c in [
-                'All',
-                'Community',
-                'Environment',
-                'Youth',
-                'Education',
-                'Sports',
-              ])
-                ChoiceChip(
-                  label: Text(c),
-                  selected: category == c,
-                  onSelected: (_) => setState(() => category = c),
-                ),
-            ],
-          ),
-          const SizedBox(height: 21),
-          Text(
-            '${matches.length} opportunities to discover',
-            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 19),
-          ),
-          const SizedBox(height: 14),
-          if (matches.isEmpty)
-            const Padding(
-              padding: EdgeInsets.all(32),
-              child: Text('No events match your search. Try another category.'),
-            ),
-          KaisaResponsiveGrid(
-            children: [
-              for (final e in matches)
-                KaisaTile(
-                  title: e.$1,
-                  subtitle: '${e.$2}  •  ${e.$4}\n${e.$6}',
-                  icon: e.$9,
-                  onTap: () => context.push(
-                    '/resident/event-details',
-                    extra: {
-                      'title': e.$1,
-                      'organization': e.$2,
-                      'category': e.$3,
-                      'description':
-                          'Join this community event and connect with other residents.',
-                      'date': e.$4,
-                      'time': e.$5,
-                      'location': e.$6,
-                      'participants': e.$7,
-                      'capacity': e.$8,
-                    },
+      backgroundColor: KaisaResidentDesign.paper,
+      body: RefreshIndicator(
+        onRefresh: _reload,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final narrow = constraints.maxWidth < 600;
+            final padding = KaisaResidentDesign.pagePadding(
+              constraints.maxWidth,
+            );
+            return ListView(
+              padding: EdgeInsets.fromLTRB(padding, 22, padding, 90),
+              children: [
+                Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      maxWidth: KaisaResidentDesign.desktopWidth,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        KaisaEventsHeading(
+                          eyebrow: 'DISCOVER LOCAL ACTIVITIES',
+                          title: 'Community Events',
+                          subtitle:
+                              'Find meaningful ways to participate in your community.',
+                          action: IconButton(
+                            tooltip: 'Refresh events',
+                            icon: const Icon(
+                              Icons.refresh_rounded,
+                              color: KaisaResidentDesign.forest,
+                            ),
+                            onPressed: _reload,
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        KaisaEventsHero(
+                          title: 'Great moments begin\nwith showing up.',
+                          subtitle:
+                              'Explore upcoming programs, meet neighbors and contribute to your community.',
+                          icon: Icons.calendar_month_rounded,
+                          action: FilledButton.icon(
+                            style: FilledButton.styleFrom(
+                              backgroundColor: KaisaResidentDesign.yellow,
+                              foregroundColor: KaisaResidentDesign.forest,
+                            ),
+                            onPressed: () => context.go('/resident/my-events'),
+                            icon: const Icon(Icons.event_available_outlined),
+                            label: const Text('My registrations'),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        TextField(
+                          controller: _search,
+                          onChanged: (_) => setState(() {}),
+                          decoration: InputDecoration(
+                            hintText:
+                                'Search events, locations or organizations',
+                            prefixIcon: const Icon(Icons.search_rounded),
+                            filled: true,
+                            fillColor: Colors.white,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(15),
+                              borderSide: const BorderSide(
+                                color: KaisaResidentDesign.border,
+                              ),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(15),
+                              borderSide: const BorderSide(
+                                color: KaisaResidentDesign.border,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 13),
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: [
+                              for (final category in categories)
+                                Padding(
+                                  padding: const EdgeInsets.only(right: 8),
+                                  child: ChoiceChip(
+                                    label: Text(category),
+                                    selected: _category == category,
+                                    selectedColor: const Color(0xFFE4F2E8),
+                                    onSelected: (_) =>
+                                        setState(() => _category = category),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 23),
+                        KaisaResidentSectionHeading(
+                          title: 'Upcoming opportunities',
+                          subtitle: _loading
+                              ? 'Loading events...'
+                              : '${shown.length} available event${shown.length == 1 ? '' : 's'}',
+                        ),
+                        const SizedBox(height: 14),
+                        if (_loading)
+                          const Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(40),
+                              child: CircularProgressIndicator(),
+                            ),
+                          )
+                        else if (_error != null)
+                          KaisaResidentCard(
+                            child: Column(
+                              children: [
+                                Text(_error!, textAlign: TextAlign.center),
+                                const SizedBox(height: 8),
+                                TextButton(
+                                  onPressed: _reload,
+                                  child: const Text('Try again'),
+                                ),
+                              ],
+                            ),
+                          )
+                        else if (shown.isEmpty)
+                          KaisaResidentCard(
+                            child: Column(
+                              children: [
+                                const Icon(
+                                  Icons.event_busy_outlined,
+                                  size: 43,
+                                  color: KaisaResidentDesign.green,
+                                ),
+                                const SizedBox(height: 12),
+                                const Text(
+                                  'No upcoming events found',
+                                  style: TextStyle(fontWeight: FontWeight.w800),
+                                ),
+                                const SizedBox(height: 6),
+                                const Text(
+                                  'Try another search or check back for newly published activities.',
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
+                            ),
+                          )
+                        else
+                          LayoutBuilder(
+                            builder: (context, c) {
+                              final cols = c.maxWidth >= 850
+                                  ? 3
+                                  : c.maxWidth >= 520
+                                  ? 2
+                                  : 1;
+                              const gap = 14.0;
+                              final itemWidth =
+                                  (c.maxWidth - gap * (cols - 1)) / cols;
+                              return Wrap(
+                                spacing: gap,
+                                runSpacing: gap,
+                                children: [
+                                  for (final e in shown)
+                                    SizedBox(
+                                      width: itemWidth,
+                                      child: KaisaEventCard(
+                                        event: e,
+                                        onTap: () => context.push(
+                                          '/resident/event-details',
+                                          extra: e.toRouteExtra(),
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              );
+                            },
+                          ),
+                        if (narrow) const SizedBox(height: 20),
+                      ],
+                    ),
                   ),
                 ),
-            ],
-          ),
-        ],
+              ],
+            );
+          },
+        ),
       ),
     );
   }

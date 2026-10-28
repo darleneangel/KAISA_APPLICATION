@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../widgets/resident_bottom_nav.dart';
 import '../widgets/kaisa_resident_design.dart';
 
 const _forest = Color(0xFF14532D);
@@ -414,9 +413,6 @@ class _ResidentHomePageState extends State<ResidentHomePage> {
               ),
             ),
           ),
-          bottomNavigationBar: constraints.maxWidth < 600
-              ? const ResidentBottomNav(currentIndex: 0)
-              : null,
         );
       },
     );

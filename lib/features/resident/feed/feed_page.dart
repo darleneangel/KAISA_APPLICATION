@@ -404,6 +404,79 @@ class _PostCard extends StatelessWidget {
   });
   final Map<String, dynamic> post;
   final VoidCallback onLike, onComments, onShare;
+  Future<void> _showLikers(BuildContext context) async {
+    try {
+      final result = await Supabase.instance.client.rpc(
+        'kaisa_post_likers',
+        params: {'p_post_id': post['id']},
+      );
+      if (!context.mounted) return;
+      final likers = (result as List)
+          .map((e) => Map<String, dynamic>.from(e as Map))
+          .toList();
+      await showModalBottomSheet<void>(
+        context: context,
+        showDragHandle: true,
+        builder: (sheetContext) => SafeArea(
+          child: SizedBox(
+            height: MediaQuery.sizeOf(sheetContext).height * .55,
+            child: Column(
+              children: [
+                const Padding(
+                  padding: EdgeInsets.all(14),
+                  child: Text(
+                    'Residents who liked this post',
+                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+                  ),
+                ),
+                Expanded(
+                  child: likers.isEmpty
+                      ? const Center(child: Text('No likes yet.'))
+                      : ListView.builder(
+                          itemCount: likers.length,
+                          itemBuilder: (c, i) {
+                            final item = likers[i];
+                            final name =
+                                '${item['display_name'] ?? 'Resident'}';
+                            final avatar = '${item['avatar_path'] ?? ''}';
+                            return ListTile(
+                              leading: CircleAvatar(
+                                backgroundImage: avatar.isEmpty
+                                    ? null
+                                    : NetworkImage(
+                                        Supabase.instance.client.storage
+                                            .from('kaisa-avatars')
+                                            .getPublicUrl(avatar),
+                                      ),
+                                child: avatar.isEmpty
+                                    ? Text(name.substring(0, 1))
+                                    : null,
+                              ),
+                              title: Text(name),
+                              trailing: const Icon(Icons.chevron_right_rounded),
+                              onTap: () {
+                                Navigator.pop(sheetContext);
+                                context.push(
+                                  '/resident/user/${item['user_id']}',
+                                );
+                              },
+                            );
+                          },
+                        ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    } catch (e) {
+      if (context.mounted)
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Could not load likes: $e')));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final date = DateTime.tryParse('${post['created_at']}')?.toLocal();
@@ -423,15 +496,20 @@ class _PostCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                CircleAvatar(
-                  backgroundColor: const Color(0xFFE5F3E9),
-                  child: Text(
-                    (post['author_name'] as String? ?? 'R')
-                        .substring(0, 1)
-                        .toUpperCase(),
-                    style: const TextStyle(
-                      color: _forest,
-                      fontWeight: FontWeight.bold,
+                InkWell(
+                  onTap: () =>
+                      context.push('/resident/user/${post['author_id']}'),
+                  borderRadius: BorderRadius.circular(40),
+                  child: CircleAvatar(
+                    backgroundColor: const Color(0xFFE5F3E9),
+                    child: Text(
+                      (post['author_name'] as String? ?? 'R')
+                          .substring(0, 1)
+                          .toUpperCase(),
+                      style: const TextStyle(
+                        color: _forest,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),
@@ -440,11 +518,15 @@ class _PostCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        '${post['author_name']}',
-                        style: const TextStyle(
-                          color: _ink,
-                          fontWeight: FontWeight.w800,
+                      InkWell(
+                        onTap: () =>
+                            context.push('/resident/user/${post['author_id']}'),
+                        child: Text(
+                          '${post['author_name']}',
+                          style: const TextStyle(
+                            color: _ink,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
                       ),
                       Text(
@@ -494,9 +576,15 @@ class _PostCard extends StatelessWidget {
               ),
             ],
             const SizedBox(height: 12),
-            Text(
-              '${post['likes']} likes  •  ${post['comments']} comments',
-              style: const TextStyle(fontSize: 12, color: _muted),
+            InkWell(
+              onTap: () => _showLikers(context),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Text(
+                  '${post['likes']} likes  •  ${post['comments']} comments',
+                  style: const TextStyle(fontSize: 12, color: _muted),
+                ),
+              ),
             ),
             const Divider(height: 23, color: Color(0xFFE3EBE5)),
             Row(
@@ -856,6 +944,13 @@ class _CommentsSheetState extends State<_CommentsSheet> {
                         leading: const CircleAvatar(
                           child: Icon(Icons.person_outline),
                         ),
+                        onTap: () {
+                          final author = comments[i]['author_id']?.toString();
+                          if (author != null && author.isNotEmpty) {
+                            Navigator.pop(context);
+                            context.push('/resident/user/$author');
+                          }
+                        },
                         title: Text(
                           '${comments[i]['author_name']}',
                           style: const TextStyle(fontWeight: FontWeight.w700),
