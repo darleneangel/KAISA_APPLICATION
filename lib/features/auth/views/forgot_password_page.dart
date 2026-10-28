@@ -1,147 +1,285 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/theme/app_colors.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:flutter/foundation.dart';
-import '../widgets/auth_ui.dart';
 
 class ForgotPasswordPage extends StatefulWidget {
   const ForgotPasswordPage({super.key});
+
   @override
   State<ForgotPasswordPage> createState() => _ForgotPasswordPageState();
 }
 
 class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
-  final _form = GlobalKey<FormState>();
+  final _formKey = GlobalKey<FormState>();
   final _email = TextEditingController();
+  bool _busy = false;
+
+  static const _forest = Color(0xFF175C42);
+  static const _ink = Color(0xFF18392C);
+  static const _muted = Color(0xFF667970);
+
   @override
   void dispose() {
     _email.dispose();
     super.dispose();
   }
 
-  bool _busy = false;
-  Future<void> _continue() async {
-    if (_busy || !_form.currentState!.validate()) return;
+  Future<void> _sendRecoveryCode() async {
+    if (_busy || !_formKey.currentState!.validate()) return;
+    FocusScope.of(context).unfocus();
     setState(() => _busy = true);
+
     try {
-      await Supabase.instance.client.auth.resetPasswordForEmail(
-        _email.text.trim(),
-        redirectTo: kIsWeb ? null : 'com.kaisa.app://login-callback/',
-      );
+      final email = _email.text.trim();
+      await Supabase.instance.client.auth.resetPasswordForEmail(email);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'If this account exists, check its email for reset instructions.',
-          ),
-        ),
-      );
-    } on AuthException catch (e) {
-      if (mounted)
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(e.message)));
+      context.go('/reset-password?email=${Uri.encodeComponent(email)}');
+    } on AuthException catch (error) {
+      if (!mounted) return;
+      _showMessage(error.message);
     } catch (_) {
-      if (mounted)
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Unable to send recovery email.')),
-        );
+      if (!mounted) return;
+      _showMessage('Unable to send your recovery code. Please try again.');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
 
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
   @override
-  Widget build(BuildContext context) => AuthResponsivePage(
-    showBack: true,
-    backRoute: '/login',
-    hero: const Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        AuthTag(label: 'Account recovery', icon: Icons.lock_reset_rounded),
-        SizedBox(height: 24),
-        Text(
-          'A fresh start\nis just ahead.',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 42,
-            fontWeight: FontWeight.w800,
-            height: 1.08,
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFFAFCFA),
+      body: SafeArea(
+        child: LayoutBuilder(
+          builder: (context, constraints) => SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(24, 18, 24, 36),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight: constraints.maxHeight - 54,
+              ),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 440),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: TextButton.icon(
+                            onPressed: _busy
+                                ? null
+                                : () => context.go('/login'),
+                            style: TextButton.styleFrom(
+                              foregroundColor: _ink,
+                              padding: EdgeInsets.zero,
+                            ),
+                            icon: const Icon(
+                              Icons.arrow_back_rounded,
+                              size: 19,
+                            ),
+                            label: const Text('Back'),
+                          ),
+                        ),
+                        const SizedBox(height: 50),
+                        Center(
+                          child: Container(
+                            width: 76,
+                            height: 76,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEAF5ED),
+                              borderRadius: BorderRadius.circular(23),
+                            ),
+                            child: const Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                Icon(
+                                  Icons.lock_reset_rounded,
+                                  size: 38,
+                                  color: _forest,
+                                ),
+                                Positioned(
+                                  right: 12,
+                                  top: 12,
+                                  child: CircleAvatar(
+                                    radius: 7,
+                                    backgroundColor: Color(0xFFFFD65A),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        const Text(
+                          'Forgot your password?',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: _ink,
+                            fontSize: 30,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.8,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        const Text(
+                          "No worries. Enter your registered email and we'll send you a code to reset your password.",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: _muted,
+                            fontSize: 14,
+                            height: 1.6,
+                          ),
+                        ),
+                        const SizedBox(height: 40),
+                        const Text(
+                          'Email address',
+                          style: TextStyle(
+                            color: _ink,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        TextFormField(
+                          controller: _email,
+                          enabled: !_busy,
+                          keyboardType: TextInputType.emailAddress,
+                          textInputAction: TextInputAction.done,
+                          autofillHints: const [AutofillHints.email],
+                          onFieldSubmitted: (_) => _sendRecoveryCode(),
+                          decoration: InputDecoration(
+                            hintText: 'you@example.com',
+                            prefixIcon: const Icon(
+                              Icons.alternate_email_rounded,
+                            ),
+                            filled: true,
+                            fillColor: Colors.white,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(14),
+                              borderSide: const BorderSide(
+                                color: Color(0xFFDCE7DF),
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(14),
+                              borderSide: const BorderSide(
+                                color: _forest,
+                                width: 2,
+                              ),
+                            ),
+                          ),
+                          validator: (value) {
+                            final email = (value ?? '').trim();
+                            if (!RegExp(
+                              r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
+                            ).hasMatch(email)) {
+                              return 'Please enter a valid email address';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 24),
+                        SizedBox(
+                          height: 54,
+                          child: FilledButton(
+                            onPressed: _busy ? null : _sendRecoveryCode,
+                            style: FilledButton.styleFrom(
+                              backgroundColor: _forest,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(15),
+                              ),
+                            ),
+                            child: _busy
+                                ? const SizedBox(
+                                    width: 21,
+                                    height: 21,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        'Send recovery code',
+                                        style: TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      SizedBox(width: 10),
+                                      Icon(
+                                        Icons.arrow_forward_rounded,
+                                        size: 20,
+                                      ),
+                                    ],
+                                  ),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        Center(
+                          child: TextButton(
+                            onPressed: _busy
+                                ? null
+                                : () => context.go('/login'),
+                            child: const Text(
+                              'Remember your password? Log in',
+                              style: TextStyle(fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 30),
+                        const Row(
+                          children: [
+                            Expanded(child: Divider(color: Color(0xFFE6ECE8))),
+                            Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 12),
+                              child: Text(
+                                'ACCOUNT SECURITY',
+                                style: TextStyle(
+                                  color: Color(0xFF91A29A),
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 1.2,
+                                ),
+                              ),
+                            ),
+                            Expanded(child: Divider(color: Color(0xFFE6ECE8))),
+                          ],
+                        ),
+                        const SizedBox(height: 13),
+                        const Text(
+                          'Your password can only be changed after verifying your recovery code.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: _muted,
+                            fontSize: 12,
+                            height: 1.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ),
         ),
-        SizedBox(height: 16),
-        Text(
-          'We’re making it easier to return to the community connections that matter.',
-          style: TextStyle(color: Color(0xFFE1F2E8), fontSize: 15, height: 1.6),
-        ),
-        SizedBox(height: 26),
-        AuthScenicArtwork(),
-        SizedBox(height: 14),
-        AuthInfoCard(
-          title: 'Your privacy matters',
-          subtitle:
-              'Password recovery will be securely handled by the connected authentication provider.',
-          icon: Icons.shield_outlined,
-        ),
-      ],
-    ),
-    panel: Form(
-      key: _form,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(
-            Icons.mail_lock_outlined,
-            size: 48,
-            color: AppColors.forest,
-          ),
-          const SizedBox(height: 22),
-          const Text(
-            'Forgot your password?',
-            style: TextStyle(
-              color: Color(0xFF163E2C),
-              fontSize: 29,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 10),
-          const Text(
-            'Enter your account email address. We will send you a password reset link by email.',
-            style: TextStyle(color: Color(0xFF68786E), height: 1.6),
-          ),
-          const SizedBox(height: 26),
-          TextFormField(
-            controller: _email,
-            keyboardType: TextInputType.emailAddress,
-            decoration: const InputDecoration(
-              labelText: 'Email address',
-              prefixIcon: Icon(Icons.alternate_email_rounded),
-            ),
-            validator: (s) =>
-                s == null ||
-                    !RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(s.trim())
-                ? 'Enter a valid email address'
-                : null,
-          ),
-          const SizedBox(height: 24),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              onPressed: _busy ? null : _continue,
-              icon: const Icon(Icons.arrow_forward_rounded),
-              label: const Text('Continue'),
-            ),
-          ),
-          const SizedBox(height: 10),
-          Center(
-            child: TextButton(
-              onPressed: () => context.go('/login'),
-              child: const Text('Back to login'),
-            ),
-          ),
-        ],
       ),
-    ),
-  );
+    );
+  }
 }

@@ -15,14 +15,20 @@ class ProfileSetupPage extends StatefulWidget {
 class _ProfileSetupPageState extends State<ProfileSetupPage> {
   final _formKey = GlobalKey<FormState>();
 
-  final _fullNameController = TextEditingController();
+  final _lastNameController = TextEditingController();
+  final _firstNameController = TextEditingController();
+  final _middleNameController = TextEditingController();
   final _birthDateController = TextEditingController();
   final _phoneController = TextEditingController();
   final _addressController = TextEditingController();
+  final _zipController = TextEditingController();
+  final _barangayOtherController = TextEditingController();
 
   DateTime? _birthDate;
   String? _selectedGender;
   String? _selectedBarangay;
+  String? _selectedCity;
+  String _selectedProvince = 'Cavite';
 
   final Set<String> _selectedInterests = {};
   final Set<String> _selectedSkills = {};
@@ -31,92 +37,42 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
 
   final List<String> _genders = ['Male', 'Female', 'Prefer not to say'];
 
-  final List<String> _barangays = [
-    'Barangay 1',
-    'Barangay 2',
-    'Barangay 3',
-    'Barangay 4',
-    'Barangay 5',
-    'Barangay 6',
-    'Barangay 7',
-    'Barangay 8',
-    'Barangay 9',
-    'Barangay 10',
-    'Barangay 11',
-    'Barangay 12',
-    'Barangay 13',
-    'Barangay 14',
-    'Barangay 15',
-    'Barangay 16',
-    'Barangay 17',
-    'Barangay 18',
-    'Barangay 19',
-    'Barangay 20',
-    'Barangay 21',
-    'Barangay 22',
-    'Barangay 23',
-    'Barangay 24',
-    'Barangay 25',
-    'Barangay 26',
-    'Barangay 27',
-    'Barangay 28',
-    'Barangay 29',
-    'Barangay 30',
-    'Barangay 31',
-    'Barangay 32',
-    'Barangay 33',
-    'Barangay 34',
-    'Barangay 35',
-    'Barangay 36',
-    'Barangay 37',
-    'Barangay 38',
-    'Barangay 39',
-    'Barangay 40',
-    'Barangay 41',
-    'Barangay 42',
-    'Barangay 43',
-    'Barangay 44',
-    'Barangay 45',
-    'Barangay 46',
-    'Barangay 47',
-    'Barangay 48',
-    'Barangay 49',
-    'Barangay 50',
-    'Barangay 51',
-    'Barangay 52',
-    'Barangay 53',
-    'Barangay 54',
-    'Barangay 55',
-    'Barangay 56',
-    'Barangay 57',
-    'Barangay 58',
-    'Barangay 59',
-    'Barangay 60',
-    'Barangay 61',
-    'Barangay 62',
-    'Barangay 63',
-    'Barangay 64',
-    'Barangay 65',
-    'Barangay 66',
-    'Barangay 67',
-    'Barangay 68',
-    'Barangay 69',
-    'Barangay 70',
-    'Barangay 71',
-    'Barangay 72',
-    'Barangay 73',
-    'Barangay 74',
-    'Barangay 75',
-    'Barangay 76',
-    'Barangay 77',
-    'Barangay 78',
-    'Barangay 79',
-    'Barangay 80',
-    'Barangay 81',
-    'Barangay 82',
-    'Barangay 83',
-    'Barangay 84',
-  ];
+  // Phase 1: Cavite localities. Extend the province/city catalogs later.
+  static const Map<String, String> _cavitePostalCodes = {
+    'Alfonso': '4123',
+    'Amadeo': '4119',
+    'Bacoor': '4102',
+    'Carmona': '4116',
+    'Cavite City': '4100',
+    'Dasmariñas': '4114',
+    'General Emilio Aguinaldo': '4124',
+    'General Mariano Alvarez': '4117',
+    'General Trias': '4107',
+    'Imus': '4103',
+    'Indang': '4122',
+    'Kawit': '4104',
+    'Magallanes': '4113',
+    'Maragondon': '4112',
+    'Mendez': '4121',
+    'Naic': '4110',
+    'Noveleta': '4105',
+    'Rosario': '4106',
+    'Silang': '4118',
+    'Tagaytay': '4120',
+    'Tanza': '4108',
+    'Ternate': '4111',
+    'Trece Martires': '4109',
+  };
+
+  // The existing Barangay 1–84 options apply only to Cavite City.
+  final List<String> _caviteCityBarangays = List.generate(
+    84,
+    (index) => 'Barangay ${index + 1}',
+  );
+
+  String get _barangayValue => _selectedCity == 'Cavite City'
+      ? (_selectedBarangay ?? '')
+      : _barangayOtherController.text.trim();
 
   final List<_ChoiceItem> _interests = const [
     _ChoiceItem(label: 'Environment', icon: Icons.eco_outlined),
@@ -154,12 +110,22 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
   void initState() {
     super.initState();
     final data = Supabase.instance.client.auth.currentUser?.userMetadata;
-    _fullNameController.text = (data?['full_name'] ?? '').toString();
+    _lastNameController.text = (data?['last_name'] ?? '').toString();
+    _firstNameController.text = (data?['first_name'] ?? '').toString();
+    _middleNameController.text = (data?['middle_name'] ?? '').toString();
+    // Retain legacy name metadata as a reference, but don't guess its parts.
+    if (_firstNameController.text.isEmpty && data?['full_name'] != null) {
+      debugPrint('KAISA: Previous full_name exists; ask user for name parts.');
+    }
   }
 
   @override
   void dispose() {
-    _fullNameController.dispose();
+    _lastNameController.dispose();
+    _firstNameController.dispose();
+    _middleNameController.dispose();
+    _zipController.dispose();
+    _barangayOtherController.dispose();
     _birthDateController.dispose();
     _phoneController.dispose();
     _addressController.dispose();
@@ -218,8 +184,13 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
       return;
     }
 
-    if (_selectedBarangay == null) {
-      _showMessage('Please select your barangay.');
+    if (_barangayValue.isEmpty) {
+      _showMessage('Please provide your barangay.');
+      return;
+    }
+
+    if (_selectedCity == null) {
+      _showMessage('Please select your city or municipality.');
       return;
     }
 
@@ -232,40 +203,75 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
       _isSaving = true;
     });
 
-    // Preserve the details for the signed-in resident in Supabase Auth
-    // metadata. A dedicated resident_profiles table can replace this later.
     final user = Supabase.instance.client.auth.currentUser;
-    if (user != null) {
-      try {
-        await Supabase.instance.client.auth.updateUser(
-          UserAttributes(
-            data: {
-              ...?user.userMetadata,
-              'full_name': _fullNameController.text.trim(),
-              'birth_date': _birthDate!.toIso8601String().split('T').first,
-              'gender': _selectedGender,
-              'mobile_number': _phoneController.text.trim(),
-              'barangay': _selectedBarangay,
-              'street_address': _addressController.text.trim(),
-              'interests': _selectedInterests.toList(),
-              'skills': _selectedSkills.toList(),
-              'profile_completed': true,
-              'resident_tier': 1,
-            },
-          ),
-        );
-      } catch (error) {
-        if (!mounted) return;
-        setState(() => _isSaving = false);
-        _showMessage('Could not save your profile. Please try again.');
-        return;
-      }
-    } else {
-      // The uploaded signup/verification screens still support a prototype
-      // path without a real auth session. Don't claim it was saved remotely.
+    if (user == null) {
       if (!mounted) return;
       setState(() => _isSaving = false);
       _showMessage('Please sign in before completing your profile.');
+      return;
+    }
+
+    final last = _lastNameController.text.trim();
+    final first = _firstNameController.text.trim();
+    final middle = _middleNameController.text.trim();
+    final fullName = [
+      first,
+      middle,
+      last,
+    ].where((part) => part.isNotEmpty).join(' ');
+    final birthDate = _birthDate!.toIso8601String().split('T').first;
+
+    try {
+      // Persist to the dedicated resident table, secured with Supabase RLS.
+      await Supabase.instance.client.from('resident_profiles').upsert({
+        'user_id': user.id,
+        'last_name': last,
+        'first_name': first,
+        'middle_name': middle.isEmpty ? null : middle,
+        'full_name': fullName,
+        'birth_date': birthDate,
+        'gender': _selectedGender,
+        'mobile_number': _phoneController.text.trim(),
+        'province': _selectedProvince,
+        'city_municipality': _selectedCity,
+        'barangay': _barangayValue,
+        'street_address': _addressController.text.trim(),
+        'zip_code': _zipController.text.trim(),
+        'interests': _selectedInterests.toList(),
+        'skills': _selectedSkills.toList(),
+        'profile_completed': true,
+        'resident_tier': 1,
+      });
+
+      // Keep the current router's metadata-based completion check working.
+      // This metadata is NOT an authorization source for privileged access.
+      await Supabase.instance.client.auth.updateUser(
+        UserAttributes(
+          data: {
+            ...?user.userMetadata,
+            'last_name': last,
+            'first_name': first,
+            'middle_name': middle,
+            'full_name': fullName,
+            'birth_date': birthDate,
+            'gender': _selectedGender,
+            'mobile_number': _phoneController.text.trim(),
+            'province': _selectedProvince,
+            'city_municipality': _selectedCity,
+            'barangay': _barangayValue,
+            'street_address': _addressController.text.trim(),
+            'zip_code': _zipController.text.trim(),
+            'interests': _selectedInterests.toList(),
+            'skills': _selectedSkills.toList(),
+            'profile_completed': true,
+          },
+        ),
+      );
+    } catch (error) {
+      debugPrint('KAISA profile save failed: $error');
+      if (!mounted) return;
+      setState(() => _isSaving = false);
+      _showMessage('Could not save your profile. Please try again.');
       return;
     }
 
@@ -613,23 +619,37 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
       child: Column(
         children: [
           TextFormField(
-            controller: _fullNameController,
+            controller: _lastNameController,
             textCapitalization: TextCapitalization.words,
-            autofillHints: const [AutofillHints.name],
+            autofillHints: const [AutofillHints.familyName],
             decoration: const InputDecoration(
-              labelText: 'Full Name',
-              hintText: 'First name, middle name, last name',
+              labelText: 'Last Name',
               prefixIcon: Icon(Icons.badge_outlined),
             ),
-            validator: (value) {
-              if ((value ?? '').trim().isEmpty) {
-                return 'Full name is required.';
-              }
-              if ((value ?? '').trim().length < 3) {
-                return 'Please enter your full name.';
-              }
-              return null;
-            },
+            validator: (value) =>
+                (value ?? '').trim().isEmpty ? 'Last name is required.' : null,
+          ),
+          const SizedBox(height: 14),
+          TextFormField(
+            controller: _firstNameController,
+            textCapitalization: TextCapitalization.words,
+            autofillHints: const [AutofillHints.givenName],
+            decoration: const InputDecoration(
+              labelText: 'First Name',
+              prefixIcon: Icon(Icons.person_outline_rounded),
+            ),
+            validator: (value) =>
+                (value ?? '').trim().isEmpty ? 'First name is required.' : null,
+          ),
+          const SizedBox(height: 14),
+          TextFormField(
+            controller: _middleNameController,
+            textCapitalization: TextCapitalization.words,
+            autofillHints: const [AutofillHints.middleName],
+            decoration: const InputDecoration(
+              labelText: 'Middle Name (optional)',
+              prefixIcon: Icon(Icons.person_outline_rounded),
+            ),
           ),
           const SizedBox(height: 14),
           TextFormField(
@@ -725,80 +745,116 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
       child: Column(
         children: [
           DropdownButtonFormField<String>(
-            initialValue: _selectedBarangay,
+            initialValue: _selectedProvince,
+            decoration: const InputDecoration(
+              labelText: 'Province',
+              prefixIcon: Icon(Icons.map_outlined),
+            ),
+            items: const [
+              DropdownMenuItem(value: 'Cavite', child: Text('Cavite')),
+            ],
+            onChanged: (value) => setState(() {
+              _selectedProvince = value ?? 'Cavite';
+              _selectedCity = null;
+              _selectedBarangay = null;
+              _zipController.clear();
+            }),
+          ),
+          const SizedBox(height: 14),
+          DropdownButtonFormField<String>(
+            key: ValueKey(_selectedProvince),
+            initialValue: _selectedCity,
             isExpanded: true,
             decoration: const InputDecoration(
-              labelText: 'Barangay',
+              labelText: 'City / Municipality',
               prefixIcon: Icon(Icons.location_city_outlined),
             ),
-            hint: const Text('Select your barangay'),
-            items: _barangays.map((barangay) {
-              return DropdownMenuItem(value: barangay, child: Text(barangay));
-            }).toList(),
-            onChanged: (value) {
-              setState(() {
-                _selectedBarangay = value;
-              });
-            },
-            validator: (value) {
-              if (value == null) {
-                return 'Please select your barangay.';
-              }
-
-              return null;
-            },
+            hint: const Text('Select city or municipality'),
+            items: _cavitePostalCodes.keys
+                .map((city) => DropdownMenuItem(value: city, child: Text(city)))
+                .toList(),
+            onChanged: (value) => setState(() {
+              _selectedCity = value;
+              _selectedBarangay = null;
+              _barangayOtherController.clear();
+              _zipController.text = _cavitePostalCodes[value] ?? '';
+            }),
+            validator: (value) =>
+                value == null ? 'Select your city or municipality.' : null,
           ),
-
           const SizedBox(height: 14),
-
+          if (_selectedCity == 'Cavite City') ...[
+            DropdownButtonFormField<String>(
+              key: const ValueKey('cavite_city_barangays'),
+              initialValue: _selectedBarangay,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                labelText: 'Barangay',
+                prefixIcon: Icon(Icons.place_outlined),
+              ),
+              hint: const Text('Select your barangay'),
+              items: _caviteCityBarangays
+                  .map(
+                    (barangay) => DropdownMenuItem(
+                      value: barangay,
+                      child: Text(barangay),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (value) => setState(() => _selectedBarangay = value),
+              validator: (value) => value == null ? 'Select a barangay.' : null,
+            ),
+          ] else ...[
+            TextFormField(
+              controller: _barangayOtherController,
+              textCapitalization: TextCapitalization.words,
+              decoration: const InputDecoration(
+                labelText: 'Barangay',
+                hintText: 'Enter your barangay',
+                prefixIcon: Icon(Icons.place_outlined),
+              ),
+              validator: (value) =>
+                  (value ?? '').trim().isEmpty ? 'Barangay is required.' : null,
+            ),
+          ],
+          const SizedBox(height: 14),
           TextFormField(
             controller: _addressController,
             textCapitalization: TextCapitalization.words,
             maxLines: 2,
             decoration: const InputDecoration(
-              labelText: 'Street / Address',
+              labelText: 'Street Address',
               hintText: 'House no., street, subdivision',
               prefixIcon: Icon(Icons.home_outlined),
               alignLabelWithHint: true,
             ),
-            validator: (value) {
-              if (value == null || value.trim().isEmpty) {
-                return 'Address is required.';
-              }
-
-              return null;
-            },
+            validator: (value) => (value ?? '').trim().isEmpty
+                ? 'Street address is required.'
+                : null,
           ),
-
           const SizedBox(height: 14),
-
-          Container(
-            padding: const EdgeInsets.all(13),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceSoft,
-              borderRadius: BorderRadius.circular(13),
-              border: Border.all(color: AppColors.border),
+          TextFormField(
+            controller: _zipController,
+            keyboardType: TextInputType.number,
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+              LengthLimitingTextInputFormatter(4),
+            ],
+            decoration: const InputDecoration(
+              labelText: 'ZIP Code',
+              hintText: '4-digit postal code',
+              prefixIcon: Icon(Icons.local_post_office_outlined),
             ),
-            child: const Row(
-              children: [
-                Icon(
-                  Icons.location_on_rounded,
-                  size: 18,
-                  color: AppColors.blue,
-                ),
-                SizedBox(width: 9),
-                Expanded(
-                  child: Text(
-                    'City: Cavite City, Cavite',
-                    style: TextStyle(
-                      color: AppColors.textSecondary,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+            validator: (value) =>
+                RegExp(r'^\d{4}$').hasMatch((value ?? '').trim())
+                ? null
+                : 'Enter a valid 4-digit ZIP code.',
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'The ZIP code is suggested from your city or municipality. '
+            'You may edit it if your postal area uses a different code.',
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 11),
           ),
         ],
       ),

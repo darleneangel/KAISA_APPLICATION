@@ -5,6 +5,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/services/kaisa_auth_service.dart';
 import '../../../shared/repositories/resident_account_repository.dart';
 import '../widgets/compact_auth_shell.dart';
+import '../../../core/security/kaisa_password_policy.dart';
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
@@ -18,6 +19,8 @@ class _SignUpPageState extends State<SignUpPage> {
   final _password = TextEditingController();
   final _confirm = TextEditingController();
   bool _hide = true, _hideConfirm = true, _agreed = false;
+  bool get _strongPassword => KaisaPasswordPolicy.isStrong(_password.text);
+
   @override
   void dispose() {
     _email.dispose();
@@ -29,6 +32,14 @@ class _SignUpPageState extends State<SignUpPage> {
   bool _emailBusy = false;
   Future<void> _submit() async {
     if (_emailBusy || !_form.currentState!.validate()) return;
+    if (!_strongPassword) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Choose a strong password before registering.'),
+        ),
+      );
+      return;
+    }
     if (!_agreed) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -131,6 +142,12 @@ class _SignUpPageState extends State<SignUpPage> {
           const SizedBox(height: 14),
           TextFormField(
             controller: _password,
+            onChanged: (_) {
+              setState(() {});
+              if (_confirm.text.isNotEmpty) {
+                _form.currentState?.validate();
+              }
+            },
             obscureText: _hide,
             decoration: InputDecoration(
               labelText: 'Password',
@@ -144,15 +161,10 @@ class _SignUpPageState extends State<SignUpPage> {
                 ),
               ),
             ),
-            validator: (s) {
-              if (s == null || s.length < 8) return 'Use at least 8 characters';
-              if (!RegExp(r'[A-Z]').hasMatch(s) ||
-                  !RegExp(r'[a-z]').hasMatch(s) ||
-                  !RegExp(r'[0-9]').hasMatch(s))
-                return 'Include uppercase, lowercase and a number';
-              return null;
-            },
+            validator: (s) => KaisaPasswordPolicy.error(s ?? ''),
           ),
+          const SizedBox(height: 12),
+          KaisaPasswordStrengthIndicator(password: _password.text),
           const SizedBox(height: 14),
           TextFormField(
             controller: _confirm,
@@ -188,7 +200,9 @@ class _SignUpPageState extends State<SignUpPage> {
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
-              onPressed: _emailBusy ? null : _submit,
+              onPressed: (_emailBusy || !_strongPassword || !_agreed)
+                  ? null
+                  : _submit,
               icon: const Icon(Icons.arrow_forward_rounded),
               label: Text(
                 _emailBusy ? 'Creating account...' : 'Create account',
