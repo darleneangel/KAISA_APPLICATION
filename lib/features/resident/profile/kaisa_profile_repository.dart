@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../widgets/kaisa_account_refresh.dart';
 
 class KaisaProfileRepository {
   KaisaProfileRepository._();
@@ -41,6 +42,7 @@ class KaisaProfileRepository {
       'kaisa_set_public_profile',
       params: {'p_bio': bio, 'p_avatar_path': avatarPath},
     );
+    notifyKaisaAccountChanged();
   }
 
   Future<String> uploadAvatar(Uint8List bytes, String mime) async {

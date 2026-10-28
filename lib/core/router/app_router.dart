@@ -33,6 +33,10 @@ import '../../features/resident/profile/resident_chat_page.dart';
 
 import '../../features/resident/messaging/messages_page.dart';
 
+import '../../features/resident/notifications/notifications_page.dart';
+
+import '../../features/resident/search/kaisa_search_page.dart';
+
 final _authRefresh = _AuthRouterRefresh();
 
 class _AuthRouterRefresh extends ChangeNotifier {
@@ -160,6 +164,16 @@ final appRouter = GoRouter(
         GoRoute(
           path: '/resident/messages',
           builder: (context, state) => const MessagesPage(),
+        ),
+
+        GoRoute(
+          path: '/resident/notifications',
+          builder: (context, state) => const NotificationsPage(),
+        ),
+
+        GoRoute(
+          path: '/resident/search',
+          builder: (context, state) => const KaisaSearchPage(),
         ),
 
         GoRoute(

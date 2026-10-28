@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'kaisa_resident_design.dart';
+import 'kaisa_account_refresh.dart';
+import '../notifications/kaisa_notification_bell.dart';
 
 /// Responsive navigation for existing resident routes.
 /// Phone: one shared bottom navigation bar for every resident route.
@@ -332,16 +334,94 @@ class KaisaResponsiveShell extends StatelessWidget {
 
 /// Shared, single top header for resident screens. Put it in the ShellRoute
 /// wrapper rather than adding a separate AppBar to every screen.
-class KaisaResidentTopBar extends StatelessWidget {
+class KaisaResidentTopBar extends StatefulWidget {
   const KaisaResidentTopBar({super.key});
+  @override
+  State<KaisaResidentTopBar> createState() => _KaisaResidentTopBarState();
+}
 
-  static const _options = <(String, IconData, String)>[
-    ('Community Feed', Icons.forum_outlined, '/resident/feed'),
-    ('Organizations', Icons.groups_2_outlined, '/resident/organizations'),
-    ('Events', Icons.event_available_outlined, '/resident/events'),
-    ('My Events', Icons.bookmark_added_outlined, '/resident/my-events'),
-    ('Messages', Icons.chat_bubble_outline_rounded, '/resident/messages'),
-  ];
+class _KaisaResidentTopBarState extends State<KaisaResidentTopBar>
+    with WidgetsBindingObserver {
+  String? avatarPath;
+  String fullName = 'KAISA Resident';
+  bool loadingAccount = false;
+  String? previousUid;
+  RealtimeChannel? accountChannel;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    kaisaAccountRefresh.addListener(_reload);
+    _bindAccount();
+  }
+
+  void _reload() {
+    _loadAccount();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _loadAccount();
+  }
+
+  void _bindAccount() {
+    final uid = Supabase.instance.client.auth.currentUser?.id;
+    if (uid == previousUid) return;
+    previousUid = uid;
+    if (accountChannel != null)
+      Supabase.instance.client.removeChannel(accountChannel!);
+    if (uid == null) return;
+    accountChannel = Supabase.instance.client
+        .channel('kaisa-topbar-$uid')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: 'resident_profiles',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'user_id',
+            value: uid,
+          ),
+          callback: (_) => _loadAccount(),
+        )
+        .subscribe();
+    _loadAccount();
+  }
+
+  Future<void> _loadAccount() async {
+    final uid = Supabase.instance.client.auth.currentUser?.id;
+    if (uid == null || loadingAccount) return;
+    loadingAccount = true;
+    try {
+      final row = await Supabase.instance.client
+          .from('resident_profiles')
+          .select('first_name,last_name,avatar_path')
+          .eq('user_id', uid)
+          .maybeSingle();
+      if (!mounted || uid != Supabase.instance.client.auth.currentUser?.id)
+        return;
+      final name = '${row?['first_name'] ?? ''} ${row?['last_name'] ?? ''}'
+          .trim();
+      setState(() {
+        fullName = name.isNotEmpty ? name : 'KAISA Resident';
+        avatarPath = row?['avatar_path']?.toString();
+      });
+    } catch (_) {
+      /* Preserve the currently displayed account while offline. */
+    } finally {
+      loadingAccount = false;
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    kaisaAccountRefresh.removeListener(_reload);
+    if (accountChannel != null)
+      Supabase.instance.client.removeChannel(accountChannel!);
+    super.dispose();
+  }
 
   Future<void> _logout(BuildContext context) async {
     final confirm = await showDialog<bool>(
@@ -376,48 +456,19 @@ class KaisaResidentTopBar extends StatelessWidget {
     }
   }
 
-  void _search(BuildContext context) {
-    showModalBottomSheet<void>(
-      context: context,
-      useSafeArea: true,
-      showDragHandle: true,
-      builder: (sheetContext) => Padding(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const KaisaResidentSectionHeading(
-              title: 'Explore KAISA',
-              subtitle: 'Find what matters to your community.',
-            ),
-            const SizedBox(height: 12),
-            for (final option in _options)
-              ListTile(
-                leading: Icon(option.$2, color: KaisaResidentDesign.green),
-                title: Text(option.$1),
-                trailing: const Icon(Icons.chevron_right_rounded),
-                onTap: () {
-                  Navigator.pop(sheetContext);
-                  context.go(option.$3);
-                },
-              ),
-          ],
-        ),
-      ),
-    );
-  }
+  void _search(BuildContext context) => context.go('/resident/search');
 
   @override
   Widget build(BuildContext context) {
     final compact = MediaQuery.sizeOf(context).width < 420;
-    final rawName =
-        Supabase.instance.client.auth.currentUser?.userMetadata?['first_name']
-            ?.toString() ??
-        '';
-    final initial = rawName.trim().isEmpty
+    final initial = fullName.trim().isEmpty
         ? 'R'
-        : rawName.trim()[0].toUpperCase();
+        : fullName.trim()[0].toUpperCase();
+    final url = avatarPath == null || avatarPath!.isEmpty
+        ? null
+        : Supabase.instance.client.storage
+              .from('kaisa-avatars')
+              .getPublicUrl(avatarPath!);
     return Material(
       color: KaisaResidentDesign.paper,
       child: SafeArea(
@@ -466,7 +517,7 @@ class KaisaResidentTopBar extends StatelessWidget {
               ),
               const Spacer(),
               IconButton(
-                tooltip: 'Explore KAISA',
+                tooltip: 'Search KAISA',
                 iconSize: KaisaResidentDesign.iconSize,
                 onPressed: () => _search(context),
                 icon: const Icon(
@@ -483,17 +534,9 @@ class KaisaResidentTopBar extends StatelessWidget {
                   color: KaisaResidentDesign.ink,
                 ),
               ),
-              IconButton(
-                tooltip: 'Notifications',
-                iconSize: KaisaResidentDesign.iconSize,
-                onPressed: () => context.go('/resident/notifications'),
-                icon: const Icon(
-                  Icons.notifications_none_rounded,
-                  color: KaisaResidentDesign.ink,
-                ),
-              ),
+              const KaisaNotificationBell(),
               PopupMenuButton<String>(
-                tooltip: 'Account',
+                tooltip: fullName,
                 onSelected: (value) {
                   if (value == 'logout') {
                     _logout(context);
@@ -517,13 +560,16 @@ class KaisaResidentTopBar extends StatelessWidget {
                   child: CircleAvatar(
                     radius: 17,
                     backgroundColor: const Color(0xFFE5F2E9),
-                    child: Text(
-                      initial,
-                      style: const TextStyle(
-                        color: KaisaResidentDesign.forest,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
+                    backgroundImage: url == null ? null : NetworkImage(url),
+                    child: url == null
+                        ? Text(
+                            initial,
+                            style: const TextStyle(
+                              color: KaisaResidentDesign.forest,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          )
+                        : null,
                   ),
                 ),
               ),
