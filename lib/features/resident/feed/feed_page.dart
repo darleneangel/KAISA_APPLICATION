@@ -1,5 +1,4 @@
 import '../../resident/widgets/kaisa_resident_hero.dart';
-import '../../../core/theme/kaisa_backdrop.dart';
 import 'package:flutter/material.dart';
 
 // import '../widgets/resident_bottom_nav.dart';
@@ -27,14 +26,13 @@ class _FeedPageState extends State<FeedPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
 
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        title: const Column(
+        title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            const Text(
               'Community Feed',
               style: TextStyle(fontWeight: FontWeight.w800),
             ),
@@ -43,7 +41,7 @@ class _FeedPageState extends State<FeedPage> {
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.normal,
-                color: AppColors.textSecondary,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
           ],
@@ -52,11 +50,7 @@ class _FeedPageState extends State<FeedPage> {
         // to be removed: actions: [const NotificationBell(), const SizedBox(width: 8)],
       ),
 
-      body: Stack(
-        children: [
-          const Positioned.fill(child: KaisaBackdrop()),
-          Positioned.fill(
-            child: Column(
+      body: Column(
               children: [
                 // ---------------------------------------------------------
                 // FILTERS
@@ -155,9 +149,6 @@ class _FeedPageState extends State<FeedPage> {
                   ),
                 ),
               ],
-            ),
-          ),
-        ],
       ),
 
       // to be removed:
@@ -242,10 +233,10 @@ class _FeedPostCardState extends State<_FeedPostCard> {
                     children: [
                       Text(
                         widget.organizationName,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
+                          color: Theme.of(context).colorScheme.onSurface,
                         ),
                       ),
 
@@ -253,9 +244,9 @@ class _FeedPostCardState extends State<_FeedPostCard> {
 
                       Text(
                         '${widget.organizationType} • ${widget.time}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
-                          color: AppColors.textSecondary,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
                     ],
@@ -266,9 +257,9 @@ class _FeedPostCardState extends State<_FeedPostCard> {
                   onPressed: () {
                     // More options later.
                   },
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.more_horiz_rounded,
-                    color: AppColors.textSecondary,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
               ],
@@ -302,10 +293,10 @@ class _FeedPostCardState extends State<_FeedPostCard> {
             // -------------------------------------------------------
             Text(
               widget.content,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 height: 1.5,
-                color: AppColors.textPrimary,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
 
@@ -385,9 +376,9 @@ class _FeedPostCardState extends State<_FeedPostCard> {
 
                 Text(
                   '$displayedLikes',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
-                    color: AppColors.textSecondary,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
 
@@ -395,9 +386,9 @@ class _FeedPostCardState extends State<_FeedPostCard> {
 
                 Text(
                   '${widget.comments} comments',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
-                    color: AppColors.textSecondary,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
               ],
@@ -425,7 +416,7 @@ class _FeedPostCardState extends State<_FeedPostCard> {
                           : Icons.favorite_border_rounded,
                       color: isLiked
                           ? AppColors.forest
-                          : AppColors.textSecondary,
+                          : Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                     label: Text(isLiked ? 'Liked' : 'Like'),
                   ),
