@@ -1,23 +1,16 @@
-import '../../resident/widgets/kaisa_resident_hero.dart';
-import '../../../core/theme/kaisa_backdrop.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter/services.dart';
+import '../widgets/kaisa_resident_design.dart';
+import 'kaisa_event_widgets.dart';
+import 'kaisa_events_repository.dart';
 
-import '../../../core/theme/app_colors.dart';
-
+/// The constructor keeps the existing named arguments used by app_router.dart.
+/// Pass eventId: data['event_id'] in the router for persisted registration.
 class EventDetailsPage extends StatefulWidget {
-  final String title;
-  final String organization;
-  final String category;
-  final String description;
-  final String date;
-  final String time;
-  final String location;
-  final int participants;
-  final int capacity;
-
   const EventDetailsPage({
     super.key,
+    this.eventId,
     required this.title,
     required this.organization,
     required this.category,
@@ -28,699 +21,450 @@ class EventDetailsPage extends StatefulWidget {
     required this.participants,
     required this.capacity,
   });
-
+  final String? eventId;
+  final String title, organization, category, description, date, time, location;
+  final int participants, capacity;
   @override
   State<EventDetailsPage> createState() => _EventDetailsPageState();
 }
 
 class _EventDetailsPageState extends State<EventDetailsPage> {
-  // ============================================================
-  // PROTOTYPE ONLY
-  //
-  // false = Tier 1
-  // true  = Tier 2
-  //
-  // Later this will come from the logged-in resident.
-  // ============================================================
-  static const bool isTier2Verified = false;
+  KaisaEvent? _event;
+  bool _tier2 = false;
+  bool _busy = false;
+  bool _loading = true;
+  String? _error;
 
-  bool isRegistered = false;
-
-  bool get isFull => widget.participants >= widget.capacity;
-
-  int get availableSlots {
-    final slots = widget.capacity - widget.participants;
-
-    return slots < 0 ? 0 : slots;
+  @override
+  void initState() {
+    super.initState();
+    _reload();
   }
 
-  void _handleRegistration() {
-    if (!isTier2Verified) {
-      _showVerificationRequired();
-      return;
+  Future<void> _reload() async {
+    if (!mounted) return;
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      if (widget.eventId == null || widget.eventId!.isEmpty) {
+        throw StateError(
+          'This event needs a database ID. Add eventId: data[\'event_id\'] to the router.',
+        );
+      }
+      final details = await Future.wait<dynamic>([
+        KaisaEventsRepository.instance.getEvent(widget.eventId!),
+        KaisaEventsRepository.instance.isTier2(),
+      ]);
+      if (!mounted) return;
+      setState(() {
+        _event = details[0] as KaisaEvent?;
+        _tier2 = details[1] == true;
+      });
+      if (_event == null) _error = 'This event is no longer available.';
+    } catch (e) {
+      debugPrint('KAISA event detail load: $e');
+      if (mounted)
+        setState(
+          () => _error =
+              'Unable to load the event. Check the database migration and route event ID.',
+        );
+    } finally {
+      if (mounted) setState(() => _loading = false);
     }
+  }
 
-    if (isFull) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Registration is no longer available because this event is full.',
+  void _notice(String value) {
+    if (mounted)
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(value)));
+  }
+
+  Future<void> _changeRegistration() async {
+    final event = _event;
+    if (event == null || _busy) return;
+    if (!event.isRegistered && !_tier2) {
+      final go = await showDialog<bool>(
+        context: context,
+        builder: (c) => AlertDialog(
+          title: const Text('Tier 2 verification required'),
+          content: const Text(
+            'An LGU-approved Tier 2 account is required to register for community events.',
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(c, false),
+              child: const Text('Not now'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(c, true),
+              child: const Text('Get verified'),
+            ),
+          ],
         ),
       );
+      if (go == true && mounted)
+        context.push('/resident/identity-verification');
       return;
     }
-
-    if (isRegistered) {
-      _showCancelRegistration();
-      return;
+    final cancel = event.isRegistered;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: Text(
+          cancel ? 'Cancel registration?' : 'Register for this event?',
+        ),
+        content: Text(
+          cancel
+              ? 'Cancel your registration for “${event.title}”?'
+              : 'Confirm your participation in “${event.title}”.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(c, false),
+            child: const Text('Go back'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(c, true),
+            child: Text(cancel ? 'Cancel registration' : 'Register'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() => _busy = true);
+    try {
+      if (cancel) {
+        await KaisaEventsRepository.instance.cancel(event.id);
+      } else {
+        await KaisaEventsRepository.instance.register(event.id);
+      }
+      await _reload();
+      _notice(
+        cancel
+            ? 'Your registration has been cancelled.'
+            : 'You are registered for this event!',
+      );
+    } catch (e) {
+      debugPrint('KAISA event registration: $e');
+      final message = e.toString();
+      _notice(
+        message.contains('KAISA_')
+            ? message
+                  .split('KAISA_')
+                  .last
+                  .replaceAll('_', ' ')
+                  .split(' ')
+                  .join(' ')
+                  .split(')')
+                  .first
+            : 'Could not update registration. Please retry.',
+      );
+      await _reload();
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
-
-    _showRegistrationConfirmation();
   }
 
-  void _showVerificationRequired() {
-    showDialog(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          icon: const Icon(
-            Icons.verified_user_outlined,
-            size: 44,
-            color: AppColors.forest,
-          ),
-          title: const Text(
-            'Identity Verification Required',
-            textAlign: TextAlign.center,
-          ),
-          content: const Text(
-            'You need a Tier 2 verified account before you can '
-            'register for community events.',
-            textAlign: TextAlign.center,
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(dialogContext);
-              },
-              child: const Text('Not Now'),
-            ),
-            FilledButton(
-              onPressed: () {
-                Navigator.pop(dialogContext);
-
-                context.push('/resident/identity-verification');
-              },
-              child: const Text('Get Verified'),
-            ),
-          ],
-        );
-      },
+  Future<void> _share() async {
+    final id = widget.eventId;
+    if (id == null) return;
+    final uri = Uri.base.replace(
+      path: '/resident/events',
+      queryParameters: {'event': id},
     );
-  }
-
-  void _showRegistrationConfirmation() {
-    showDialog(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          icon: const Icon(
-            Icons.event_available_outlined,
-            size: 44,
-            color: AppColors.greenDark,
-          ),
-          title: const Text('Register for Event?', textAlign: TextAlign.center),
-          content: Text(
-            'Would you like to register for "${widget.title}"?',
-            textAlign: TextAlign.center,
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(dialogContext);
-              },
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () {
-                Navigator.pop(dialogContext);
-
-                setState(() {
-                  isRegistered = true;
-                });
-
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text(
-                      'You have successfully registered for this event.',
-                    ),
-                  ),
-                );
-              },
-              child: const Text('Register'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _showCancelRegistration() {
-    showDialog(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text('Cancel Registration?'),
-          content: Text(
-            'Are you sure you want to cancel your registration '
-            'for "${widget.title}"?',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(dialogContext);
-              },
-              child: const Text('Keep Registration'),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.pop(dialogContext);
-
-                setState(() {
-                  isRegistered = false;
-                });
-
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text(
-                      'Your event registration has been cancelled.',
-                    ),
-                  ),
-                );
-              },
-              style: TextButton.styleFrom(foregroundColor: AppColors.error),
-              child: const Text('Cancel Registration'),
-            ),
-          ],
-        );
-      },
-    );
+    await Clipboard.setData(ClipboardData(text: uri.toString()));
+    _notice('Events page link copied!');
   }
 
   @override
   Widget build(BuildContext context) {
-    final double progress = widget.capacity == 0
-        ? 0
-        : (widget.participants / widget.capacity).clamp(0.0, 1.0);
-
+    final event = _event;
     return Scaffold(
-      backgroundColor: AppColors.background,
-
-      appBar: AppBar(
-        leading: IconButton(
-          onPressed: () => context.pop(),
-          icon: const Icon(Icons.arrow_back_rounded),
-        ),
-        title: const Text(
-          'Event Details',
-          style: TextStyle(fontWeight: FontWeight.w800),
-        ),
-        actions: [
-          IconButton(
-            tooltip: 'Share Event',
-            onPressed: () {
-              // Share functionality later.
-            },
-            icon: const Icon(Icons.share_outlined),
-          ),
-          const SizedBox(width: 4),
-        ],
-      ),
-
-      body: Stack(
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(bottom: 23),
-            child: KaisaResidentHero(
-              eyebrow: 'BE PART OF IT',
-              title: 'Make every moment count.',
-              subtitle: 'Discover the details and take your next step.',
-              icon: Icons.auto_awesome_rounded,
-              chip: 'Community events',
-            ),
-          ),
-          const Positioned.fill(child: KaisaBackdrop()),
-          Positioned.fill(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.only(bottom: 130),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // ==================================================
-                  // EVENT HEADER
-                  // ==================================================
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.fromLTRB(24, 32, 24, 32),
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [AppColors.forest, AppColors.deepForest],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                    ),
+      backgroundColor: KaisaResidentDesign.paper,
+      body: RefreshIndicator(
+        onRefresh: _reload,
+        child: LayoutBuilder(
+          builder: (context, bounds) {
+            final pad = KaisaResidentDesign.pagePadding(bounds.maxWidth);
+            return ListView(
+              padding: EdgeInsets.fromLTRB(pad, 16, pad, 100),
+              children: [
+                Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 930),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 11,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.16),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            widget.category,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-
-                        const SizedBox(height: 18),
-
-                        Text(
-                          widget.title,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 27,
-                            height: 1.2,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-
-                        const SizedBox(height: 12),
-
                         Row(
                           children: [
-                            const Icon(
-                              Icons.groups_outlined,
-                              size: 18,
-                              color: Colors.white70,
+                            TextButton.icon(
+                              onPressed: () => context.canPop()
+                                  ? context.pop()
+                                  : context.go('/resident/events'),
+                              icon: const Icon(Icons.arrow_back_rounded),
+                              label: const Text('Back to Events'),
                             ),
-                            const SizedBox(width: 7),
-                            Expanded(
-                              child: Text(
-                                'Hosted by ${widget.organization}',
-                                style: const TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 13,
-                                ),
+                            const Spacer(),
+                            IconButton(
+                              tooltip: 'Share event',
+                              onPressed: _share,
+                              icon: const Icon(
+                                Icons.share_outlined,
+                                color: KaisaResidentDesign.forest,
                               ),
                             ),
                           ],
                         ),
-                      ],
-                    ),
-                  ),
-
-                  Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // ============================================
-                        // EVENT INFORMATION
-                        // ============================================
-                        const Text(
-                          'Event Information',
-                          style: TextStyle(
-                            fontSize: 19,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-
                         const SizedBox(height: 14),
-
-                        _InfoCard(
-                          icon: Icons.calendar_month_outlined,
-                          title: 'Date',
-                          value: widget.date,
-                        ),
-
-                        const SizedBox(height: 10),
-
-                        _InfoCard(
-                          icon: Icons.schedule_outlined,
-                          title: 'Time',
-                          value: widget.time,
-                        ),
-
-                        const SizedBox(height: 10),
-
-                        _InfoCard(
-                          icon: Icons.location_on_outlined,
-                          title: 'Location',
-                          value: widget.location,
-                        ),
-
-                        const SizedBox(height: 30),
-
-                        // ============================================
-                        // ABOUT
-                        // ============================================
-                        const Text(
-                          'About This Event',
-                          style: TextStyle(
-                            fontSize: 19,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-
-                        const SizedBox(height: 10),
-
-                        Text(
-                          widget.description,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            height: 1.6,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-
-                        const SizedBox(height: 30),
-
-                        // ============================================
-                        // PARTICIPATION
-                        // ============================================
-                        const Text(
-                          'Participation',
-                          style: TextStyle(
-                            fontSize: 19,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-
-                        const SizedBox(height: 14),
-
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(18),
-                          decoration: BoxDecoration(
-                            color: AppColors.surface,
-                            borderRadius: BorderRadius.circular(18),
-                            border: Border.all(color: AppColors.border),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  const Icon(
-                                    Icons.people_outline_rounded,
-                                    color: AppColors.forest,
-                                  ),
-
-                                  const SizedBox(width: 10),
-
-                                  Expanded(
-                                    child: Text(
-                                      '${widget.participants} of '
-                                      '${widget.capacity} registered',
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                  ),
-
-                                  Text(
-                                    isFull
-                                        ? 'Full'
-                                        : '$availableSlots slots left',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w700,
-                                      color: isFull
-                                          ? AppColors.error
-                                          : AppColors.greenDark,
-                                    ),
-                                  ),
-                                ],
-                              ),
-
-                              const SizedBox(height: 14),
-
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(20),
-                                child: LinearProgressIndicator(
-                                  value: progress,
-                                  minHeight: 8,
-                                  backgroundColor: AppColors.mint,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        // ============================================
-                        // REGISTERED STATE
-                        // ============================================
-                        if (isRegistered) ...[
-                          const SizedBox(height: 20),
-
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: AppColors.greenLight,
-                              borderRadius: BorderRadius.circular(16),
+                        if (_loading)
+                          const Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(55),
+                              child: CircularProgressIndicator(),
                             ),
-                            child: const Row(
+                          )
+                        else if (_error != null)
+                          KaisaResidentCard(
+                            child: Column(
                               children: [
-                                Icon(
-                                  Icons.check_circle_outline_rounded,
-                                  color: AppColors.greenDark,
+                                Text(_error!, textAlign: TextAlign.center),
+                                TextButton(
+                                  onPressed: _reload,
+                                  child: const Text('Try again'),
                                 ),
-                                SizedBox(width: 10),
-                                Expanded(
-                                  child: Text(
-                                    'You are registered for this event.',
-                                    style: TextStyle(
-                                      color: AppColors.greenDark,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
+                              ],
+                            ),
+                          )
+                        else if (event != null) ...[
+                          KaisaEventsHeading(
+                            eyebrow: 'EVENT DETAILS',
+                            title: event.title,
+                            subtitle: 'Hosted by ${event.organization}',
+                          ),
+                          const SizedBox(height: 21),
+                          KaisaEventsHero(
+                            title: 'Be part of something\nmeaningful.',
+                            subtitle: event.description,
+                            icon: Icons.celebration_outlined,
+                          ),
+                          const SizedBox(height: 22),
+                          const KaisaResidentSectionHeading(
+                            title: 'Event information',
+                            subtitle: 'Everything you need before joining.',
+                          ),
+                          const SizedBox(height: 12),
+                          KaisaResidentCard(
+                            child: Column(
+                              children: [
+                                _DetailRow(
+                                  icon: Icons.calendar_month_outlined,
+                                  label: 'Date',
+                                  value: event.dateLabel,
+                                ),
+                                const Divider(
+                                  color: KaisaResidentDesign.border,
+                                  height: 28,
+                                ),
+                                _DetailRow(
+                                  icon: Icons.schedule_outlined,
+                                  label: 'Time',
+                                  value: event.timeLabel,
+                                ),
+                                const Divider(
+                                  color: KaisaResidentDesign.border,
+                                  height: 28,
+                                ),
+                                _DetailRow(
+                                  icon: Icons.location_on_outlined,
+                                  label: 'Location',
+                                  value: event.location,
+                                ),
+                                const Divider(
+                                  color: KaisaResidentDesign.border,
+                                  height: 28,
+                                ),
+                                _DetailRow(
+                                  icon: Icons.groups_2_outlined,
+                                  label: 'Organized by',
+                                  value: event.organization,
                                 ),
                               ],
                             ),
                           ),
-                        ],
-
-                        // ============================================
-                        // TIER 1 INFORMATION
-                        // ============================================
-                        if (!isTier2Verified) ...[
-                          const SizedBox(height: 20),
-
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: AppColors.mint,
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: const Row(
+                          const SizedBox(height: 22),
+                          const KaisaResidentSectionHeading(
+                            title: 'Participation',
+                          ),
+                          const SizedBox(height: 12),
+                          KaisaResidentCard(
+                            child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Icon(
-                                  Icons.lock_outline_rounded,
-                                  color: AppColors.deepForest,
-                                ),
-                                SizedBox(width: 11),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Tier 2 verification required',
-                                        style: TextStyle(
-                                          color: AppColors.blueDark,
-                                          fontWeight: FontWeight.w700,
+                                Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.people_outline_rounded,
+                                      color: KaisaResidentDesign.green,
+                                    ),
+                                    const SizedBox(width: 9),
+                                    Expanded(
+                                      child: Text(
+                                        '${event.registeredCount} of ${event.capacity} registered',
+                                        style: const TextStyle(
+                                          color: KaisaResidentDesign.ink,
+                                          fontWeight: FontWeight.w800,
                                         ),
                                       ),
-                                      SizedBox(height: 4),
+                                    ),
+                                    Text(
+                                      event.isFull
+                                          ? 'Full'
+                                          : '${event.capacity - event.registeredCount} open',
+                                      style: const TextStyle(
+                                        color: KaisaResidentDesign.green,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 15),
+                                LinearProgressIndicator(
+                                  value: event.capacity <= 0
+                                      ? 0
+                                      : (event.registeredCount / event.capacity)
+                                            .clamp(0.0, 1.0),
+                                  minHeight: 8,
+                                  color: KaisaResidentDesign.green,
+                                  backgroundColor: const Color(0xFFE5F1E8),
+                                ),
+                                if (event.isRegistered) ...[
+                                  const SizedBox(height: 15),
+                                  const Row(
+                                    children: [
+                                      Icon(
+                                        Icons.check_circle_rounded,
+                                        color: KaisaResidentDesign.green,
+                                      ),
+                                      SizedBox(width: 8),
                                       Text(
-                                        'You can view this event, '
-                                        'but identity verification '
-                                        'is required before registering.',
+                                        'You are registered!',
                                         style: TextStyle(
-                                          color: AppColors.blueDark,
-                                          fontSize: 12,
-                                          height: 1.4,
+                                          color: KaisaResidentDesign.forest,
+                                          fontWeight: FontWeight.w800,
                                         ),
                                       ),
                                     ],
                                   ),
-                                ),
+                                ],
+                                if (!_tier2 && !event.isRegistered) ...[
+                                  const SizedBox(height: 15),
+                                  const Text(
+                                    'Tier 2 verification is required before registration.',
+                                    style: TextStyle(
+                                      color: KaisaResidentDesign.muted,
+                                    ),
+                                  ),
+                                ],
                               ],
                             ),
                           ),
+                          const SizedBox(height: 20),
+                          SizedBox(
+                            width: double.infinity,
+                            child: FilledButton.icon(
+                              style: FilledButton.styleFrom(
+                                backgroundColor: KaisaResidentDesign.forest,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 17,
+                                ),
+                              ),
+                              onPressed:
+                                  _busy ||
+                                      (event.isPast && !event.isRegistered) ||
+                                      (event.isFull && !event.isRegistered)
+                                  ? null
+                                  : _changeRegistration,
+                              icon: Icon(
+                                event.isRegistered
+                                    ? Icons.event_busy_outlined
+                                    : Icons.event_available_outlined,
+                              ),
+                              label: Text(
+                                _busy
+                                    ? 'Saving...'
+                                    : event.isRegistered
+                                    ? 'Cancel registration'
+                                    : event.isPast
+                                    ? 'Event finished'
+                                    : event.isFull
+                                    ? 'Registration full'
+                                    : _tier2
+                                    ? 'Register for event'
+                                    : 'Get Tier 2 verified',
+                              ),
+                            ),
+                          ),
                         ],
-
-                        const SizedBox(height: 30),
-
-                        // ============================================
-                        // HOST ORGANIZATION
-                        // ============================================
-                        const Text(
-                          'Hosted By',
-                          style: TextStyle(
-                            fontSize: 19,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-
-                        const SizedBox(height: 14),
-
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: AppColors.surface,
-                            borderRadius: BorderRadius.circular(18),
-                            border: Border.all(color: AppColors.border),
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 48,
-                                height: 48,
-                                decoration: BoxDecoration(
-                                  color: AppColors.mint,
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                                child: const Icon(
-                                  Icons.groups_2_outlined,
-                                  color: AppColors.forest,
-                                ),
-                              ),
-
-                              const SizedBox(width: 12),
-
-                              Expanded(
-                                child: Text(
-                                  widget.organization,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ),
-
-                              const Icon(
-                                Icons.chevron_right_rounded,
-                                color: AppColors.textMuted,
-                              ),
-                            ],
-                          ),
-                        ),
                       ],
                     ),
                   ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-
-      // ========================================================
-      // REGISTRATION BUTTON
-      // ========================================================
-      bottomNavigationBar: SafeArea(
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
-          decoration: const BoxDecoration(
-            color: AppColors.surface,
-            border: Border(top: BorderSide(color: AppColors.border)),
-          ),
-          child: SizedBox(
-            width: double.infinity,
-            child: isRegistered
-                ? OutlinedButton.icon(
-                    onPressed: _handleRegistration,
-                    icon: const Icon(Icons.event_busy_outlined),
-                    label: const Text('Cancel Registration'),
-                  )
-                : FilledButton.icon(
-                    onPressed: isFull ? null : _handleRegistration,
-                    icon: Icon(
-                      isTier2Verified
-                          ? Icons.event_available_outlined
-                          : Icons.lock_outline_rounded,
-                    ),
-                    label: Text(isFull ? 'Event Full' : 'Register for Event'),
-                  ),
-          ),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );
   }
 }
 
-// ============================================================================
-// INFORMATION CARD
-// ============================================================================
-
-class _InfoCard extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String value;
-
-  const _InfoCard({
+class _DetailRow extends StatelessWidget {
+  const _DetailRow({
     required this.icon,
-    required this.title,
+    required this.label,
     required this.value,
   });
-
+  final IconData icon;
+  final String label, value;
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
+  Widget build(BuildContext context) => Row(
+    children: [
+      Container(
+        width: 43,
+        height: 43,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: const Color(0xFFE7F3EA),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Icon(icon, color: KaisaResidentDesign.green),
       ),
-      child: Row(
-        children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: AppColors.mint,
-              borderRadius: BorderRadius.circular(12),
+      const SizedBox(width: 12),
+      Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: const TextStyle(
+                color: KaisaResidentDesign.muted,
+                fontSize: 12,
+              ),
             ),
-            child: Icon(icon, size: 21, color: AppColors.forest),
-          ),
-
-          const SizedBox(width: 13),
-
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-
-                const SizedBox(height: 3),
-
-                Text(
-                  value,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-              ],
+            const SizedBox(height: 3),
+            Text(
+              value,
+              style: const TextStyle(
+                color: KaisaResidentDesign.ink,
+                fontWeight: FontWeight.w700,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-    );
-  }
+    ],
+  );
 }

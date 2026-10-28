@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../widgets/kaisa_ui.dart';
+import '../widgets/kaisa_resident_design.dart';
+import 'kaisa_organizations_repository.dart';
+import 'kaisa_organization_widgets.dart';
 
 class OrganizationsPage extends StatefulWidget {
   const OrganizationsPage({super.key});
@@ -10,152 +12,205 @@ class OrganizationsPage extends StatefulWidget {
 
 class _OrganizationsPageState extends State<OrganizationsPage> {
   final search = TextEditingController();
+  List<KaisaOrganization> _orgs = [];
   String category = 'All';
-  final orgs = const [
-    (
-      'KAISA Youth Volunteers',
-      'Youth',
-      'Empowering young residents through volunteer work, leadership and participation.',
-      128,
-      Icons.volunteer_activism_rounded,
-    ),
-    (
-      'Community Environment Network',
-      'Environment',
-      'Community clean-up drives and environmental sustainability projects.',
-      94,
-      Icons.eco_rounded,
-    ),
-    (
-      'Community Learning Circle',
-      'Education',
-      'Local learning programs, workshops and knowledge-sharing initiatives.',
-      76,
-      Icons.school_rounded,
-    ),
-    (
-      'KAISA Sports Club',
-      'Sports',
-      'Bringing residents together through sports, fitness and community recreation.',
-      156,
-      Icons.sports_basketball_rounded,
-    ),
-    (
-      'Community Development Council',
-      'Community',
-      'Programs and initiatives that strengthen the local community.',
-      203,
-      Icons.groups_rounded,
-    ),
-  ];
+  bool loading = true;
+  String? error;
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
   @override
   void dispose() {
     search.dispose();
     super.dispose();
   }
 
+  Future<void> _load() async {
+    if (mounted)
+      setState(() {
+        loading = true;
+        error = null;
+      });
+    try {
+      final data = await KaisaOrganizationsRepository.instance
+          .getOrganizations();
+      if (mounted) setState(() => _orgs = data);
+    } catch (e) {
+      debugPrint('KAISA organizations catalog: $e');
+      if (mounted)
+        setState(
+          () => error =
+              'Unable to load organizations. Check the Supabase migration and your connection.',
+        );
+    } finally {
+      if (mounted) setState(() => loading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final matches = orgs
+    final query = search.text.toLowerCase().trim();
+    final categories = [
+      'All',
+      ..._orgs.map((o) => o.category).where((c) => c != 'All').toSet(),
+    ];
+    final shown = _orgs
         .where(
-          (e) =>
-              (category == 'All' || e.$2 == category) &&
-              ('${e.$1} ${e.$3}'.toLowerCase().contains(
-                search.text.trim().toLowerCase(),
-              )),
+          (o) =>
+              (category == 'All' || o.category == category) &&
+              ('${o.name} ${o.category} ${o.description} ${o.location}'
+                  .toLowerCase()
+                  .contains(query)),
         )
         .toList();
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Organizations'),
-        actions: [
-          PopupMenuButton<String>(
-            tooltip: 'Organization actions',
-            onSelected: (v) => context.push(
-              v == 'mine'
-                  ? '/resident/my-organizations'
-                  : '/resident/request-organization',
-            ),
-            itemBuilder: (_) => const [
-              PopupMenuItem(value: 'mine', child: Text('My Organizations')),
-              PopupMenuItem(
-                value: 'request',
-                child: Text('Request Organization'),
-              ),
-            ],
-          ),
-          const SizedBox(width: 12),
-        ],
-      ),
-      body: KaisaPageLayout(
-        children: [
-          const KaisaHero(
-            eyebrow: 'MEET YOUR COMMUNITY',
-            title: 'Great things\nstart together.',
-            subtitle:
-                'Find local organizations and groups that share your interests.',
-            icon: Icons.diversity_3_rounded,
-          ),
-          const SizedBox(height: 24),
-          TextField(
-            controller: search,
-            onChanged: (_) => setState(() {}),
-            decoration: const InputDecoration(
-              hintText: 'Search organizations',
-              prefixIcon: Icon(Icons.search_rounded),
-            ),
-          ),
-          const SizedBox(height: 14),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final c in [
-                'All',
-                'Youth',
-                'Community',
-                'Environment',
-                'Education',
-                'Sports',
-              ])
-                ChoiceChip(
-                  label: Text(c),
-                  selected: category == c,
-                  onSelected: (_) => setState(() => category = c),
-                ),
-            ],
-          ),
-          const SizedBox(height: 21),
-          Text(
-            '${matches.length} community organizations',
-            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 19),
-          ),
-          const SizedBox(height: 14),
-          if (matches.isEmpty)
-            const Padding(
-              padding: EdgeInsets.all(32),
-              child: Text('No organizations match your search.'),
-            ),
-          KaisaResponsiveGrid(
-            children: [
-              for (final e in matches)
-                KaisaTile(
-                  title: e.$1,
-                  subtitle: '${e.$2}  •  ${e.$4} members\n${e.$3}',
-                  icon: e.$5,
-                  onTap: () => context.push(
-                    '/resident/organization-details',
-                    extra: {
-                      'name': e.$1,
-                      'category': e.$2,
-                      'description': e.$3,
-                      'members': e.$4,
-                    },
+    return KaisaOrganizationPageFrame(
+      child: RefreshIndicator(
+        onRefresh: _load,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            Row(
+              children: [
+                const Expanded(
+                  child: KaisaOrganizationHeading(
+                    eyebrow: 'MEET YOUR COMMUNITY',
+                    title: 'Organizations',
+                    subtitle: 'Find communities and causes that matter to you.',
                   ),
                 ),
-            ],
-          ),
-        ],
+                IconButton(
+                  tooltip: 'Refresh organizations',
+                  onPressed: _load,
+                  icon: const Icon(
+                    Icons.refresh_rounded,
+                    color: KaisaResidentDesign.forest,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 22),
+            KaisaOrganizationHero(
+              title: 'Great things start together.',
+              subtitle:
+                  'Explore LGU-recognized groups, apply for membership, and discover opportunities.',
+              action: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  FilledButton.icon(
+                    onPressed: () => context.push('/resident/my-organizations'),
+                    icon: const Icon(Icons.groups_outlined),
+                    label: const Text('My Organizations'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: KaisaResidentDesign.yellow,
+                      foregroundColor: KaisaResidentDesign.forest,
+                    ),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: () =>
+                        context.push('/resident/request-organization'),
+                    icon: const Icon(Icons.add_circle_outline),
+                    label: const Text('Propose a group'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      side: const BorderSide(color: Colors.white54),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 22),
+            TextField(
+              controller: search,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(
+                labelText: 'Find organizations',
+                hintText: 'Search name, category, location...',
+                prefixIcon: Icon(Icons.search_rounded),
+              ),
+            ),
+            const SizedBox(height: 13),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  for (final c in categories)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: ChoiceChip(
+                        label: Text(c),
+                        selected: category == c,
+                        onSelected: (_) => setState(() => category = c),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 23),
+            KaisaResidentSectionHeading(
+              title: 'Discover organizations',
+              subtitle: loading
+                  ? 'Loading community groups...'
+                  : '${shown.length} published organizations',
+            ),
+            const SizedBox(height: 13),
+            if (loading)
+              const Padding(
+                padding: EdgeInsets.all(32),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (error != null)
+              KaisaOrganizationEmpty(
+                title: 'Could not load organizations',
+                message: error!,
+                action: OutlinedButton(
+                  onPressed: _load,
+                  child: const Text('Try again'),
+                ),
+              )
+            else if (shown.isEmpty)
+              KaisaOrganizationEmpty(
+                title: 'No organizations found',
+                message: _orgs.isEmpty
+                    ? 'No organizations have been published by the LGU yet.'
+                    : 'Try a different search or category.',
+              )
+            else
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final columns = constraints.maxWidth >= 850
+                      ? 3
+                      : constraints.maxWidth >= 580
+                      ? 2
+                      : 1;
+                  const gap = 14.0;
+                  final cardWidth =
+                      (constraints.maxWidth - gap * (columns - 1)) / columns;
+                  return Wrap(
+                    spacing: gap,
+                    runSpacing: gap,
+                    children: [
+                      for (final org in shown)
+                        SizedBox(
+                          width: cardWidth,
+                          child: KaisaOrganizationCard(
+                            org: org,
+                            onTap: () => context.push(
+                              '/resident/organization-details',
+                              extra: org.toRouteExtra(),
+                            ),
+                          ),
+                        ),
+                    ],
+                  );
+                },
+              ),
+            const SizedBox(height: 90),
+          ],
+        ),
       ),
     );
   }
