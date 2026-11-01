@@ -406,6 +406,11 @@ class _ProfilePageState extends State<ProfilePage> {
                         runSpacing: 10,
                         children: [
                           _nav(
+                            'My KAISA QR',
+                            Icons.qr_code_2_rounded,
+                            '/resident/my-qr',
+                          ),
+                          _nav(
                             'My Events',
                             Icons.event_available_outlined,
                             '/resident/my-events',

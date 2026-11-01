@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'kaisa_resident_design.dart';
 import 'kaisa_account_refresh.dart';
 import '../notifications/kaisa_notification_bell.dart';
+import '../../../shared/organization/kaisa_account_switcher.dart';
 
 /// Responsive navigation for existing resident routes.
 /// Phone: one shared bottom navigation bar for every resident route.
@@ -306,6 +307,7 @@ class KaisaResponsiveShell extends StatelessWidget {
                     ],
                   ),
                 ),
+                const KaisaAccountSwitcher(),
                 Expanded(
                   child: Column(
                     children: [

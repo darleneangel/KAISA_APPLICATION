@@ -5,13 +5,15 @@ import 'package:go_router/go_router.dart';
 import '../../features/resident/widgets/kaisa_responsive_shell.dart';
 import '../services/social_otp_service.dart';
 import '../../features/resident/about/about_kaisa_page.dart';
+import '../../features/organization_admin/dashboard/organization_admin_dashboard_page.dart';
+import '../../features/organization_admin/attendance/kaisa_attendance_scanner_page.dart';
+import '../../features/organization_admin/widgets/kaisa_org_admin_shell.dart';
+import '../../features/organization_admin/invitations/kaisa_org_admin_gate.dart';
 
-import '../../features/auth/views/loading_screen.dart';
 import '../../features/auth/views/welcome_page.dart';
 import '../../features/auth/views/login_page.dart';
 import '../../features/auth/views/signup_page.dart';
 import '../../features/auth/views/forgot_password_page.dart';
-import '../../features/auth/views/reset_password_page.dart';
 import '../../features/auth/views/profile_setup_page.dart';
 import '../../features/auth/views/verification_page.dart';
 import '../../features/resident/home/resident_home_page.dart';
@@ -27,17 +29,6 @@ import '../../features/resident/profile/profile_page.dart';
 import '../../features/resident/verification/identity_verification_page.dart';
 import '../../features/resident/verification/verification_status_page.dart';
 import '../../features/resident/notifications/notifications_page.dart';
-
-import '../../features/resident/profile/public_resident_profile_page.dart';
-import '../../features/resident/profile/resident_chat_page.dart';
-
-import '../../features/resident/messaging/messages_page.dart';
-
-import '../../features/resident/notifications/notifications_page.dart';
-
-import '../../features/resident/search/kaisa_search_page.dart';
-
-import '../../features/resident/friends/kaisa_friends_page.dart';
 
 final _authRefresh = _AuthRouterRefresh();
 
@@ -56,20 +47,15 @@ class _AuthRouterRefresh extends ChangeNotifier {
 }
 
 final appRouter = GoRouter(
-  initialLocation: '/loading',
+  initialLocation: '/welcome',
   refreshListenable: _authRefresh,
   redirect: (context, state) async {
     final user = Supabase.instance.client.auth.currentUser;
     final path = state.matchedLocation;
-    // Recovery screens are public even if Supabase creates a temporary
-    // recovery session. Never redirect them to resident or social OTP.
-    if (path == '/loading' ||
-        path == '/welcome' ||
-        path == '/forgot-password' ||
-        path == '/reset-password')
-      return null;
     if (user == null) {
-      if (path.startsWith('/resident/') || path == '/profile-setup')
+      if (path.startsWith('/resident/') ||
+          path.startsWith('/organization-admin/') ||
+          path == '/profile-setup')
         return '/login';
       return null;
     }
@@ -97,16 +83,12 @@ final appRouter = GoRouter(
         }
       }
     }
-    // Do not automatically bypass the public login/signup pages.
-    // A saved Supabase session still exists until the user signs out.
-    if (path == '/login' || path == '/signup') return null;
+    if (path == '/login' || path == '/signup' || path == '/welcome') {
+      return '/resident/home';
+    }
     return null;
   },
   routes: [
-    GoRoute(
-      path: '/loading',
-      builder: (context, state) => const LoadingScreen(),
-    ),
     GoRoute(path: '/welcome', builder: (context, state) => const WelcomePage()),
 
     GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
@@ -119,21 +101,13 @@ final appRouter = GoRouter(
     ),
 
     GoRoute(
-      path: '/reset-password',
-      builder: (context, state) =>
-          ResetPasswordPage(email: state.uri.queryParameters['email'] ?? ''),
-    ),
-
-    GoRoute(
       path: '/profile-setup',
       builder: (context, state) => const ProfileSetupPage(),
     ),
 
     GoRoute(
       path: '/verification',
-      builder: (context, state) => VerificationPage(
-        social: state.uri.queryParameters['mode'] == 'social',
-      ),
+      builder: (context, state) => const VerificationPage(),
     ),
 
     ShellRoute(
@@ -147,37 +121,6 @@ final appRouter = GoRouter(
           path: '/resident/feed',
           builder: (context, state) => const FeedPage(),
         ),
-
-        //FOR MESSAGE
-        GoRoute(
-          path: '/resident/user/:userId',
-          builder: (context, state) => PublicResidentProfilePage(
-            userId: state.pathParameters['userId']!,
-          ),
-        ),
-
-        GoRoute(
-          path: '/resident/messages/:recipientId',
-          builder: (context, state) => ResidentChatPage(
-            recipientId: state.pathParameters['recipientId']!,
-          ),
-        ),
-
-        GoRoute(
-          path: '/resident/messages',
-          builder: (context, state) => const MessagesPage(),
-        ),
-
-        GoRoute(
-          path: '/resident/notifications',
-          builder: (context, state) => const NotificationsPage(),
-        ),
-
-        GoRoute(
-          path: '/resident/search',
-          builder: (context, state) => const KaisaSearchPage(),
-        ),
-
         GoRoute(
           path: '/resident/organizations',
           builder: (context, state) => const OrganizationsPage(),
@@ -188,6 +131,7 @@ final appRouter = GoRouter(
             final data = state.extra as Map<String, dynamic>;
 
             return OrganizationDetailsPage(
+              organizationId: data['organization_id'] as String?,
               name: data['name'],
               category: data['category'],
               description: data['description'],
@@ -207,7 +151,6 @@ final appRouter = GoRouter(
           path: '/resident/events',
           builder: (context, state) => const EventsPage(),
         ),
-
         GoRoute(
           path: '/resident/event-details',
           builder: (context, state) {
@@ -227,12 +170,6 @@ final appRouter = GoRouter(
             );
           },
         ),
-
-        GoRoute(
-          path: '/resident/friends',
-          builder: (context, state) => const KaisaFriendsPage(),
-        ),
-
         GoRoute(
           path: '/resident/my-events',
           builder: (context, state) => const MyEventsPage(),
@@ -261,6 +198,22 @@ final appRouter = GoRouter(
         GoRoute(
           path: '/resident/about',
           builder: (context, state) => const AboutKaisaPage(),
+        ),
+      ],
+    ),
+    // Organization Admin workspace uses its own shell and access guard.
+    // The guard checks authorization for the selected organizationId.
+    ShellRoute(
+      builder: (context, state, child) =>
+          KaisaOrgAdminGate(child: KaisaOrgAdminShell(child: child)),
+      routes: [
+        GoRoute(
+          path: '/organization-admin/dashboard',
+          builder: (context, state) => const KaisaOrgAdminDashboardPage(),
+        ),
+        GoRoute(
+          path: '/organization-admin/attendance',
+          builder: (context, state) => const KaisaAttendanceScannerPage(),
         ),
       ],
     ),
