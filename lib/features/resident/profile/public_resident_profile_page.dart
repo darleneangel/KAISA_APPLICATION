@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:go_router/go_router.dart';
 import '../widgets/kaisa_resident_design.dart';
 import 'kaisa_profile_repository.dart';
@@ -18,10 +19,14 @@ class _PublicResidentProfilePageState extends State<PublicResidentProfilePage> {
   List<Map<String, dynamic>> posts = [];
   bool busy = true;
   String? error;
+  bool tier2 = false;
+  String friendState = 'none';
+  bool incoming = false;
   @override
   void initState() {
     super.initState();
     _load();
+    _loadFriend();
   }
 
   Future<void> _load() async {
@@ -44,6 +49,42 @@ class _PublicResidentProfilePageState extends State<PublicResidentProfilePage> {
         setState(() => error = 'Could not load this public profile: $e');
     } finally {
       if (mounted) setState(() => busy = false);
+    }
+  }
+
+  Future<void> _loadFriend() async {
+    try {
+      final db = Supabase.instance.client;
+      final results = await Future.wait<dynamic>([
+        db.rpc('kaisa_is_tier2'),
+        db.rpc('kaisa_my_friendships'),
+      ]);
+      final matches = (results[1] as List).where(
+        (v) => v['other_id'] == '${widget.userId}',
+      );
+      if (mounted)
+        setState(() {
+          tier2 = results[0] == true;
+          friendState = matches.isEmpty ? 'none' : '${matches.first['status']}';
+          incoming = matches.isNotEmpty && matches.first['incoming'] == true;
+        });
+    } catch (_) {
+      /* Existing profile still works without friendships. */
+    }
+  }
+
+  Future<void> _friend(String action) async {
+    try {
+      await Supabase.instance.client.rpc(
+        'kaisa_friend_action',
+        params: {'p_user_id': widget.userId, 'p_action': action},
+      );
+      await _loadFriend();
+    } catch (e) {
+      if (mounted)
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Friend request failed: $e')));
     }
   }
 
@@ -147,6 +188,34 @@ class _PublicResidentProfilePageState extends State<PublicResidentProfilePage> {
                             foregroundColor: KaisaResidentDesign.forest,
                           ),
                         ),
+                        const SizedBox(height: 10),
+                        if (Supabase.instance.client.auth.currentUser?.id !=
+                                widget.userId &&
+                            tier2 &&
+                            profile!['verified'] == true)
+                          OutlinedButton.icon(
+                            onPressed: () => _friend(
+                              friendState == 'accepted'
+                                  ? 'remove'
+                                  : friendState == 'pending'
+                                  ? (incoming ? 'accept' : 'remove')
+                                  : 'request',
+                            ),
+                            icon: const Icon(Icons.person_add_alt_1_outlined),
+                            label: Text(
+                              friendState == 'accepted'
+                                  ? 'Unfriend'
+                                  : friendState == 'pending'
+                                  ? (incoming
+                                        ? 'Accept friend request'
+                                        : 'Cancel friend request')
+                                  : 'Add friend',
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.white,
+                              side: const BorderSide(color: Colors.white),
+                            ),
+                          ),
                       ],
                     ),
                   ),

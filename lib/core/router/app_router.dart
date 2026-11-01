@@ -37,6 +37,8 @@ import '../../features/resident/notifications/notifications_page.dart';
 
 import '../../features/resident/search/kaisa_search_page.dart';
 
+import '../../features/resident/friends/kaisa_friends_page.dart';
+
 final _authRefresh = _AuthRouterRefresh();
 
 class _AuthRouterRefresh extends ChangeNotifier {
@@ -224,6 +226,11 @@ final appRouter = GoRouter(
               capacity: data['capacity'],
             );
           },
+        ),
+
+        GoRoute(
+          path: '/resident/friends',
+          builder: (context, state) => const KaisaFriendsPage(),
         ),
 
         GoRoute(
