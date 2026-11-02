@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'kaisa_resident_design.dart';
-import 'kaisa_account_refresh.dart';
-import '../notifications/kaisa_notification_bell.dart';
-import '../../../shared/organization/kaisa_account_switcher.dart';
+import 'kaisa_portal_switcher.dart';
 
 /// Responsive navigation for existing resident routes.
 /// Phone: one shared bottom navigation bar for every resident route.
@@ -22,7 +20,6 @@ class KaisaResponsiveShell extends StatelessWidget {
     '/resident/feed',
     '/resident/organizations',
     '/resident/events',
-    '/resident/messages',
     '/resident/profile',
   ];
   static const _names = [
@@ -30,7 +27,6 @@ class KaisaResponsiveShell extends StatelessWidget {
     'Community Feed',
     'Organizations',
     'Events',
-    'Messages',
     'My Profile',
   ];
   static const _icons = [
@@ -38,18 +34,13 @@ class KaisaResponsiveShell extends StatelessWidget {
     Icons.forum_outlined,
     Icons.groups_2_outlined,
     Icons.event_outlined,
-    Icons.chat_bubble_outline_rounded,
     Icons.person_outline_rounded,
   ];
 
   int _selected(String route) {
     if (route.contains('/event')) return 3;
     if (route.contains('/organization')) return 2;
-    if (route.contains('/profile') ||
-        route.contains('/verification') ||
-        route.contains('/user/'))
-      return 5;
-    if (route.contains('/messages')) return 4;
+    if (route.contains('/profile') || route.contains('/verification')) return 4;
     if (route.contains('/feed')) return 1;
     return 0;
   }
@@ -73,13 +64,12 @@ class KaisaResponsiveShell extends StatelessWidget {
             bottomNavigationBar: SafeArea(
               top: false,
               child: NavigationBar(
-                height: 70,
+                height: 68,
                 elevation: 0,
                 backgroundColor: Colors.white,
                 indicatorColor: const Color(0xFFE5F2E9),
                 selectedIndex: index,
-                labelBehavior:
-                    NavigationDestinationLabelBehavior.onlyShowSelected,
+                labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
                 onDestinationSelected: (next) {
                   if (next != index) context.go(_paths[next]);
                 },
@@ -103,11 +93,6 @@ class KaisaResponsiveShell extends StatelessWidget {
                     icon: Icon(Icons.event_outlined),
                     selectedIcon: Icon(Icons.event_rounded),
                     label: 'Events',
-                  ),
-                  NavigationDestination(
-                    icon: Icon(Icons.chat_bubble_outline_rounded),
-                    selectedIcon: Icon(Icons.chat_bubble_rounded),
-                    label: 'Messages',
                   ),
                   NavigationDestination(
                     icon: Icon(Icons.person_outline_rounded),
@@ -307,7 +292,6 @@ class KaisaResponsiveShell extends StatelessWidget {
                     ],
                   ),
                 ),
-                const KaisaAccountSwitcher(),
                 Expanded(
                   child: Column(
                     children: [
@@ -315,9 +299,7 @@ class KaisaResponsiveShell extends StatelessWidget {
                       Expanded(
                         child: Center(
                           child: ConstrainedBox(
-                            constraints: const BoxConstraints(
-                              maxWidth: KaisaResidentDesign.desktopWidth,
-                            ),
+                            constraints: const BoxConstraints(maxWidth: 1440),
                             child: child,
                           ),
                         ),
@@ -336,94 +318,15 @@ class KaisaResponsiveShell extends StatelessWidget {
 
 /// Shared, single top header for resident screens. Put it in the ShellRoute
 /// wrapper rather than adding a separate AppBar to every screen.
-class KaisaResidentTopBar extends StatefulWidget {
+class KaisaResidentTopBar extends StatelessWidget {
   const KaisaResidentTopBar({super.key});
-  @override
-  State<KaisaResidentTopBar> createState() => _KaisaResidentTopBarState();
-}
 
-class _KaisaResidentTopBarState extends State<KaisaResidentTopBar>
-    with WidgetsBindingObserver {
-  String? avatarPath;
-  String fullName = 'KAISA Resident';
-  bool loadingAccount = false;
-  String? previousUid;
-  RealtimeChannel? accountChannel;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
-    kaisaAccountRefresh.addListener(_reload);
-    _bindAccount();
-  }
-
-  void _reload() {
-    _loadAccount();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) _loadAccount();
-  }
-
-  void _bindAccount() {
-    final uid = Supabase.instance.client.auth.currentUser?.id;
-    if (uid == previousUid) return;
-    previousUid = uid;
-    if (accountChannel != null)
-      Supabase.instance.client.removeChannel(accountChannel!);
-    if (uid == null) return;
-    accountChannel = Supabase.instance.client
-        .channel('kaisa-topbar-$uid')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.update,
-          schema: 'public',
-          table: 'resident_profiles',
-          filter: PostgresChangeFilter(
-            type: PostgresChangeFilterType.eq,
-            column: 'user_id',
-            value: uid,
-          ),
-          callback: (_) => _loadAccount(),
-        )
-        .subscribe();
-    _loadAccount();
-  }
-
-  Future<void> _loadAccount() async {
-    final uid = Supabase.instance.client.auth.currentUser?.id;
-    if (uid == null || loadingAccount) return;
-    loadingAccount = true;
-    try {
-      final row = await Supabase.instance.client
-          .from('resident_profiles')
-          .select('first_name,last_name,avatar_path')
-          .eq('user_id', uid)
-          .maybeSingle();
-      if (!mounted || uid != Supabase.instance.client.auth.currentUser?.id)
-        return;
-      final name = '${row?['first_name'] ?? ''} ${row?['last_name'] ?? ''}'
-          .trim();
-      setState(() {
-        fullName = name.isNotEmpty ? name : 'KAISA Resident';
-        avatarPath = row?['avatar_path']?.toString();
-      });
-    } catch (_) {
-      /* Preserve the currently displayed account while offline. */
-    } finally {
-      loadingAccount = false;
-    }
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    kaisaAccountRefresh.removeListener(_reload);
-    if (accountChannel != null)
-      Supabase.instance.client.removeChannel(accountChannel!);
-    super.dispose();
-  }
+  static const _options = <(String, IconData, String)>[
+    ('Community Feed', Icons.forum_outlined, '/resident/feed'),
+    ('Organizations', Icons.groups_2_outlined, '/resident/organizations'),
+    ('Events', Icons.event_available_outlined, '/resident/events'),
+    ('My Events', Icons.bookmark_added_outlined, '/resident/my-events'),
+  ];
 
   Future<void> _logout(BuildContext context) async {
     final confirm = await showDialog<bool>(
@@ -458,19 +361,48 @@ class _KaisaResidentTopBarState extends State<KaisaResidentTopBar>
     }
   }
 
-  void _search(BuildContext context) => context.go('/resident/search');
+  void _search(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      useSafeArea: true,
+      showDragHandle: true,
+      builder: (sheetContext) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const KaisaResidentSectionHeading(
+              title: 'Explore KAISA',
+              subtitle: 'Find what matters to your community.',
+            ),
+            const SizedBox(height: 12),
+            for (final option in _options)
+              ListTile(
+                leading: Icon(option.$2, color: KaisaResidentDesign.green),
+                title: Text(option.$1),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  context.go(option.$3);
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final compact = MediaQuery.sizeOf(context).width < 420;
-    final initial = fullName.trim().isEmpty
+    final rawName =
+        Supabase.instance.client.auth.currentUser?.userMetadata?['first_name']
+            ?.toString() ??
+        '';
+    final initial = rawName.trim().isEmpty
         ? 'R'
-        : fullName.trim()[0].toUpperCase();
-    final url = avatarPath == null || avatarPath!.isEmpty
-        ? null
-        : Supabase.instance.client.storage
-              .from('kaisa-avatars')
-              .getPublicUrl(avatarPath!);
+        : rawName.trim()[0].toUpperCase();
     return Material(
       color: KaisaResidentDesign.paper,
       child: SafeArea(
@@ -519,7 +451,7 @@ class _KaisaResidentTopBarState extends State<KaisaResidentTopBar>
               ),
               const Spacer(),
               IconButton(
-                tooltip: 'Search KAISA',
+                tooltip: 'Explore KAISA',
                 iconSize: KaisaResidentDesign.iconSize,
                 onPressed: () => _search(context),
                 icon: const Icon(
@@ -528,17 +460,17 @@ class _KaisaResidentTopBarState extends State<KaisaResidentTopBar>
                 ),
               ),
               IconButton(
-                tooltip: 'Messages',
+                tooltip: 'Notifications',
                 iconSize: KaisaResidentDesign.iconSize,
-                onPressed: () => context.go('/resident/messages'),
+                onPressed: () => context.go('/resident/notifications'),
                 icon: const Icon(
-                  Icons.chat_bubble_outline_rounded,
+                  Icons.notifications_none_rounded,
                   color: KaisaResidentDesign.ink,
                 ),
               ),
-              const KaisaNotificationBell(),
+              const KaisaPortalSwitcher(),
               PopupMenuButton<String>(
-                tooltip: fullName,
+                tooltip: 'Account',
                 onSelected: (value) {
                   if (value == 'logout') {
                     _logout(context);
@@ -562,16 +494,13 @@ class _KaisaResidentTopBarState extends State<KaisaResidentTopBar>
                   child: CircleAvatar(
                     radius: 17,
                     backgroundColor: const Color(0xFFE5F2E9),
-                    backgroundImage: url == null ? null : NetworkImage(url),
-                    child: url == null
-                        ? Text(
-                            initial,
-                            style: const TextStyle(
-                              color: KaisaResidentDesign.forest,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          )
-                        : null,
+                    child: Text(
+                      initial,
+                      style: const TextStyle(
+                        color: KaisaResidentDesign.forest,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
                   ),
                 ),
               ),

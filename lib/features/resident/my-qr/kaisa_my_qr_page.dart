@@ -16,7 +16,7 @@ class KaisaMyQrPage extends StatefulWidget {
 class _KaisaMyQrPageState extends State<KaisaMyQrPage> {
   static const _forest = Color(0xFF14532D);
   static const _gold = Color(0xFFFBC02D);
-  static final _storage = FlutterSecureStorage();
+  static const _storage = FlutterSecureStorage();
   final _client = Supabase.instance.client;
   Timer? _timer;
   bool _busy = false;

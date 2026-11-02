@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../widgets/resident_bottom_nav.dart';
+import '../widgets/kaisa_resident_design.dart';
 
 const _forest = Color(0xFF14532D);
 const _green = Color(0xFF237A50);
@@ -111,20 +111,119 @@ class _ResidentHomePageState extends State<ResidentHomePage> {
     if (mounted) setState(() => _refreshing = false);
   }
 
+  void _search() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      builder: (sheetContext) => Padding(
+        padding: EdgeInsets.fromLTRB(
+          20,
+          8,
+          20,
+          MediaQuery.viewInsetsOf(sheetContext).bottom + 24,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Explore KAISA',
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w900,
+                color: _ink,
+              ),
+            ),
+            const SizedBox(height: 5),
+            const Text(
+              'Choose what you would like to discover.',
+              style: TextStyle(color: _subtle),
+            ),
+            const SizedBox(height: 14),
+            for (final item in const [
+              (
+                'Organizations',
+                Icons.groups_2_outlined,
+                '/resident/organizations',
+              ),
+              (
+                'Community events',
+                Icons.event_available_outlined,
+                '/resident/events',
+              ),
+              ('Community feed', Icons.forum_outlined, '/resident/feed'),
+              (
+                'My events',
+                Icons.bookmark_added_outlined,
+                '/resident/my-events',
+              ),
+            ])
+              ListTile(
+                leading: Icon(item.$2, color: _green),
+                title: Text(item.$1),
+                trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 15),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  context.go(item.$3);
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _logout(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Sign out of KAISA?'),
+        content: const Text('You can sign in again using your account.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Sign out'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+    try {
+      await Supabase.instance.client.auth.signOut();
+      if (context.mounted) context.go('/welcome');
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Unable to sign out. Please try again.'),
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final wide = constraints.maxWidth >= 800;
         final compact = constraints.maxWidth < 540;
-        final pad = compact ? 18.0 : 32.0;
+        final pad = KaisaResidentDesign.pagePadding(constraints.maxWidth);
         return Scaffold(
           backgroundColor: _paper,
           body: SafeArea(
             top: false,
             child: Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 1180),
+                constraints: const BoxConstraints(
+                  maxWidth: KaisaResidentDesign.desktopWidth,
+                ),
                 child: RefreshIndicator(
                   onRefresh: _refresh,
                   child: SingleChildScrollView(
@@ -314,9 +413,6 @@ class _ResidentHomePageState extends State<ResidentHomePage> {
               ),
             ),
           ),
-          bottomNavigationBar: constraints.maxWidth < 600
-              ? const ResidentBottomNav(currentIndex: 0)
-              : null,
         );
       },
     );

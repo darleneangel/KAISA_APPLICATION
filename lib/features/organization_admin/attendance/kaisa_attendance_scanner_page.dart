@@ -23,7 +23,9 @@ class _KaisaAttendanceScannerPageState
   static const _storage = FlutterSecureStorage();
   final _client = Supabase.instance.client;
   final _scanner = MobileScannerController(
+    autoStart: false,
     detectionSpeed: DetectionSpeed.noDuplicates,
+    facing: CameraFacing.back,
   );
   final _uuid = const Uuid();
   Timer? _syncTimer;
@@ -33,6 +35,8 @@ class _KaisaAttendanceScannerPageState
   Map<String, dynamic>? _roster;
   List<Map<String, dynamic>> _pending = [];
   String? _eventId, _message;
+  String? _lastScannedToken;
+  DateTime? _lastScannedAt;
   String _action = 'check_in';
   bool _busy = false, _scannerOn = false, _offline = false;
 
@@ -125,60 +129,113 @@ class _KaisaAttendanceScannerPageState
 
   Future<void> _onDetect(BarcodeCapture capture) async {
     if (_busy || !_scannerOn || _eventId == null) return;
-    final code = capture.barcodes.firstOrNull?.rawValue;
-    if (code == null || !RegExp(r'^KAISAOFF2:[0-9a-f]{64}$').hasMatch(code))
+    final code = capture.barcodes
+        .map((barcode) => barcode.rawValue)
+        .whereType<String>()
+        .where(
+          (raw) => raw.startsWith('KAISA1:') || raw.startsWith('KAISAOFF2:'),
+        )
+        .firstOrNull;
+    if (code == null) return;
+    final online = RegExp(r'^KAISA1:[0-9a-f]{64}$').hasMatch(code);
+    final offlinePass = RegExp(r'^KAISAOFF2:[0-9a-f]{64}$').hasMatch(code);
+    if (!online && !offlinePass) {
+      setState(() => _message = 'Unrecognized KAISA QR format.');
       return;
+    }
+    final now = DateTime.now();
+    if (_lastScannedToken == code &&
+        _lastScannedAt != null &&
+        now.difference(_lastScannedAt!) < const Duration(seconds: 3)) {
+      return;
+    }
+    _lastScannedToken = code;
+    _lastScannedAt = now;
     setState(() {
       _busy = true;
       _scannerOn = false;
+      _message = null;
     });
     await _scanner.stop();
     try {
-      final roster = _roster;
-      if (roster == null || '${roster['event_id']}' != _eventId)
-        throw StateError('Download the selected event roster before scanning.');
-      final now = DateTime.now().toUtc();
-      final start = DateTime.parse('${roster['opens_at']}');
-      final end = DateTime.parse('${roster['closes_at']}');
-      if (now.isBefore(start) || now.isAfter(end))
-        throw StateError('Check-in window is not active.');
-      final hash = sha256.convert(utf8.encode(code)).toString();
-      final entries = (roster['entries'] as List? ?? []);
-      final valid = entries.any(
-        (item) =>
-            item is Map &&
-            '${item['hash']}' == hash &&
-            DateTime.tryParse('${item['expires_at']}')?.isAfter(now) == true,
-      );
-      if (!valid)
-        throw StateError(
-          'Unknown or expired QR. Refresh the roster online if this resident downloaded a new pass.',
+      if (online) {
+        // Always validate and record online QR credentials on the server.
+        // The server checks scanner permissions, event registration,
+        // active session times, and consumes successful QR credentials.
+        final result = await _client.rpc(
+          'kaisa_scan_attendance',
+          params: {
+            'p_event_id': _eventId,
+            'p_token': code,
+            'p_action': _action,
+          },
         );
-      final duplicate = _pending.any(
-        (item) =>
-            '${item['hash']}' == hash &&
-            '${item['action']}' == _action &&
-            '${item['event_id']}' == _eventId,
-      );
-      if (duplicate)
-        throw StateError('This action is already pending for this pass.');
-      final operation = <String, dynamic>{
-        'operation_id': _uuid.v4(),
-        'event_id': _eventId,
-        'token': code,
-        'hash': hash,
-        'action': _action,
-        'scanned_at': now.toIso8601String(),
-      };
-      setState(() => _pending.add(operation));
-      await _persist(); // persist BEFORE showing provisional success
-      if (mounted)
-        setState(
-          () => _message =
-              'Saved on this device · PENDING SYNC (${_pending.length} queued). Not yet official attendance.',
+        if (!mounted) return;
+        final record = Map<String, dynamic>.from(result as Map);
+        setState(() {
+          _offline = false;
+          _message =
+              'CONFIRMED · ${record['resident_name'] ?? 'Resident'} · '
+              '${_action == 'check_in' ? 'Checked in' : 'Checked out'}';
+        });
+      } else {
+        // Offline credentials must match a pre-downloaded roster.
+        // The queue is provisional until server synchronization succeeds.
+        final roster = _roster;
+        if (roster == null || '${roster['event_id']}' != _eventId) {
+          throw StateError(
+            'Download the selected event roster before offline scanning.',
+          );
+        }
+        final utcNow = now.toUtc();
+        final opens = DateTime.parse('${roster['opens_at']}');
+        final closes = DateTime.parse('${roster['closes_at']}');
+        if (utcNow.isBefore(opens) || utcNow.isAfter(closes)) {
+          throw StateError('Attendance session is not active.');
+        }
+        final hash = sha256.convert(utf8.encode(code)).toString();
+        final entries = roster['entries'] as List? ?? [];
+        final valid = entries.any(
+          (entry) =>
+              entry is Map &&
+              '${entry['hash']}' == hash &&
+              DateTime.tryParse('${entry['expires_at']}')?.isAfter(utcNow) ==
+                  true,
         );
-    } catch (e) {
-      if (mounted) setState(() => _message = 'Scan not recorded: $e');
+        if (!valid) {
+          throw StateError(
+            'Offline QR is unknown or expired; refresh the event roster online.',
+          );
+        }
+        final duplicate = _pending.any(
+          (entry) =>
+              '${entry['hash']}' == hash &&
+              '${entry['action']}' == _action &&
+              '${entry['event_id']}' == _eventId,
+        );
+        if (duplicate) throw StateError('This action is already pending sync.');
+        final operation = <String, dynamic>{
+          'operation_id': _uuid.v4(),
+          'event_id': _eventId,
+          'token': code,
+          'hash': hash,
+          'action': _action,
+          'scanned_at': utcNow.toIso8601String(),
+        };
+        _pending.add(operation);
+        await _persist();
+        if (mounted) {
+          setState(
+            () => _message =
+                'OFFLINE · Pending synchronization (${_pending.length}). '
+                'Not yet official attendance.',
+          );
+        }
+      }
+    } catch (error) {
+      if (mounted) {
+        setState(() => _message = 'Scan not recorded: $error');
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -224,19 +281,29 @@ class _KaisaAttendanceScannerPageState
   }
 
   Future<void> _resume() async {
+    if (_busy || _eventId == null) return;
     setState(() {
       _scannerOn = true;
       _message = null;
     });
     try {
+      // Let MobileScanner mount before starting its controller.
+      await WidgetsBinding.instance.endOfFrame;
+      if (!mounted || !_scannerOn) return;
       await _scanner.start();
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _scannerOn = false;
           _message = 'Camera error: $e';
         });
+      }
     }
+  }
+
+  Future<void> _stopCamera() async {
+    setState(() => _scannerOn = false);
+    await _scanner.stop();
   }
 
   @override
@@ -257,11 +324,6 @@ class _KaisaAttendanceScannerPageState
     };
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAF8),
-      appBar: AppBar(
-        backgroundColor: _forest,
-        foregroundColor: Colors.white,
-        title: const Text('KAISA Attendance Scanner'),
-      ),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 920),
@@ -321,12 +383,23 @@ class _KaisaAttendanceScannerPageState
                         ),
                       )
                       .toList(),
-                  onChanged: _busy ? null : (v) => setState(() => _eventId = v),
+                  onChanged: _busy
+                      ? null
+                      : (v) async {
+                          if (_scannerOn) await _stopCamera();
+                          if (mounted) setState(() => _eventId = v);
+                        },
                 ),
               if (eventOptions.isEmpty)
                 const Text(
                   'No assigned events cached. Connect to the internet to load your assigned events.',
                 ),
+              const SizedBox(height: 12),
+              const Text(
+                'Online QR (KAISA1) scans immediately through Supabase. '
+                'Offline event passes (KAISAOFF2) require a downloaded roster and remain pending until synced.',
+                style: TextStyle(fontSize: 12, color: _forest),
+              ),
               const SizedBox(height: 12),
               OutlinedButton.icon(
                 onPressed: _busy || _eventId == null ? null : _downloadRoster,
@@ -353,7 +426,7 @@ class _KaisaAttendanceScannerPageState
                     : (s) => setState(() => _action = s.first),
               ),
               const SizedBox(height: 12),
-              if (_eventId != null && rosterEvent == _eventId)
+              if (_eventId != null)
                 Container(
                   height: 315,
                   clipBehavior: Clip.antiAlias,
@@ -383,11 +456,17 @@ class _KaisaAttendanceScannerPageState
                 ),
               const SizedBox(height: 12),
               FilledButton.icon(
-                onPressed: _busy || _eventId == null || rosterEvent != _eventId
+                onPressed: _busy || _eventId == null
                     ? null
-                    : _resume,
-                icon: const Icon(Icons.qr_code_scanner),
-                label: const Text('Scan next resident'),
+                    : (_scannerOn ? _stopCamera : _resume),
+                icon: Icon(
+                  _scannerOn
+                      ? Icons.stop_circle_outlined
+                      : Icons.qr_code_scanner,
+                ),
+                label: Text(
+                  _scannerOn ? 'Stop Camera' : 'Start Camera / Scan Next',
+                ),
               ),
               const SizedBox(height: 12),
               FilledButton.icon(
