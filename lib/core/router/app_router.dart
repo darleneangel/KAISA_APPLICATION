@@ -40,6 +40,8 @@ import '../../features/resident/notifications/notifications_page.dart';
 import '../../features/resident/messaging/messages_page.dart';
 import '../../features/resident/my-qr/kaisa_my_qr_page.dart';
 
+import '../../features/auth/views/reset_password_page.dart';
+
 final _authRefresh = _AuthRouterRefresh();
 
 class _AuthRouterRefresh extends ChangeNotifier {
@@ -120,6 +122,11 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/verification',
       builder: (context, state) => const VerificationPage(),
+    ),
+    GoRoute(
+      path: '/reset-password',
+      builder: (context, state) =>
+          ResetPasswordPage(email: state.uri.queryParameters['email'] ?? ''),
     ),
 
     ShellRoute(
