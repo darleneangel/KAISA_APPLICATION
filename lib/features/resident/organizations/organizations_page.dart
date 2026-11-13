@@ -29,22 +29,24 @@ class _OrganizationsPageState extends State<OrganizationsPage> {
   }
 
   Future<void> _load() async {
-    if (mounted)
+    if (mounted) {
       setState(() {
         loading = true;
         error = null;
       });
+    }
     try {
       final data = await KaisaOrganizationsRepository.instance
           .getOrganizations();
       if (mounted) setState(() => _orgs = data);
     } catch (e) {
       debugPrint('KAISA organizations catalog: $e');
-      if (mounted)
+      if (mounted) {
         setState(
           () => error =
               'Unable to load organizations. Check the Supabase migration and your connection.',
         );
+      }
     } finally {
       if (mounted) setState(() => loading = false);
     }
@@ -93,35 +95,19 @@ class _OrganizationsPageState extends State<OrganizationsPage> {
             ),
             const SizedBox(height: 22),
             KaisaOrganizationHero(
-              title: 'Great things start together.',
-              subtitle:
-                  'Explore LGU-recognized groups, apply for membership, and discover opportunities.',
-              action: Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  FilledButton.icon(
-                    onPressed: () => context.push('/resident/my-organizations'),
-                    icon: const Icon(Icons.groups_outlined),
-                    label: const Text('My Organizations'),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: KaisaResidentDesign.yellow,
-                      foregroundColor: KaisaResidentDesign.forest,
-                    ),
+                title: 'Great things start together.',
+                subtitle:
+                    'Explore LGU-recognized groups, apply for membership, and discover opportunities.',
+                action: FilledButton.icon(
+                  onPressed: () => context.push('/resident/my-organizations'),
+                  icon: const Icon(Icons.groups_outlined),
+                  label: const Text('My Organizations'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: KaisaResidentDesign.yellow,
+                    foregroundColor: KaisaResidentDesign.forest,
                   ),
-                  OutlinedButton.icon(
-                    onPressed: () =>
-                        context.push('/resident/request-organization'),
-                    icon: const Icon(Icons.add_circle_outline),
-                    label: const Text('Propose a group'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.white,
-                      side: const BorderSide(color: Colors.white54),
-                    ),
-                  ),
-                ],
+                ),
               ),
-            ),
             const SizedBox(height: 22),
             TextField(
               controller: search,

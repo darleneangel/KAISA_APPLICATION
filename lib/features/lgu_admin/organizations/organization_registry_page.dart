@@ -1,9 +1,17 @@
-import 'package:flutter/material.dart';
 
-import '../../../core/theme/app_colors.dart';
+import 'package:flutter/material.dart';
 
 import '../../../shared/models/organization_model.dart';
 import '../../../shared/repositories/organization_repository.dart';
+
+// Same design tokens as the redesigned KAISA LGU dashboard.
+const _forest = Color(0xFF14532D);
+const _green = Color(0xFF237A50);
+const _paper = Color(0xFFF8FAF8);
+const _ink = Color(0xFF173D2B);
+const _muted = Color(0xFF687B70);
+const _stroke = Color(0xFFE2EBE4);
+
 
 class OrganizationRegistryPage extends StatefulWidget {
   const OrganizationRegistryPage({super.key});
@@ -142,7 +150,11 @@ class _OrganizationRegistryPageState extends State<OrganizationRegistryPage> {
       ),
     );
 
-    controller.dispose();
+    // The dialog may still be animating out when showDialog completes.
+    Future<void>.delayed(
+      const Duration(milliseconds: 350),
+      controller.dispose,
+    );
 
     if (!mounted || email == null) return;
 
@@ -184,233 +196,407 @@ class _OrganizationRegistryPageState extends State<OrganizationRegistryPage> {
 
   @override
   Widget build(BuildContext context) {
-    final filtered = filteredOrganizations;
-    final isMobile = MediaQuery.sizeOf(context).width < 700;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 720;
+        final results = filteredOrganizations;
+        final total = organizations.length;
+        final active = organizations.where((o) => o.status == 'Active').length;
+        final unassigned = organizations
+            .where((o) => o.adminEmail.trim().isEmpty)
+            .length;
 
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 1280),
-        child: ListView(
-          padding: const EdgeInsets.all(24),
-          children: [
-            Wrap(
-              alignment: WrapAlignment.spaceBetween,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              spacing: 16,
-              runSpacing: 16,
-              children: [
-                const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Manage Organizations',
-                      style: TextStyle(
-                        fontSize: 27,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    SizedBox(height: 6),
-                    Text(
-                      'Maintain organization records and '
-                      'authorized representatives.',
-                      style: TextStyle(color: AppColors.textSecondary),
-                    ),
-                  ],
-                ),
-                FilledButton.icon(
-                  onPressed: () => openOrganizationForm(),
-                  icon: const Icon(Icons.add_rounded),
-                  label: Text(isMobile ? 'Add' : 'Add Organization'),
-                ),
-              ],
+        return ColoredBox(
+          color: _paper,
+          child: ListView(
+            padding: EdgeInsets.fromLTRB(
+              compact ? 16 : 30, 26, compact ? 16 : 30, 48,
             ),
-            const SizedBox(height: 24),
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: [
-                _summaryCard(
-                  'Total Organizations',
-                  organizations.length,
-                  Icons.apartment_rounded,
-                ),
-                _summaryCard(
-                  'Active',
-                  organizations.where((o) => o.status == 'Active').length,
-                  Icons.verified_rounded,
-                ),
-                _summaryCard(
-                  'Without Assigned Admin',
-                  organizations.where((o) => o.adminEmail.isEmpty).length,
-                  Icons.person_off_rounded,
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            Card(
-              color: Colors.white,
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    TextField(
-                      controller: searchController,
-                      onChanged: (_) => setState(() {}),
-                      decoration: const InputDecoration(
-                        prefixIcon: Icon(Icons.search),
-                        hintText: 'Search name, category, or reference',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(
-                      initialValue: statusFilter,
-                      decoration: const InputDecoration(
-                        labelText: 'Status',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: ['All', 'Active', 'Inactive']
-                          .map(
-                            (value) => DropdownMenuItem(
-                              value: value,
-                              child: Text(value),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: (value) {
-                        setState(() {
-                          statusFilter = value ?? 'All';
-                        });
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            if (filtered.isEmpty)
-              const Card(
-                child: Padding(
-                  padding: EdgeInsets.all(40),
-                  child: Center(child: Text('No organizations found.')),
-                ),
-              )
-            else
-              ...filtered.map(_organizationCard),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _summaryCard(String label, int count, IconData icon) {
-    return SizedBox(
-      width: 220,
-      child: Card(
-        color: Colors.white,
-        child: Padding(
-          padding: const EdgeInsets.all(18),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(icon, color: AppColors.blue),
-              const SizedBox(height: 12),
-              Text(
-                '$count',
-                style: const TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
+              Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 1320),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'LGU ADMINISTRATION  /  ORGANIZATIONS',
+                        style: TextStyle(
+                          color: _green,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                      const SizedBox(height: 9),
+                      const Text(
+                        'Organization Registry',
+                        style: TextStyle(
+                          color: _ink,
+                          fontSize: 29,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      const Text(
+                        'Maintain official organization records, registration status, and assigned representatives.',
+                        style: TextStyle(color: _muted, fontSize: 13),
+                      ),
+                      const SizedBox(height: 25),
+                      _summaryStrip(
+                        total: total,
+                        active: active,
+                        unassigned: unassigned,
+                        compact: compact,
+                      ),
+                      const SizedBox(height: 24),
+                      Container(
+                        decoration: _surfaceDecoration(),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+                              child: Wrap(
+                                alignment: WrapAlignment.spaceBetween,
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                spacing: 16,
+                                runSpacing: 14,
+                                children: [
+                                  const Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Registered Organizations',
+                                        style: TextStyle(
+                                          color: _ink,
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                                      SizedBox(height: 4),
+                                      Text(
+                                        'Review and manage the organization master list.',
+                                        style: TextStyle(color: _muted, fontSize: 12),
+                                      ),
+                                    ],
+                                  ),
+                                  FilledButton.icon(
+                                    onPressed: () => openOrganizationForm(),
+                                    icon: const Icon(Icons.add_rounded, size: 18),
+                                    label: const Text('Add Organization'),
+                                    style: FilledButton.styleFrom(
+                                      backgroundColor: _forest,
+                                      foregroundColor: Colors.white,
+                                      minimumSize: const Size(0, 44),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(9),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const Divider(height: 1, color: _stroke),
+                            Padding(
+                              padding: const EdgeInsets.all(18),
+                              child: _filterBar(compact),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      '${results.length} of $total organizations',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: _muted,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                  TextButton.icon(
+                                    onPressed: () {
+                                      searchController.clear();
+                                      setState(() => statusFilter = 'All');
+                                    },
+                                    icon: const Icon(Icons.filter_alt_off_outlined, size: 16),
+                                    label: const Text('Clear filters'),
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: _green,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const Divider(height: 1, color: _stroke),
+                            if (results.isEmpty)
+                              const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 54, horizontal: 20),
+                                child: Center(
+                                  child: Column(
+                                    children: [
+                                      Icon(Icons.search_off_outlined, size: 34, color: _muted),
+                                      SizedBox(height: 12),
+                                      Text('No matching organizations',
+                                          style: TextStyle(color: _ink, fontWeight: FontWeight.w700)),
+                                      SizedBox(height: 5),
+                                      Text('Try a different search or status filter.',
+                                          style: TextStyle(color: _muted, fontSize: 12)),
+                                    ],
+                                  ),
+                                ),
+                              )
+                            else if (compact)
+                              ...results.map(_mobileRow)
+                            else
+                              _organizationTable(results),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      const Text(
+                        'Development preview: updates affect prototype records only. Assigning an email does not grant administrator access.',
+                        style: TextStyle(color: _muted, fontSize: 11),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              Text(
-                label,
-                style: const TextStyle(color: AppColors.textSecondary),
               ),
             ],
           ),
+        );
+      },
+    );
+  }
+
+  Widget _summaryStrip({
+    required int total,
+    required int active,
+    required int unassigned,
+    required bool compact,
+  }) {
+    final entries = <(String, int, IconData)>[
+      ('Total Organizations', total, Icons.apartment_outlined),
+      ('Active Organizations', active, Icons.check_circle_outline),
+      ('Unassigned Administrators', unassigned, Icons.person_off_outlined),
+    ];
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns = constraints.maxWidth >= 850 ? 3 : constraints.maxWidth >= 460 ? 2 : 1;
+        const gap = 12.0;
+        final width = (constraints.maxWidth - (columns - 1) * gap) / columns;
+        return Wrap(
+          spacing: gap,
+          runSpacing: gap,
+          children: [
+            for (final entry in entries)
+              Container(
+                width: width,
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 17),
+                decoration: _surfaceDecoration(),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE8F1EA),
+                        borderRadius: BorderRadius.circular(9),
+                      ),
+                      child: Icon(entry.$3, color: _forest, size: 20),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('${entry.$2}', style: const TextStyle(
+                            color: _ink, fontSize: 24, fontWeight: FontWeight.w800,
+                          )),
+                          Text(entry.$1, style: const TextStyle(
+                            color: _muted, fontSize: 11,
+                          )),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _filterBar(bool compact) {
+    final search = TextField(
+      controller: searchController,
+      onChanged: (_) => setState(() {}),
+      decoration: InputDecoration(
+        hintText: 'Search name, category or reference...',
+        hintStyle: const TextStyle(fontSize: 13, color: _muted),
+        prefixIcon: const Icon(Icons.search_rounded, color: _muted, size: 20),
+        suffixIcon: searchController.text.isEmpty ? null : IconButton(
+          onPressed: () { searchController.clear(); setState(() {}); },
+          icon: const Icon(Icons.close_rounded, size: 18),
         ),
+        isDense: true,
+        filled: true,
+        fillColor: Colors.white,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+    );
+    final filter = DropdownButtonFormField<String>(
+      key: ValueKey(statusFilter),
+      initialValue: statusFilter,
+      isExpanded: true,
+      decoration: InputDecoration(
+        labelText: 'Status',
+        isDense: true,
+        filled: true,
+        fillColor: Colors.white,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+      items: const ['All', 'Active', 'Inactive'].map((status) =>
+          DropdownMenuItem(value: status, child: Text(status))).toList(),
+      onChanged: (value) => setState(() => statusFilter = value ?? 'All'),
+    );
+    if (compact) {
+      return Column(children: [search, const SizedBox(height: 12), filter]);
+    }
+    return Row(children: [
+      Expanded(flex: 3, child: search),
+      const SizedBox(width: 12),
+      SizedBox(width: 180, child: filter),
+    ]);
+  }
+
+  Widget _organizationTable(List<RegistryOrganization> records) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: DataTable(
+        headingRowColor: WidgetStateProperty.all(const Color(0xFFF2F6F2)),
+        dataRowMinHeight: 64,
+        dataRowMaxHeight: 76,
+        columnSpacing: 22,
+        horizontalMargin: 20,
+        dividerThickness: .6,
+        columns: const [
+          DataColumn(label: Text('ORGANIZATION')),
+          DataColumn(label: Text('CATEGORY')),
+          DataColumn(label: Text('REGISTRY REFERENCE')),
+          DataColumn(label: Text('STATUS')),
+          DataColumn(label: Text('ASSIGNED ADMIN')),
+          DataColumn(label: Text('ACTIONS')),
+        ],
+        rows: [
+          for (final org in records)
+            DataRow(cells: [
+              DataCell(SizedBox(
+                width: 220,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(org.name, maxLines: 2, overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: _ink, fontWeight: FontWeight.w700, fontSize: 13)),
+                    const SizedBox(height: 4),
+                    Text(org.id, style: const TextStyle(color: _muted, fontSize: 11)),
+                  ],
+                ),
+              )),
+              DataCell(Text(org.category, style: const TextStyle(fontSize: 12))),
+              DataCell(SizedBox(width: 155, child: Text(org.registryReference,
+                overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12)))),
+              DataCell(_statusTag(org.status)),
+              DataCell(SizedBox(width: 185, child: Text(
+                org.adminEmail.isEmpty ? 'Not assigned' : org.adminEmail,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 12,
+                  color: org.adminEmail.isEmpty ? _muted : _ink),
+              ))),
+              DataCell(_actionsMenu(org)),
+            ]),
+        ],
       ),
     );
   }
 
-  Widget _organizationCard(RegistryOrganization org) {
-    return Card(
-      color: Colors.white,
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Wrap(
-              alignment: WrapAlignment.spaceBetween,
-              spacing: 12,
-              runSpacing: 10,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      org.name,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${org.id} • ${org.category}',
-                      style: const TextStyle(color: AppColors.textSecondary),
-                    ),
-                  ],
-                ),
-                Chip(
-                  label: Text(org.status),
-                  backgroundColor: org.status == 'Active'
-                      ? AppColors.greenLight
-                      : AppColors.yellowLight,
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(org.description),
-            const SizedBox(height: 10),
-            Text('Registry reference: ${org.registryReference}'),
-            Text('Contact: ${org.email}'),
-            Text(
-              'Assigned admin: ${org.adminEmail.isEmpty ? "None" : org.adminEmail}',
-            ),
-            const Divider(height: 28),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                OutlinedButton.icon(
-                  onPressed: () => openOrganizationForm(org),
-                  icon: const Icon(Icons.edit_outlined),
-                  label: const Text('Edit'),
-                ),
-                OutlinedButton.icon(
-                  onPressed: () => assignAdmin(org),
-                  icon: const Icon(Icons.admin_panel_settings_outlined),
-                  label: Text(
-                    org.adminEmail.isEmpty ? 'Assign Admin' : 'Change Admin',
-                  ),
-                ),
-                TextButton(
-                  onPressed: () => toggleStatus(org),
-                  child: Text(
-                    org.status == 'Active' ? 'Deactivate' : 'Activate',
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
+  Widget _mobileRow(RegistryOrganization org) {
+    return Container(
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: _stroke)),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Expanded(child: Text(org.name,
+              style: const TextStyle(color: _ink, fontWeight: FontWeight.w700, fontSize: 14))),
+            _actionsMenu(org),
+          ]),
+          const SizedBox(height: 7),
+          Text('${org.id}  •  ${org.category}',
+              style: const TextStyle(color: _muted, fontSize: 12)),
+          const SizedBox(height: 10),
+          _statusTag(org.status),
+          const SizedBox(height: 9),
+          Text('Reference: ${org.registryReference}',
+              style: const TextStyle(color: _muted, fontSize: 12)),
+          Text('Admin: ${org.adminEmail.isEmpty ? 'Not assigned' : org.adminEmail}',
+              style: const TextStyle(color: _muted, fontSize: 12)),
+        ],
       ),
     );
   }
+
+  Widget _statusTag(String status) {
+    final active = status == 'Active';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: active ? const Color(0xFFE7F3E9) : const Color(0xFFFFF3D8),
+        borderRadius: BorderRadius.circular(5),
+      ),
+      child: Text(status, style: TextStyle(
+        fontSize: 11, fontWeight: FontWeight.w700,
+        color: active ? _forest : const Color(0xFF94670A),
+      )),
+    );
+  }
+
+  Widget _actionsMenu(RegistryOrganization org) {
+    return PopupMenuButton<String>(
+      tooltip: 'Organization actions',
+      icon: const Icon(Icons.more_horiz_rounded, color: _forest),
+      onSelected: (action) {
+        switch (action) {
+          case 'edit':
+            openOrganizationForm(org);
+          case 'admin':
+            assignAdmin(org);
+          case 'status':
+            toggleStatus(org);
+        }
+      },
+      itemBuilder: (context) => [
+        const PopupMenuItem(value: 'edit', child: Text('Edit organization')),
+        PopupMenuItem(value: 'admin', child: Text(
+          org.adminEmail.isEmpty ? 'Assign administrator' : 'Change administrator')),
+        PopupMenuItem(value: 'status', child: Text(
+          org.status == 'Active' ? 'Deactivate organization' : 'Activate organization')),
+      ],
+    );
+  }
+
+  BoxDecoration _surfaceDecoration() => BoxDecoration(
+    color: Colors.white,
+    border: Border.all(color: _stroke),
+    borderRadius: BorderRadius.circular(12),
+  );
 }
 
 class _OrganizationFormDialog extends StatefulWidget {
@@ -499,8 +685,11 @@ class _OrganizationFormDialogState extends State<_OrganizationFormDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
       title: Text(
-        widget.organization == null ? 'Add Organization' : 'Edit Organization',
+        widget.organization == null ? 'Add organization' : 'Edit organization',
+        style: const TextStyle(color: _ink, fontWeight: FontWeight.w900),
       ),
       content: SizedBox(
         width: 480,
@@ -551,7 +740,7 @@ class _OrganizationFormDialogState extends State<_OrganizationFormDialog> {
           onPressed: () => Navigator.pop(context),
           child: const Text('Cancel'),
         ),
-        FilledButton(onPressed: save, child: const Text('Save Organization')),
+        FilledButton(onPressed: save, style: FilledButton.styleFrom(backgroundColor: _green, foregroundColor: Colors.white), child: const Text('Save organization')),
       ],
     );
   }

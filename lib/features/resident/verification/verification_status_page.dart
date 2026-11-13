@@ -208,8 +208,8 @@ class VerificationStatusPage extends StatelessWidget {
                             SizedBox(width: 11),
                             Expanded(
                               child: Text(
-                                'You can now join organizations, register '
-                                'for events, and request organizations.',
+                                'You can now request membership in registered '
+                                'organizations and register for community events.',
                                 style: TextStyle(
                                   color: AppColors.greenDark,
                                   fontSize: 12,

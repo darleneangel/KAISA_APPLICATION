@@ -18,8 +18,9 @@ class KaisaAuthService {
           ? LaunchMode.platformDefault
           : LaunchMode.externalApplication,
     );
-    if (!started)
+    if (!started) {
       throw const AuthException('Unable to launch the sign-in page.');
+    }
   }
 
   Future<AuthResponse> signIn(String email, String password) =>
