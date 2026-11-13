@@ -41,6 +41,8 @@ import '../../features/resident/messaging/messages_page.dart';
 import '../../features/resident/my-qr/kaisa_my_qr_page.dart';
 
 import '../../features/auth/views/reset_password_page.dart';
+import '../../features/resident/messaging/messages_page.dart';
+import '../../features/auth/views/profile_setup_page.dart';
 
 final _authRefresh = _AuthRouterRefresh();
 
