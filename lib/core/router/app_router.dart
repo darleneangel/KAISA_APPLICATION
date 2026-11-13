@@ -4,7 +4,11 @@ import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../features/lgu_admin/organizations/organization_registry_page.dart';
+
 import '../../features/resident/widgets/kaisa_responsive_shell.dart';
+import '../../features/lgu_admin/layout/lgu_admin_shell.dart';
+import '../../features/lgu_admin/dashboard/lgu_admin_dashboard_page.dart';
 import '../services/social_otp_service.dart';
 import '../../features/resident/about/about_kaisa_page.dart';
 import '../../features/organization_admin/dashboard/organization_admin_dashboard_page.dart';
@@ -44,6 +48,8 @@ import '../../features/auth/views/reset_password_page.dart';
 import '../../features/resident/messaging/messages_page.dart';
 import '../../features/auth/views/profile_setup_page.dart';
 
+import '../../features/lgu_admin/assignments/admin_assignments_page.dart';
+
 final _authRefresh = _AuthRouterRefresh();
 
 class _AuthRouterRefresh extends ChangeNotifier {
@@ -71,6 +77,7 @@ final appRouter = GoRouter(
 
     if (user == null) {
       if (path.startsWith('/resident/') ||
+          path.startsWith('/lgu-admin/') ||
           path.startsWith('/organization-admin/') ||
           path.startsWith('/organization_admin/') ||
           path == '/profile-setup') {
@@ -232,6 +239,29 @@ final appRouter = GoRouter(
         ),
       ],
     ),
+
+    // LGU Admin prototype workspace.
+    // NOTE: This only requires a signed-in user; it does NOT yet verify
+    // an LGU administrator role. Add a trusted server-side role guard
+    // before allowing access to real administrative data.
+    // LGU Admin workspace
+ShellRoute(
+  builder: (context, state, child) =>
+      LguAdminShell(child: child),
+  routes: [
+    GoRoute(
+      path: '/lgu-admin/dashboard',
+      builder: (context, state) =>
+          const LguAdminDashboardPage(),
+    ),
+
+    GoRoute(
+      path: '/lgu-admin/organizations',
+      builder: (context, state) =>
+          const OrganizationRegistryPage(),
+    ),
+  ],
+),
 
     // Legacy links: redirect to canonical, protected Organization Admin routes.
     // Query parameters (including organizationId) are preserved.

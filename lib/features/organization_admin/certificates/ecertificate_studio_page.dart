@@ -28,11 +28,10 @@ class _TextLayer {
     required this.x,
     required this.y,
     required this.size,
-    this.font = 'Sans',
     this.color = const Color(0xFF173F2E),
     this.bold = false,
-    this.align = TextAlign.center,
-  });
+  }) : font = 'Sans',
+     align = TextAlign.center;
 
   final String id;
   String label;
@@ -53,9 +52,8 @@ class _LogoLayer {
     required this.name,
     required this.bytes,
     this.x = .13,
-    this.y = .12,
-    this.width = .14,
-  });
+  }) : y = .12,
+     width = .14;
   final String id;
   String name;
   final Uint8List bytes;
@@ -250,11 +248,12 @@ class _CertificateStudioPageState extends State<ECertificateStudioPage> {
       });
       if (selected != null) await _loadEvents();
     } catch (error) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _loadingOrganizations = false;
           _dataError = 'Unable to load managed organizations: $error';
         });
+      }
     }
   }
 
@@ -291,11 +290,12 @@ class _CertificateStudioPageState extends State<ECertificateStudioPage> {
         _loadingEvents = false;
       });
     } catch (error) {
-      if (mounted && _organizationId == orgId)
+      if (mounted && _organizationId == orgId) {
         setState(() {
           _loadingEvents = false;
           _dataError = 'Unable to load organization events: $error';
         });
+      }
     }
   }
 
@@ -340,11 +340,12 @@ class _CertificateStudioPageState extends State<ECertificateStudioPage> {
         _updateSelectedNames();
       });
     } catch (error) {
-      if (mounted && _eventId == eventId)
+      if (mounted && _eventId == eventId) {
         setState(() {
           _loadingAttendees = false;
           _dataError = 'Unable to load verified event attendance: $error';
         });
+      }
     }
   }
 
@@ -632,14 +633,16 @@ class _CertificateStudioPageState extends State<ECertificateStudioPage> {
       final file = result.first;
       final length = file.lengthSync() ?? await file.length();
       if (length == null || length == 0 || length > _maxFont) {
-        if (mounted)
+        if (mounted) {
           setState(() => _message = 'Choose a .ttf font under 3 MB.');
+        }
         return false;
       }
       final bytes = await file.readAsBytes();
       if (bytes.isEmpty || bytes.length > _maxFont) {
-        if (mounted)
+        if (mounted) {
           setState(() => _message = 'Choose a .ttf font under 3 MB.');
+        }
         return false;
       }
       if (bytes.length < 4 ||
@@ -647,11 +650,12 @@ class _CertificateStudioPageState extends State<ECertificateStudioPage> {
           bytes[1] != 1 ||
           bytes[2] != 0 ||
           bytes[3] != 0) {
-        if (mounted)
+        if (mounted) {
           setState(
             () => _message =
                 'Use a TrueType .ttf font; OpenType .otf files are not supported here.',
           );
+        }
         return false;
       }
       final family =
@@ -737,8 +741,9 @@ class _CertificateStudioPageState extends State<ECertificateStudioPage> {
     pw.Font? custom,
     required Map<String, pw.Font> named,
   }) {
-    if (e.font == 'Great Vibes')
+    if (e.font == 'Great Vibes') {
       return named['Great Vibes'] ?? pw.Font.timesItalic();
+    }
     if (e.font == 'TeX Gyre Termes') {
       return named[bold ? 'TeX Gyre Termes:bold' : 'TeX Gyre Termes'] ??
           named['TeX Gyre Termes'] ??
@@ -804,7 +809,7 @@ class _CertificateStudioPageState extends State<ECertificateStudioPage> {
         if (mounted) setState(() => _message = 'Choose an image under 5 MB.');
         return;
       }
-      if (mounted)
+      if (mounted) {
         setState(
           () => _logos.add(
             _LogoLayer(
@@ -815,6 +820,7 @@ class _CertificateStudioPageState extends State<ECertificateStudioPage> {
             ),
           ),
         );
+      }
     } catch (e) {
       if (mounted) setState(() => _message = 'Unable to load logo: $e');
     }
