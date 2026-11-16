@@ -7,7 +7,6 @@ import '../dashboard/lgu_it_dashboard_page.dart';
 import '../../../shared/models/lgu_admin_role.dart';
 import '../../../shared/models/lgu_admin_preview.dart';
 
-import '../dashboard/lgu_role_overview_page.dart';
 
 const _forest = Color(0xFF14532D);
 const _green = Color(0xFF237A50);
@@ -117,13 +116,36 @@ _NavItem(
 
 
 
-static const _overviewOnly = [
+
+
+
+
+static const _verificationItems = [
   _NavItem(
     'Overview',
     Icons.dashboard_rounded,
-    '/lgu-admin/dashboard',
+    '/lgu-admin/verification/dashboard',
+  ),
+  _NavItem(
+    'Pending Applications',
+    Icons.pending_actions_rounded,
+    '/lgu-admin/verification/applications',
+  ),
+  _NavItem(
+    'Review History',
+    Icons.history_rounded,
+    '/lgu-admin/verification/history',
+  ),
+  _NavItem(
+    'Verification Reports',
+    Icons.bar_chart_rounded,
+    '/lgu-admin/verification/reports',
   ),
 ];
+
+
+
+
 
 
 
@@ -138,21 +160,25 @@ static const _overviewOnly = [
         final path = GoRouterState.of(context).uri.path;
 
         
+
 final items = role == LguAdminRole.operations
     ? _operationsItems
     : role == LguAdminRole.it
         ? _itItems
-
-        
-        : _overviewOnly;
+        : _verificationItems;
 
         final selected = items.where(
           (item) => item.path == path,
         );
 
-        final title = selected.isNotEmpty
-            ? selected.first.title
-            : 'Overview';
+        
+final title = path.startsWith(
+        '/lgu-admin/verification/review/')
+    ? 'Identity Review'
+    : selected.isNotEmpty
+        ? selected.first.title
+        : 'Overview';
+
 
         // Preview only: IT and Verification currently have
 
@@ -163,22 +189,19 @@ final items = role == LguAdminRole.operations
         
 
 
+
 final Widget content;
 
 if (role == LguAdminRole.operations) {
-  // Operations Administrator
-  content = path.startsWith('/lgu-admin/it/')
+  content = path.startsWith('/lgu-admin/it/') ||
+          path.startsWith('/lgu-admin/verification/')
       ? const _PreviewUnavailable()
       : child;
-
-
-
 
 } else if (role == LguAdminRole.it) {
   if (path == '/lgu-admin/dashboard') {
     content = const LguItDashboardPage();
-  } else if (
-      path == '/lgu-admin/it/accounts' ||
+  } else if (path == '/lgu-admin/it/accounts' ||
       path == '/lgu-admin/it/roles' ||
       path == '/lgu-admin/it/security-logs' ||
       path == '/lgu-admin/it/system-health' ||
@@ -192,12 +215,23 @@ if (role == LguAdminRole.operations) {
 
 
 
+
 } else {
-  // Verification Administrator preview
-  content = path == '/lgu-admin/dashboard'
-      ? LguRoleOverviewPage(role: role)
-      : const _PreviewUnavailable();
+  // Verification Administrator
+  if (path == '/lgu-admin/verification/dashboard' ||
+      path == '/lgu-admin/verification/applications' ||
+      path == '/lgu-admin/verification/history' ||
+      path == '/lgu-admin/verification/reports' ||
+      path.startsWith('/lgu-admin/verification/review/')) {
+    content = child;
+  } else {
+    content = const _PreviewUnavailable();
+  }
 }
+
+
+
+
 
 
 
@@ -382,9 +416,13 @@ if (role == LguAdminRole.operations) {
                         LguAdminPreview
                             .selectedRole.value = value;
 
-                        GoRouter.of(context).go(
-                          '/lgu-admin/dashboard',
-                        );
+                        
+GoRouter.of(context).go(
+  value == LguAdminRole.verification
+      ? '/lgu-admin/verification/dashboard'
+      : '/lgu-admin/dashboard',
+);
+
                       },
                     ),
                     const SizedBox(height: 7),
