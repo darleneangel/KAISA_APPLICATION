@@ -21,6 +21,13 @@ import '../../features/lgu_admin/it/backup_recovery_page.dart';
 import '../../features/lgu_admin/it/system_settings_page.dart';
 
 
+import '../../features/lgu_admin/verification/verification_dashboard_page.dart';
+import '../../features/lgu_admin/verification/pending_applications_page.dart';
+import '../../features/lgu_admin/verification/identity_review_page.dart';
+import '../../features/lgu_admin/verification/review_history_page.dart';
+import '../../features/lgu_admin/verification/verification_reports_page.dart';
+
+
 import '../../features/resident/widgets/kaisa_responsive_shell.dart';
 import '../../features/lgu_admin/layout/lgu_admin_shell.dart';
 import '../../features/lgu_admin/dashboard/lgu_admin_dashboard_page.dart';
@@ -309,6 +316,56 @@ GoRoute(
   builder: (context, state) =>
       const SystemSettingsPage(),
 ),
+
+
+
+//tfor the verifiation
+
+
+GoRoute(
+  path: '/lgu-admin/verification/dashboard',
+  builder: (context, state) =>
+      const VerificationDashboardPage(),
+),
+
+
+GoRoute(
+  path: '/lgu-admin/verification/applications',
+  builder: (context, state) =>
+      const PendingApplicationsPage(),
+),
+
+
+GoRoute(
+  path: '/lgu-admin/verification/review/:applicationId',
+  builder: (context, state) {
+    final applicationId =
+        state.pathParameters['applicationId'] ?? '';
+
+    return IdentityReviewPage(
+      applicationId: applicationId,
+    );
+  },
+),
+
+
+GoRoute(
+  path: '/lgu-admin/verification/history',
+  builder: (context, state) =>
+      const ReviewHistoryPage(),
+),
+
+
+GoRoute(
+  path: '/lgu-admin/verification/reports',
+  builder: (context, state) =>
+      const VerificationReportsPage(),
+),
+
+
+
+
+
 
 
 
