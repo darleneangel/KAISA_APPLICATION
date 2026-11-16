@@ -6,6 +6,13 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../features/lgu_admin/organizations/organization_registry_page.dart';
 
+import '../../features/lgu_admin/assignments/admin_assignments_page.dart';
+import '../../features/lgu_admin/events/event_monitoring_page.dart';
+import '../../features/lgu_admin/reports/lgu_reports_page.dart';
+import '../../features/lgu_admin/audit_logs/lgu_audit_logs_page.dart';
+import '../../features/lgu_admin/settings/lgu_settings_page.dart';
+
+
 import '../../features/resident/widgets/kaisa_responsive_shell.dart';
 import '../../features/lgu_admin/layout/lgu_admin_shell.dart';
 import '../../features/lgu_admin/dashboard/lgu_admin_dashboard_page.dart';
@@ -33,7 +40,6 @@ import '../../features/resident/feed/feed_page.dart';
 import '../../features/resident/organizations/organizations_page.dart';
 import '../../features/resident/organizations/organization_details_page.dart';
 import '../../features/resident/organizations/my_organizations_page.dart';
-import '../../features/resident/organizations/request_organization_page.dart';
 import '../../features/resident/events/events_page.dart';
 import '../../features/resident/events/event_details_page.dart';
 import '../../features/resident/events/my_events_page.dart';
@@ -44,9 +50,10 @@ import '../../features/resident/notifications/notifications_page.dart';
 import '../../features/resident/messaging/messages_page.dart';
 import '../../features/resident/my-qr/kaisa_my_qr_page.dart';
 
+
+
 import '../../features/auth/views/reset_password_page.dart';
 
-import '../../features/lgu_admin/assignments/admin_assignments_page.dart';
 
 final _authRefresh = _AuthRouterRefresh();
 
@@ -171,10 +178,6 @@ final appRouter = GoRouter(
           builder: (context, state) => const MyOrganizationsPage(),
         ),
         GoRoute(
-          path: '/resident/request-organization',
-          builder: (context, state) => const RequestOrganizationPage(),
-        ),
-        GoRoute(
           path: '/resident/events',
           builder: (context, state) => const EventsPage(),
         ),
@@ -242,24 +245,65 @@ final appRouter = GoRouter(
     // NOTE: This only requires a signed-in user; it does NOT yet verify
     // an LGU administrator role. Add a trusted server-side role guard
     // before allowing access to real administrative data.
-    // LGU Admin workspace
-ShellRoute(
-  builder: (context, state, child) =>
-      LguAdminShell(child: child),
-  routes: [
-    GoRoute(
-      path: '/lgu-admin/dashboard',
-      builder: (context, state) =>
-          const LguAdminDashboardPage(),
+    
+    // =========================================
+    // LGU ADMIN WORKSPACE
+    // =========================================
+    ShellRoute(
+      builder: (context, state, child) =>
+          LguAdminShell(child: child),
+      routes: [
+        // 1. LGU Dashboard
+        GoRoute(
+          path: '/lgu-admin/dashboard',
+          builder: (context, state) =>
+              const LguAdminDashboardPage(),
+        ),
+
+        // 2. Organization Registry
+        GoRoute(
+          path: '/lgu-admin/organizations',
+          builder: (context, state) =>
+              const OrganizationRegistryPage(),
+        ),
+
+        // 3. Admin Assignments
+        GoRoute(
+          path: '/lgu-admin/assignments',
+          builder: (context, state) =>
+              const AdminAssignmentsPage(),
+        ),
+
+        // 4. Event Monitoring
+        GoRoute(
+          path: '/lgu-admin/events',
+          builder: (context, state) =>
+              const EventMonitoringPage(),
+        ),
+
+        // 5. LGU Reports
+        GoRoute(
+          path: '/lgu-admin/reports',
+          builder: (context, state) =>
+              const LguReportsPage(),
+        ),
+
+        // 6. Audit Logs
+        GoRoute(
+          path: '/lgu-admin/audit-logs',
+          builder: (context, state) =>
+              const LguAuditLogsPage(),
+        ),
+
+        // 7. LGU Settings
+        GoRoute(
+          path: '/lgu-admin/settings',
+          builder: (context, state) =>
+              const LguSettingsPage(),
+        ),
+      ],
     ),
 
-    GoRoute(
-      path: '/lgu-admin/organizations',
-      builder: (context, state) =>
-          const OrganizationRegistryPage(),
-    ),
-  ],
-),
 
     // Legacy links: redirect to canonical, protected Organization Admin routes.
     // Query parameters (including organizationId) are preserved.
