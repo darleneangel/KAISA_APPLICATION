@@ -13,6 +13,14 @@ import '../../features/lgu_admin/audit_logs/lgu_audit_logs_page.dart';
 import '../../features/lgu_admin/settings/lgu_settings_page.dart';
 
 
+import '../../features/lgu_admin/it/account_management_page.dart';
+import '../../features/lgu_admin/it/roles_permissions_page.dart';
+import '../../features/lgu_admin/it/security_logs_page.dart';
+import '../../features/lgu_admin/it/system_health_page.dart';
+import '../../features/lgu_admin/it/backup_recovery_page.dart';
+import '../../features/lgu_admin/it/system_settings_page.dart';
+
+
 import '../../features/resident/widgets/kaisa_responsive_shell.dart';
 import '../../features/lgu_admin/layout/lgu_admin_shell.dart';
 import '../../features/lgu_admin/dashboard/lgu_admin_dashboard_page.dart';
@@ -259,6 +267,50 @@ final appRouter = GoRouter(
           builder: (context, state) =>
               const LguAdminDashboardPage(),
         ),
+
+
+GoRoute(
+  path: '/lgu-admin/it/accounts',
+  builder: (context, state) =>
+      const AccountManagementPage(),
+),
+
+
+GoRoute(
+  path: '/lgu-admin/it/roles',
+  builder: (context, state) =>
+      const RolesPermissionsPage(),
+),
+
+GoRoute(
+  path: '/lgu-admin/it/security-logs',
+  builder: (context, state) =>
+      const SecurityLogsPage(),
+),
+
+
+GoRoute(
+  path: '/lgu-admin/it/backup-recovery',
+  builder: (context, state) =>
+      const BackupRecoveryPage(),
+),
+
+
+
+GoRoute(
+  path: '/lgu-admin/it/system-health',
+  builder: (context, state) =>
+      const SystemHealthPage(),
+),
+
+
+GoRoute(
+  path: '/lgu-admin/it/system-settings',
+  builder: (context, state) =>
+      const SystemSettingsPage(),
+),
+
+
 
         // 2. Organization Registry
         GoRoute(
