@@ -26,6 +26,8 @@ import '../../features/lgu_admin/verification/pending_applications_page.dart';
 import '../../features/lgu_admin/verification/identity_review_page.dart';
 import '../../features/lgu_admin/verification/review_history_page.dart';
 import '../../features/lgu_admin/verification/verification_reports_page.dart';
+import '../../features/lgu_admin/verification/verification_settings_page.dart';
+import '../../features/lgu_admin/verification/verification_audit_logs_page.dart';
 
 import '../../features/resident/widgets/kaisa_responsive_shell.dart';
 import '../../features/lgu_admin/layout/lgu_admin_shell.dart';
@@ -42,6 +44,7 @@ import '../../features/organization_admin/certificates/ecertificate_studio_page.
 import '../../features/organization_admin/announcements/kaisa_org_announcements_page.dart';
 import '../../features/organization_admin/profile/kaisa_org_profile_page.dart';
 import '../../features/organization_admin/events/kaisa_org_events_management_page.dart';
+import '../../features/organization_admin/members/organization_members_page.dart';
 
 import '../../features/auth/views/welcome_page.dart';
 import '../../features/auth/views/login_page.dart';
@@ -389,8 +392,18 @@ final appRouter = GoRouter(
         ),
 
         GoRoute(
+          path: '/lgu-admin/verification/audit-logs',
+          builder: (context, state) => const VerificationAuditLogsPage(),
+        ),
+
+        GoRoute(
           path: '/lgu-admin/verification/reports',
           builder: (context, state) => const VerificationReportsPage(),
+        ),
+
+        GoRoute(
+          path: '/lgu-admin/verification/settings',
+          builder: (context, state) => const VerificationSettingsPage(),
         ),
 
         // 2. Organization Registry
@@ -447,6 +460,19 @@ final appRouter = GoRouter(
         queryParameters: state.uri.queryParameters,
       ).toString(),
     ),
+
+    GoRoute(
+      path: '/organization-admin/members',
+      builder: (context, state) {
+        final organizationId =
+            state.uri.queryParameters['organizationId'] ?? '';
+
+        return KaisaOrgAdminShell(
+          child: OrganizationMembersPage(organizationId: organizationId),
+        );
+      },
+    ),
+
     GoRoute(
       path: '/organization_admin/dashboard',
       redirect: (context, state) => Uri(

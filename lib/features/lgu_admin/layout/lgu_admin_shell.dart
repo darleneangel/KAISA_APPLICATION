@@ -90,13 +90,23 @@ class LguAdminShell extends StatelessWidget {
     ),
     _NavItem(
       'Review History',
-      Icons.history_rounded,
+      Icons.pageview_rounded,
       '/lgu-admin/verification/history',
     ),
     _NavItem(
       'Verification Reports',
       Icons.bar_chart_rounded,
       '/lgu-admin/verification/reports',
+    ),
+    _NavItem(
+      'Audit Logs',
+      Icons.history_rounded,
+      '/lgu-admin/verification/audit-logs',
+    ),
+    _NavItem(
+      'Settings',
+      Icons.settings_rounded,
+      '/lgu-admin/verification/settings',
     ),
   ];
 
@@ -171,6 +181,8 @@ class LguAdminShell extends StatelessWidget {
                   path == '/lgu-admin/verification/applications' ||
                   path == '/lgu-admin/verification/history' ||
                   path == '/lgu-admin/verification/reports' ||
+                  path == '/lgu-admin/verification/audit-logs' ||
+                  path == '/lgu-admin/verification/settings' ||
                   path.startsWith('/lgu-admin/verification/review/')
               ? child
               : const _PreviewUnavailable();
@@ -660,16 +672,7 @@ class LguAdminShell extends StatelessWidget {
                     ),
                   ),
                 const PopupMenuDivider(),
-                const PopupMenuItem<String>(
-                  value: 'profile',
-                  child: Row(
-                    children: [
-                      Icon(Icons.person_outline_rounded, color: _forest),
-                      SizedBox(width: 10),
-                      Text('View Profile'),
-                    ],
-                  ),
-                ),
+
                 const PopupMenuItem<String>(
                   value: 'logout',
                   child: Row(

@@ -26,7 +26,7 @@ class KaisaOrgAdminShell extends StatelessWidget {
       'Members & Requests',
       Icons.groups_outlined,
       '/organization-admin/members',
-      false,
+      true,
     ),
     _AdminMenuEntry(
       'Staff Invitations',
@@ -38,7 +38,7 @@ class KaisaOrgAdminShell extends StatelessWidget {
       'Events Management',
       Icons.event_note_outlined,
       '/organization-admin/events',
-      false,
+      true,
     ),
     _AdminMenuEntry(
       'Attendance Scanner',

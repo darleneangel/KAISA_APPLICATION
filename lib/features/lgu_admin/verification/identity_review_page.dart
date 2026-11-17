@@ -1,225 +1,401 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../../shared/repositories/verification_case_repository.dart';
 
-const _forest = Color(0xFF00492C);
-const _green = Color(0xFF2A7F57);
-const _paper = Color(0xFFF4F4F0);
-const _ink = Color(0xFF0E3A27);
-const _muted = Color(0xFF6E7773);
-const _stroke = Color(0xFFECECE6);
-const _soft = Color(0xFFE3F1E9);
+const _forest = Color(0xFF00492C), _gold = Color(0xFFFBBA16);
+const _ink = Color(0xFF173D2B), _muted = Color(0xFF687B70);
+const _stroke = Color(0xFFE2EBE4), _mint = Color(0xFFEAF5EE);
 
+/// Prototype review flow, not identity verification or Supabase tier elevation.
 class IdentityReviewPage extends StatefulWidget {
-  final String applicationId;
-
   const IdentityReviewPage({super.key, required this.applicationId});
-
+  final String applicationId;
   @override
   State<IdentityReviewPage> createState() => _IdentityReviewPageState();
 }
 
 class _IdentityReviewPageState extends State<IdentityReviewPage> {
-  final _notesController = TextEditingController();
-
-  final Set<int> _checked = {};
-  String? _previewDecision;
-
-  static const _requirements = [
-    'Submitted identity information is readable',
-    'Applicant details are consistent',
-    'Document appears complete for review',
-  ];
-
-  // Demo records matching the Pending Applications page.
-  static const _applications = <String, _DemoApplicant>{
-    'VER-DEMO-001': _DemoApplicant(
-      'Demo Resident A',
-      'Pending',
-      'High',
-      'Tier 1',
-      'Nov 16, 2026',
-    ),
-    'VER-DEMO-002': _DemoApplicant(
-      'Demo Resident B',
-      'Under Review',
-      'Normal',
-      'Tier 1',
-      'Nov 16, 2026',
-    ),
-    'VER-DEMO-003': _DemoApplicant(
-      'Demo Resident C',
-      'Pending',
-      'Normal',
-      'Tier 1',
-      'Nov 15, 2026',
-    ),
-    'VER-DEMO-004': _DemoApplicant(
-      'Demo Resident D',
-      'Approved',
-      'Normal',
-      'Tier 2',
-      'Nov 15, 2026',
-    ),
-    'VER-DEMO-005': _DemoApplicant(
-      'Demo Resident E',
-      'Resubmission Requested',
-      'High',
-      'Tier 1',
-      'Nov 14, 2026',
-    ),
-  };
-
+  final _repo = VerificationCaseRepository.instance;
+  final _reason = TextEditingController();
+  final _checklist = <bool>[false, false, false];
+  String _decision = 'Resubmission';
+  bool _saving = false;
   @override
   void dispose() {
-    _notesController.dispose();
+    _reason.dispose();
     super.dispose();
   }
 
-  Future<void> _review(String decision) async {
-    if (decision == 'Approved' && _checked.length != _requirements.length) {
-      _message('Complete all review checklist items first.');
+  void _back() => context.go('/lgu-admin/verification/applications');
+  Future<void> _submit() async {
+    final app = _repo.find(widget.applicationId);
+    if (app == null || !app.needsAction || app.archived || _saving) return;
+    if (_decision == 'Approved' && _checklist.any((c) => !c)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Complete all review checklist items before demo approval.',
+          ),
+        ),
+      );
       return;
     }
-
-    if (decision != 'Approved' && _notesController.text.trim().isEmpty) {
-      _message('Enter a review reason before proceeding.');
+    if (_reason.text.trim().length < 10) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Enter at least 10 characters explaining your decision.',
+          ),
+        ),
+      );
       return;
     }
-
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text('Preview: $decision'),
-        content: Text(
-          'Simulate "$decision" for '
-          '${widget.applicationId}?\n\n'
-          'This is a local UI preview. No real application '
-          'status, account tier, or database record '
-          'will be changed.',
+      builder: (ctx) => AlertDialog(
+        title: Text('Confirm $_decision?'),
+        content: const Text(
+          'Prototype only: this records a local decision. No real resident is verified, no organization is accredited, and no notification is sent.',
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
+            onPressed: () => Navigator.pop(ctx, false),
             child: const Text('Cancel'),
           ),
           FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Confirm Preview'),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Confirm'),
           ),
         ],
       ),
     );
-
     if (!mounted || confirmed != true) return;
-
-    setState(() {
-      _previewDecision = decision;
-    });
-
-    _message('Demo decision recorded on this page only: $decision');
-  }
-
-  void _message(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
+    setState(() => _saving = true);
+    final ok = _repo.recordDecision(
+      widget.applicationId,
+      _decision,
+      _reason.text,
     );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final applicant = _applications[widget.applicationId];
-
-    if (applicant == null) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.search_off_rounded, size: 44),
-            const SizedBox(height: 12),
-            const Text('Demo application not found.'),
-            const SizedBox(height: 16),
-            FilledButton(
-              onPressed: () =>
-                  context.go('/lgu-admin/verification/applications'),
-              child: const Text('Back to Applications'),
-            ),
-          ],
+    if (!mounted) return;
+    setState(() => _saving = false);
+    if (!ok) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Decision was not saved. Check the application status.',
+          ),
         ),
       );
+      return;
     }
+    // The repository notifies the queue. Once we navigate back, it rebuilds
+    // from the updated shared in-memory status (no route arguments required).
+    _back();
+  }
 
-    final status = _previewDecision ?? applicant.status;
-
+  Widget _surface(Widget child) => Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(22),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(18),
+      border: Border.all(color: _stroke),
+    ),
+    child: child,
+  );
+  Widget _field(String label, String value) => Padding(
+    padding: const EdgeInsets.only(bottom: 14),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(color: _muted, fontSize: 12)),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: const TextStyle(color: _ink, fontWeight: FontWeight.w700),
+        ),
+      ],
+    ),
+  );
+  @override
+  Widget build(BuildContext context) {
+    final app = _repo.find(widget.applicationId);
     return ColoredBox(
-      color: _paper,
+      color: const Color(0xFFF6F8F5),
       child: ListView(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(20),
         children: [
           Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1260),
+              constraints: const BoxConstraints(maxWidth: 1050),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  TextButton.icon(
-                    onPressed: () =>
-                        context.go('/lgu-admin/verification/applications'),
-                    icon: const Icon(Icons.arrow_back_rounded),
-                    label: const Text('Back to Pending Applications'),
-                  ),
-                  const SizedBox(height: 14),
-                  const Text(
-                    'Identity Review',
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      color: _ink,
-                      fontSize: 29,
-                      fontWeight: FontWeight.w700,
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(25),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF0D3325), _forest, Color(0xFF288259)],
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        TextButton.icon(
+                          onPressed: _back,
+                          icon: const Icon(Icons.arrow_back, color: _gold),
+                          label: const Text(
+                            'Back to applications',
+                            style: TextStyle(color: Colors.white),
+                          ),
+                        ),
+                        const SizedBox(height: 9),
+                        const Text(
+                          'Identity & Credential Review',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 27,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        const Text(
+                          'KAISA · LGU Verification · Prototype',
+                          style: TextStyle(color: _gold),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 5),
-                  Text(
-                    'Application ${widget.applicationId}',
-                    style: const TextStyle(color: _muted, fontSize: 13),
-                  ),
-                  const SizedBox(height: 20),
-                  _notice(),
-                  const SizedBox(height: 23),
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      final wide = constraints.maxWidth >= 900;
-                      final sectionWidth = wide
-                          ? (constraints.maxWidth - 18) / 2
-                          : constraints.maxWidth;
-
-                      return Wrap(
-                        spacing: 18,
-                        runSpacing: 18,
-                        children: [
-                          SizedBox(
-                            width: sectionWidth,
-                            child: Column(
-                              children: [
-                                _applicantCard(applicant, status),
-                                const SizedBox(height: 18),
-                                _documentCard(),
-                              ],
-                            ),
+                  const SizedBox(height: 14),
+                  _surface(
+                    const Row(
+                      children: [
+                        Icon(Icons.info_outline, color: Color(0xFFA66B08)),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Demo case only. Image comparison, actual identity-document inspection, and tier/accreditation changes are not connected.',
+                            style: TextStyle(fontSize: 12, color: _muted),
                           ),
-                          SizedBox(
-                            width: sectionWidth,
-                            child: Column(
-                              children: [
-                                _checklistCard(),
-                                const SizedBox(height: 18),
-                                _decisionCard(applicant, status),
-                              ],
-                            ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  if (app == null)
+                    _surface(
+                      Column(
+                        children: [
+                          const Text(
+                            'Application not found in the demo repository.',
+                          ),
+                          TextButton(
+                            onPressed: _back,
+                            child: const Text('Return to queue'),
                           ),
                         ],
-                      );
-                    },
-                  ),
+                      ),
+                    )
+                  else ...[
+                    _surface(
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            app.name,
+                            style: const TextStyle(
+                              fontSize: 21,
+                              fontWeight: FontWeight.w800,
+                              color: _ink,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          _field('Application ID', app.id),
+                          _field('Request type', app.type),
+                          _field('Purpose', app.purpose),
+                          _field('Status', app.status),
+                          _field('Submission platform', app.platform),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 15),
+                    _surface(
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Evidence inspection (not connected)',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              color: _ink,
+                              fontSize: 17,
+                            ),
+                          ),
+                          const SizedBox(height: 9),
+                          const Text(
+                            'Production implementation must provide permission-checked, expiring access to original evidence. This demo contains no ID image, selfie, or AI face-matching result.',
+                            style: TextStyle(
+                              color: _muted,
+                              fontSize: 12,
+                              height: 1.5,
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          Wrap(
+                            spacing: 12,
+                            runSpacing: 12,
+                            children: [
+                              for (final label in [
+                                'ID evidence unavailable',
+                                'Selfie evidence unavailable',
+                              ])
+                                Container(
+                                  width: 230,
+                                  height: 110,
+                                  decoration: BoxDecoration(
+                                    color: _mint,
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const Icon(
+                                        Icons.lock_outline,
+                                        color: _forest,
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        label,
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          color: _ink,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 15),
+                    if (app.needsAction && !app.archived)
+                      _surface(
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Manual review decision',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                                color: _ink,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            const Text(
+                              'Only check items after authorized evidence inspection. Demo checkboxes do not verify documents.',
+                              style: TextStyle(fontSize: 12, color: _muted),
+                            ),
+                            const SizedBox(height: 12),
+                            for (var i = 0; i < _checklist.length; i++)
+                              CheckboxListTile(
+                                value: _checklist[i],
+                                activeColor: _forest,
+                                contentPadding: EdgeInsets.zero,
+                                title: Text(
+                                  const [
+                                    'Submitted material was reviewed',
+                                    'Required fields are consistent',
+                                    'Applicable verification policy was checked',
+                                  ][i],
+                                ),
+                                onChanged: (v) =>
+                                    setState(() => _checklist[i] = v ?? false),
+                              ),
+                            const SizedBox(height: 14),
+                            DropdownButtonFormField<String>(
+                              initialValue: _decision,
+                              decoration: const InputDecoration(
+                                labelText: 'Decision',
+                                border: OutlineInputBorder(),
+                              ),
+                              items:
+                                  const ['Approved', 'Rejected', 'Resubmission']
+                                      .map(
+                                        (s) => DropdownMenuItem(
+                                          value: s,
+                                          child: Text(s),
+                                        ),
+                                      )
+                                      .toList(),
+                              onChanged: (v) =>
+                                  setState(() => _decision = v ?? _decision),
+                            ),
+                            const SizedBox(height: 14),
+                            TextField(
+                              controller: _reason,
+                              maxLines: 3,
+                              maxLength: 400,
+                              decoration: const InputDecoration(
+                                labelText:
+                                    'Decision reason (min 10 characters)',
+                                border: OutlineInputBorder(),
+                                hintText:
+                                    'Explain the basis of the decision; do not paste ID numbers.',
+                              ),
+                            ),
+                            const SizedBox(height: 15),
+                            Wrap(
+                              spacing: 10,
+                              runSpacing: 10,
+                              children: [
+                                FilledButton.icon(
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: _forest,
+                                  ),
+                                  onPressed: _saving ? null : _submit,
+                                  icon: const Icon(Icons.check_circle_outline),
+                                  label: Text(
+                                    _saving
+                                        ? 'Saving'
+                                        : 'Save decision & return to applications',
+                                  ),
+                                ),
+                                OutlinedButton(
+                                  onPressed: _back,
+                                  child: const Text('Cancel'),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      )
+                    else
+                      _surface(
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'This application is not open for review.',
+                              style: TextStyle(fontWeight: FontWeight.w800),
+                            ),
+                            const SizedBox(height: 9),
+                            const Text(
+                              'Completed or archived applications cannot be re-decided from this prototype view.',
+                            ),
+                            const SizedBox(height: 12),
+                            OutlinedButton(
+                              onPressed: _back,
+                              child: const Text('Return to queue'),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
                 ],
               ),
             ),
@@ -228,342 +404,4 @@ class _IdentityReviewPageState extends State<IdentityReviewPage> {
       ),
     );
   }
-
-  Widget _notice() => Container(
-    width: double.infinity,
-    padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      color: const Color(0xFFFFF3CF),
-      borderRadius: BorderRadius.circular(13),
-    ),
-    child: const Row(
-      children: [
-        Icon(Icons.info_outline, color: Color(0xFF92650D)),
-        SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            'DEVELOPMENT PREVIEW — Applicant information '
-            'and document placeholders are fictional. '
-            'Review decisions do not change Supabase data.',
-            style: TextStyle(
-              color: Color(0xFF73550E),
-              fontSize: 12,
-              height: 1.5,
-            ),
-          ),
-        ),
-      ],
-    ),
-  );
-
-  Widget _applicantCard(_DemoApplicant applicant, String status) {
-    return _card('Applicant Information', Icons.person_outline_rounded, [
-      _detail('Applicant', applicant.name),
-      _detail('Application ID', widget.applicationId),
-      _detail('Current Tier', applicant.tier),
-      _detail('Submitted', applicant.date),
-      _detail('Priority', applicant.priority),
-      _detail('Review Status', status),
-      if (_previewDecision != null)
-        const Padding(
-          padding: EdgeInsets.only(top: 12),
-          child: Text(
-            'Status shown above is a temporary preview '
-            'and will reset when this page is reopened.',
-            style: TextStyle(color: _muted, fontSize: 11),
-          ),
-        ),
-    ]);
-  }
-
-  Widget _documentCard() {
-    return _card('Identity Documents', Icons.badge_outlined, [
-      const Text(
-        'Document preview placeholders',
-        style: TextStyle(color: _muted, fontSize: 12),
-      ),
-      const SizedBox(height: 16),
-      LayoutBuilder(
-        builder: (context, constraints) {
-          final columns = constraints.maxWidth >= 360 ? 2 : 1;
-          final width = (constraints.maxWidth - 10 * (columns - 1)) / columns;
-
-          return Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              _documentPlaceholder(
-                'ID Front',
-                Icons.credit_card_rounded,
-                width,
-              ),
-              _documentPlaceholder('ID Back', Icons.badge_outlined, width),
-            ],
-          );
-        },
-      ),
-      const SizedBox(height: 15),
-      const Text(
-        'No actual ID images are loaded. Approved '
-        'document types and secure access requirements '
-        'must be confirmed before backend integration.',
-        style: TextStyle(color: _muted, fontSize: 12, height: 1.6),
-      ),
-    ]);
-  }
-
-  Widget _documentPlaceholder(String title, IconData icon, double width) {
-    return Container(
-      width: width,
-      height: 160,
-      decoration: BoxDecoration(
-        color: _soft,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _stroke),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 40, color: _green),
-          const SizedBox(height: 11),
-          Text(
-            title,
-            style: const TextStyle(color: _forest, fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 5),
-          const Text(
-            'Demo placeholder',
-            style: TextStyle(color: _muted, fontSize: 11),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _checklistCard() {
-    return _card('Verification Checklist', Icons.fact_check_outlined, [
-      const Text(
-        'Illustrative checks only. Mark each item '
-        'after completing your demo review.',
-        style: TextStyle(color: _muted, fontSize: 12, height: 1.5),
-      ),
-      const SizedBox(height: 14),
-      LinearProgressIndicator(
-        value: _checked.length / _requirements.length,
-        minHeight: 7,
-        color: _green,
-        backgroundColor: _soft,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      const SizedBox(height: 10),
-      Text(
-        '${_checked.length} of '
-        '${_requirements.length} checks selected',
-        style: const TextStyle(color: _muted, fontSize: 12),
-      ),
-      const SizedBox(height: 12),
-      for (var i = 0; i < _requirements.length; i++)
-        CheckboxListTile(
-          contentPadding: EdgeInsets.zero,
-          controlAffinity: ListTileControlAffinity.leading,
-          activeColor: _green,
-          value: _checked.contains(i),
-          title: Text(
-            _requirements[i],
-            style: const TextStyle(color: _ink, fontSize: 13),
-          ),
-          onChanged: (selected) {
-            setState(() {
-              if (selected == true) {
-                _checked.add(i);
-              } else {
-                _checked.remove(i);
-              }
-            });
-          },
-        ),
-    ]);
-  }
-
-  Widget _decisionCard(_DemoApplicant applicant, String status) {
-    final closed = applicant.status == 'Approved';
-    final previewCompleted = _previewDecision != null;
-
-    return _card('Verification Decision', Icons.verified_user_outlined, [
-      Text(
-        'Current display status: $status',
-        style: const TextStyle(
-          color: _forest,
-          fontWeight: FontWeight.w600,
-          fontSize: 12,
-        ),
-      ),
-      const SizedBox(height: 15),
-      TextField(
-        controller: _notesController,
-        maxLines: 4,
-        decoration: const InputDecoration(
-          labelText: 'Review Notes',
-          hintText: 'Explain your findings or required corrections...',
-          alignLabelWithHint: true,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.all(Radius.circular(12)),
-            borderSide: BorderSide(color: _stroke),
-          ),
-        ),
-      ),
-      const SizedBox(height: 10),
-      const Text(
-        'Notes are not saved. A reason is required '
-        'for demo rejection and resubmission requests.',
-        style: TextStyle(color: _muted, fontSize: 11, height: 1.5),
-      ),
-      const SizedBox(height: 20),
-      Wrap(
-        spacing: 10,
-        runSpacing: 10,
-        children: [
-          FilledButton.icon(
-            onPressed: closed || previewCompleted
-                ? null
-                : () => _review('Approved'),
-            style: FilledButton.styleFrom(backgroundColor: _forest),
-            icon: const Icon(Icons.check_circle_outline, size: 18),
-            label: const Text('Approve'),
-          ),
-          OutlinedButton.icon(
-            onPressed: closed || previewCompleted
-                ? null
-                : () => _review('Resubmission Requested'),
-            icon: const Icon(Icons.refresh_rounded, size: 18),
-            label: const Text('Request Resubmission'),
-          ),
-          OutlinedButton.icon(
-            onPressed: closed || previewCompleted
-                ? null
-                : () => _review('Rejected'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: const Color(0xFF9B2C2C),
-            ),
-            icon: const Icon(Icons.cancel_outlined, size: 18),
-            label: const Text('Reject'),
-          ),
-        ],
-      ),
-      if (closed) ...[
-        const SizedBox(height: 13),
-        const Text(
-          'This fictional application is already '
-          'approved. Actions are disabled.',
-          style: TextStyle(color: _muted, fontSize: 12),
-        ),
-      ],
-      if (previewCompleted) ...[
-        const SizedBox(height: 13),
-        const Text(
-          'Demo decision completed. Reopen the page '
-          'to reset this local preview.',
-          style: TextStyle(
-            color: _green,
-            fontWeight: FontWeight.w600,
-            fontSize: 12,
-          ),
-        ),
-      ],
-    ]);
-  }
-
-  Widget _detail(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 125,
-            child: Text(
-              label,
-              style: const TextStyle(color: _muted, fontSize: 12),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(
-                color: _ink,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _card(String title, IconData icon, List<Widget> children) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: _stroke),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0A00492C),
-            blurRadius: 24,
-            offset: Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: _soft,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Icon(icon, color: _forest, size: 22),
-              ),
-              const SizedBox(width: 11),
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    fontFamily: 'Poppins',
-                    color: _ink,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          ...children,
-        ],
-      ),
-    );
-  }
-}
-
-class _DemoApplicant {
-  final String name;
-  final String status;
-  final String priority;
-  final String tier;
-  final String date;
-
-  const _DemoApplicant(
-    this.name,
-    this.status,
-    this.priority,
-    this.tier,
-    this.date,
-  );
 }

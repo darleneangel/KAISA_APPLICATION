@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'shared/repositories/verification_auth_audit_store.dart';
+
 import 'app.dart';
 
 Future<void> main() async {
@@ -30,6 +32,7 @@ Future<void> main() async {
   }
 
   debugPrint('KAISA: Starting Flutter UI');
+  VerificationAuthAuditStore.instance.start();
 
   runApp(const ProviderScope(child: KaisaApp()));
 }

@@ -152,146 +152,153 @@ class _OrganizationMembersPageState extends State<OrganizationMembersPage> {
 
     final members = filteredMembers;
 
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 1280),
-        child: ListView(
-          padding: const EdgeInsets.all(24),
-          children: [
-            const Text(
-              'Member Management',
-              style: TextStyle(
-                fontSize: 27,
-                fontWeight: FontWeight.w800,
-                color: AppColors.textPrimary,
+    return Scaffold(
+      backgroundColor: const Color(0xFFF7FAF8),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1280),
+          child: ListView(
+            padding: const EdgeInsets.all(24),
+            children: [
+              const Text(
+                'Member Management',
+                style: TextStyle(
+                  fontSize: 27,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary,
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Review membership applications and '
-              'manage your organization members.',
-              style: TextStyle(color: AppColors.textSecondary),
-            ),
-            const SizedBox(height: 24),
+              const SizedBox(height: 8),
+              const Text(
+                'Review membership applications and '
+                'manage your organization members.',
+                style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 24),
 
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final columns = constraints.maxWidth >= 850
-                    ? 3
-                    : constraints.maxWidth >= 520
-                    ? 2
-                    : 1;
-                const gap = 12.0;
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final columns = constraints.maxWidth >= 850
+                      ? 3
+                      : constraints.maxWidth >= 520
+                      ? 2
+                      : 1;
+                  const gap = 12.0;
 
-                final width =
-                    (constraints.maxWidth - gap * (columns - 1)) / columns;
+                  final width =
+                      (constraints.maxWidth - gap * (columns - 1)) / columns;
 
-                return Wrap(
-                  spacing: gap,
-                  runSpacing: gap,
-                  children: [
-                    _summaryCard(
-                      'Pending Applications',
-                      pending,
-                      Icons.pending_actions_rounded,
-                      const Color(0xFFB7791F),
-                      width,
-                    ),
-                    _summaryCard(
-                      'Active Members',
-                      approved,
-                      Icons.groups_rounded,
-                      AppColors.green,
-                      width,
-                    ),
-                    _summaryCard(
-                      'Rejected Applications',
-                      rejected,
-                      Icons.person_off_rounded,
-                      const Color(0xFFB45309),
-                      width,
-                    ),
-                  ],
-                );
-              },
-            ),
-
-            const SizedBox(height: 24),
-
-            _panel(
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Membership Records',
-                    style: TextStyle(fontSize: 19, fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: searchController,
-                    onChanged: (_) => setState(() {}),
-                    decoration: const InputDecoration(
-                      hintText: 'Search by name, email, or ID',
-                      prefixIcon: Icon(Icons.search_rounded),
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    initialValue: selectedFilter,
-                    decoration: const InputDecoration(
-                      labelText: 'Membership Status',
-                      border: OutlineInputBorder(),
-                    ),
-                    items: const [
-                      DropdownMenuItem(
-                        value: 'All',
-                        child: Text('All Records'),
+                  return Wrap(
+                    spacing: gap,
+                    runSpacing: gap,
+                    children: [
+                      _summaryCard(
+                        'Pending Applications',
+                        pending,
+                        Icons.pending_actions_rounded,
+                        const Color(0xFFB7791F),
+                        width,
                       ),
-                      DropdownMenuItem(
-                        value: 'Pending',
-                        child: Text('Pending Applications'),
+                      _summaryCard(
+                        'Active Members',
+                        approved,
+                        Icons.groups_rounded,
+                        AppColors.green,
+                        width,
                       ),
-                      DropdownMenuItem(
-                        value: 'Approved',
-                        child: Text('Active Members'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'Rejected',
-                        child: Text('Rejected Applications'),
+                      _summaryCard(
+                        'Rejected Applications',
+                        rejected,
+                        Icons.person_off_rounded,
+                        const Color(0xFFB45309),
+                        width,
                       ),
                     ],
-                    onChanged: (value) {
-                      setState(() {
-                        selectedFilter = value ?? 'All';
-                      });
-                    },
-                  ),
-                ],
+                  );
+                },
               ),
-            ),
 
-            const SizedBox(height: 16),
+              const SizedBox(height: 24),
 
-            if (members.isEmpty)
               _panel(
-                const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(24),
-                    child: Text('No membership records found.'),
-                  ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Membership Records',
+                      style: TextStyle(
+                        fontSize: 19,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: searchController,
+                      onChanged: (_) => setState(() {}),
+                      decoration: const InputDecoration(
+                        hintText: 'Search by name, email, or ID',
+                        prefixIcon: Icon(Icons.search_rounded),
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      initialValue: selectedFilter,
+                      decoration: const InputDecoration(
+                        labelText: 'Membership Status',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'All',
+                          child: Text('All Records'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'Pending',
+                          child: Text('Pending Applications'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'Approved',
+                          child: Text('Active Members'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'Rejected',
+                          child: Text('Rejected Applications'),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        setState(() {
+                          selectedFilter = value ?? 'All';
+                        });
+                      },
+                    ),
+                  ],
                 ),
-              )
-            else
-              ...members.map(_memberCard),
+              ),
 
-            const SizedBox(height: 16),
-            const Text(
-              'Prototype records only. Membership decisions '
-              'are currently stored in memory.',
-              style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-            ),
-          ],
+              const SizedBox(height: 16),
+
+              if (members.isEmpty)
+                _panel(
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(24),
+                      child: Text('No membership records found.'),
+                    ),
+                  ),
+                )
+              else
+                ...members.map(_memberCard),
+
+              const SizedBox(height: 16),
+              const Text(
+                'Prototype records only. Membership decisions '
+                'are currently stored in memory.',
+                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -317,7 +324,11 @@ class _OrganizationMembersPageState extends State<OrganizationMembersPage> {
             const SizedBox(height: 16),
             Text(
               '$value',
-              style: const TextStyle(fontSize: 29, fontWeight: FontWeight.w800),
+              style: const TextStyle(
+                fontSize: 29,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textPrimary,
+              ),
             ),
             const SizedBox(height: 5),
             Text(

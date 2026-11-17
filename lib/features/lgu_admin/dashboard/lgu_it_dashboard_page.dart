@@ -3,55 +3,75 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-// KAISA IT dashboard — visual prototype. No real monitoring data is queried.
-const _forest = Color(0xFF103C2B);
-const _deep = Color(0xFF082B21);
-const _green = Color(0xFF2B875A);
-const _mint = Color(0xFFEAF5ED);
+// KAISA IT Superadmin dashboard. ALL numbers below are simulated test data.
+// Replace these constants with authorized, aggregated backend telemetry later.
+const _forest = Color(0xFF00492C);
+const _gold = Color(0xFFFBBA16);
+const _crimson = Color(0xFFD64545);
 const _paper = Color(0xFFF5F8F4);
 const _ink = Color(0xFF18372B);
-const _muted = Color(0xFF748479);
-const _gold = Color(0xFFFFCA46);
+const _muted = Color(0xFF687B70);
 const _line = Color(0xFFE1EAE2);
+const _mint = Color(0xFFEAF5ED);
 
-class LguItDashboardPage extends StatelessWidget {
+class _DayActivity {
+  const _DayActivity(this.day, this.success, this.failed);
+  final String day;
+  final int success;
+  final int failed;
+}
+
+// Simulated requests/events for 12–18 November 2026, not unique people.
+const _activity = <_DayActivity>[
+  _DayActivity('Thu 12', 162, 11),
+  _DayActivity('Fri 13', 185, 17),
+  _DayActivity('Sat 14', 147, 13),
+  _DayActivity('Sun 15', 169, 9),
+  _DayActivity('Mon 16', 208, 35),
+  _DayActivity('Tue 17', 236, 62),
+  _DayActivity('Wed 18', 222, 19),
+];
+
+// Separate simulated classification of logged security/system events.
+const _routineEvents = 1108;
+const _warningEvents = 227;
+const _criticalEvents = 85;
+const _loggedEvents = _routineEvents + _warningEvents + _criticalEvents;
+
+class LguItDashboardPage extends StatefulWidget {
   const LguItDashboardPage({super.key});
 
-  static const _modules = <_DashboardModule>[
-    _DashboardModule(
+  @override
+  State<LguItDashboardPage> createState() => _LguItDashboardPageState();
+}
+
+class _LguItDashboardPageState extends State<LguItDashboardPage> {
+  int _selectedDay = 6;
+
+  int get _successful => _activity.fold(0, (sum, day) => sum + day.success);
+  int get _failed => _activity.fold(0, (sum, day) => sum + day.failed);
+
+  static const _modules = <(String, IconData, String)>[
+    (
       'Account Management',
-      'Review user accounts and account actions',
-      Icons.manage_accounts_rounded,
+      Icons.manage_accounts_outlined,
       '/lgu-admin/it/accounts',
     ),
-    _DashboardModule(
+    (
       'Roles & Permissions',
-      'Review administrator access and responsibilities',
       Icons.admin_panel_settings_outlined,
       '/lgu-admin/it/roles',
     ),
-    _DashboardModule(
-      'Security Logs',
-      'Inspect illustrative authentication and security events',
-      Icons.security_rounded,
-      '/lgu-admin/it/security-logs',
-    ),
-    _DashboardModule(
+    ('Security Logs', Icons.security_outlined, '/lgu-admin/it/security-logs'),
+
+    (
       'System Health',
-      'Check the platform monitoring workspace',
       Icons.monitor_heart_outlined,
       '/lgu-admin/it/system-health',
     ),
-    _DashboardModule(
-      'Backup & Recovery',
-      'Review backup and recovery readiness',
-      Icons.backup_outlined,
-      '/lgu-admin/it/backup-recovery',
-    ),
-    _DashboardModule(
+    (
       'System Settings',
-      'Review system configuration options',
-      Icons.settings_suggest_outlined,
+      Icons.settings_outlined,
       '/lgu-admin/it/system-settings',
     ),
   ];
@@ -61,14 +81,14 @@ class LguItDashboardPage extends StatelessWidget {
     return ColoredBox(
       color: _paper,
       child: LayoutBuilder(
-        builder: (context, constraints) {
-          final compact = constraints.maxWidth < 640;
+        builder: (context, outer) {
+          final compact = outer.maxWidth < 640;
           return ListView(
             padding: EdgeInsets.fromLTRB(
-              compact ? 16 : 28,
-              24,
-              compact ? 16 : 28,
-              48,
+              compact ? 14 : 26,
+              22,
+              compact ? 14 : 26,
+              40,
             ),
             children: [
               Center(
@@ -77,60 +97,39 @@ class LguItDashboardPage extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _heading(compact),
-                      const SizedBox(height: 22),
-                      _welcomeBanner(context),
-                      const SizedBox(height: 16),
-                      _disclaimer(),
-                      const SizedBox(height: 28),
-                      _sectionHeading(
-                        'Platform snapshot',
-                        'System indicators remain unconnected until secure monitoring is configured.',
-                      ),
+                      _header(compact),
                       const SizedBox(height: 14),
-                      _metrics(),
-                      const SizedBox(height: 28),
-                      _sectionHeading(
-                        'Monitoring overview',
-                        'Visual examples only — not current KAISA activity or uptime.',
+                      _notice(),
+                      const SizedBox(height: 24),
+                      _heading(
+                        '7-day platform snapshot',
+                        'Counts calculated from the same sample authentication activity and security event datasets.',
                       ),
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 13),
+                      _kpis(),
+                      const SizedBox(height: 27),
+                      _heading(
+                        'Security monitoring',
+                        'Select or hover a day to inspect its figures. These graphs contain numerical data, not decorative artwork.',
+                      ),
+                      const SizedBox(height: 13),
                       _charts(),
-                      const SizedBox(height: 28),
-                      _sectionHeading(
-                        'IT workspaces',
-                        'Jump directly into your assigned administrative modules.',
+                      const SizedBox(height: 25),
+                      _heading(
+                        'IT administration modules',
+                        'Open the relevant workspace for account, permission, security, or system management.',
                       ),
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 12),
                       _moduleGrid(context),
-                      const SizedBox(height: 28),
-                      _sectionHeading(
-                        'Operational readiness',
-                        'Services that need backend integration before production monitoring.',
-                      ),
-                      const SizedBox(height: 14),
-                      _readinessPanels(),
-                      const SizedBox(height: 22),
-                      _accountPanel(context),
                       const SizedBox(height: 18),
-                      const Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Icon(Icons.info_outline, size: 16, color: _muted),
-                          SizedBox(width: 9),
-                          Expanded(
-                            child: Text(
-                              'IT Administration UI preview. No live resident records, security events, '
-                              'system health measurements, or infrastructure metrics are accessed. '
-                              'Production actions require verified backend authorization and RLS.',
-                              style: TextStyle(
-                                fontSize: 11,
-                                height: 1.5,
-                                color: _muted,
-                              ),
-                            ),
-                          ),
-                        ],
+                      const Text(
+                        'Production note: connect this dashboard only to authorized, aggregated Supabase Auth, API gateway, and audit events. '
+                        'Do not expose raw tokens, passwords, or private log payloads to the Flutter client.',
+                        style: TextStyle(
+                          color: _muted,
+                          fontSize: 11,
+                          height: 1.5,
+                        ),
                       ),
                     ],
                   ),
@@ -143,187 +142,84 @@ class LguItDashboardPage extends StatelessWidget {
     );
   }
 
-  Widget _heading(bool compact) => Wrap(
-    spacing: 14,
-    runSpacing: 12,
-    alignment: WrapAlignment.spaceBetween,
-    crossAxisAlignment: WrapCrossAlignment.center,
-    children: [
-      Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'KAISA  /  LGU ADMINISTRATION  /  IT',
-            style: TextStyle(
-              fontSize: 10,
-              letterSpacing: 1.5,
-              fontWeight: FontWeight.w800,
-              color: _green,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'IT Administration',
-            style: TextStyle(
-              fontSize: compact ? 27 : 34,
-              fontWeight: FontWeight.w900,
-              letterSpacing: -0.9,
-              color: _ink,
-            ),
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            'Your platform operations, security and access command center.',
-            style: TextStyle(color: _muted, fontSize: 13),
-          ),
-        ],
+  Widget _header(bool compact) => Container(
+    width: double.infinity,
+    padding: EdgeInsets.all(compact ? 20 : 28),
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(22),
+      gradient: const LinearGradient(
+        colors: [Color(0xFF082B21), _forest, Color(0xFF237752)],
       ),
-      Container(
-        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(50),
-          border: Border.all(color: _line),
-        ),
-        child: const Row(
-          mainAxisSize: MainAxisSize.min,
+    ),
+    child: Wrap(
+      alignment: WrapAlignment.spaceBetween,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 15,
+      runSpacing: 12,
+      children: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(Icons.shield_outlined, color: _green, size: 17),
-            SizedBox(width: 8),
-            Text(
-              'IT SUPERADMIN',
+            const Text(
+              'KAISA  /  LGU ADMINISTRATION  /  IT',
               style: TextStyle(
-                color: _forest,
+                color: _gold,
                 fontWeight: FontWeight.w800,
                 fontSize: 11,
-                letterSpacing: 0.6,
+                letterSpacing: 1.0,
               ),
+            ),
+            const SizedBox(height: 9),
+            Text(
+              'IT Administration',
+              style: TextStyle(
+                fontSize: compact ? 26 : 32,
+                fontWeight: FontWeight.w900,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Authentication, security events, and essential IT controls',
+              style: TextStyle(color: Color(0xFFE0F1E7), fontSize: 12),
             ),
           ],
         ),
-      ),
-    ],
-  );
-
-  Widget _welcomeBanner(BuildContext context) => Container(
-    width: double.infinity,
-    decoration: BoxDecoration(
-      borderRadius: BorderRadius.circular(25),
-      gradient: const LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [_deep, _forest, Color(0xFF237752)],
-      ),
-      boxShadow: [
-        BoxShadow(
-          color: _forest.withValues(alpha: .14),
-          blurRadius: 24,
-          offset: const Offset(0, 9),
-        ),
-      ],
-    ),
-    clipBehavior: Clip.antiAlias,
-    child: Stack(
-      children: [
-        const Positioned(
-          right: -70,
-          top: -75,
-          child: _DecorativeOrb(diameter: 280),
-        ),
-        const Positioned(
-          right: 82,
-          bottom: -80,
-          child: _DecorativeOrb(diameter: 170),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 27, vertical: 27),
-          child: Wrap(
-            spacing: 24,
-            runSpacing: 15,
-            alignment: WrapAlignment.spaceBetween,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 620),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      '✦  KAISA CONTROL CENTER',
-                      style: TextStyle(
-                        color: _gold,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 1.5,
-                      ),
-                    ),
-                    const SizedBox(height: 13),
-                    const Text(
-                      'A safer, stronger platform\nstarts here.',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 27,
-                        height: 1.2,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      'Monitor readiness, review administrative tools, and '
-                      'prepare secure services for the KAISA community.',
-                      style: TextStyle(
-                        fontSize: 12,
-                        height: 1.6,
-                        color: Colors.white.withValues(alpha: .79),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: _deep,
-                  backgroundColor: _gold,
-                  side: BorderSide.none,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 19,
-                    vertical: 16,
-                  ),
-                ),
-                onPressed: () => context.go('/lgu-admin/it/system-health'),
-                icon: const Icon(Icons.monitor_heart_outlined, size: 17),
-                label: const Text(
-                  'System Health',
-                  style: TextStyle(fontWeight: FontWeight.w800),
-                ),
-              ),
-            ],
+        const Chip(
+          avatar: Icon(Icons.science_outlined, color: _forest, size: 17),
+          label: Text(
+            'SIMULATED DATA',
+            style: TextStyle(
+              fontWeight: FontWeight.w800,
+              color: _forest,
+              fontSize: 11,
+            ),
           ),
+          backgroundColor: Color(0xFFFFF0C0),
+          side: BorderSide.none,
         ),
       ],
     ),
   );
 
-  Widget _disclaimer() => Container(
-    padding: const EdgeInsets.all(13),
+  Widget _notice() => Container(
+    padding: const EdgeInsets.all(14),
     decoration: BoxDecoration(
-      color: const Color(0xFFFFF8DE),
+      color: const Color(0xFFFFF6DC),
       borderRadius: BorderRadius.circular(13),
     ),
     child: const Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(Icons.info_outline_rounded, color: Color(0xFF936C18), size: 19),
-        SizedBox(width: 11),
+        Icon(Icons.info_outline, color: Color(0xFF98650B), size: 20),
+        SizedBox(width: 10),
         Expanded(
           child: Text(
-            'DEVELOPMENT PREVIEW  •  Charts use fictional sample values. '
-            'Cards show unavailable live metrics rather than invented counts. '
-            'This screen does not read or modify Supabase data.',
+            'CAPSTONE PROTOTYPE — All figures are fixed demonstration records for 12–18 Nov 2026, '
+            'not real logins, active users, Supabase uptime, or detected security incidents.',
             style: TextStyle(
-              color: Color(0xFF80621D),
-              fontSize: 11,
-              height: 1.55,
+              color: Color(0xFF795813),
+              fontSize: 12,
+              height: 1.45,
             ),
           ),
         ),
@@ -331,7 +227,7 @@ class LguItDashboardPage extends StatelessWidget {
     ),
   );
 
-  Widget _sectionHeading(String title, String subtitle) => Column(
+  Widget _heading(String title, String subtitle) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       Text(
@@ -340,121 +236,91 @@ class LguItDashboardPage extends StatelessWidget {
           color: _ink,
           fontSize: 20,
           fontWeight: FontWeight.w900,
-          letterSpacing: -.4,
         ),
       ),
-      const SizedBox(height: 5),
+      const SizedBox(height: 4),
       Text(subtitle, style: const TextStyle(color: _muted, fontSize: 12)),
     ],
   );
 
-  Widget _metrics() {
-    const data = [
-      _DashboardMetric(
-        'Registered accounts',
-        '—',
-        'Awaiting authorized account data',
-        Icons.groups_2_outlined,
-        Color(0xFFE9F5ED),
-        _green,
+  BoxDecoration _surface() => BoxDecoration(
+    color: Colors.white,
+    borderRadius: BorderRadius.circular(18),
+    border: Border.all(color: _line),
+  );
+
+  Widget _kpis() {
+    final items = <(String, String, String, IconData, Color)>[
+      (
+        'Authenticated / API requests',
+        '$_successful',
+        'Successful requests across 7 days',
+        Icons.login_rounded,
+        _forest,
       ),
-      _DashboardMetric(
-        'Active sessions',
-        '—',
-        'Secure session monitor required',
-        Icons.devices_outlined,
-        Color(0xFFEAF2FA),
-        Color(0xFF4185BA),
+      (
+        'Failed / blocked requests',
+        '$_failed',
+        'Failed login or blocked request events',
+        Icons.gpp_bad_outlined,
+        _crimson,
       ),
-      _DashboardMetric(
-        'Security alerts',
-        '—',
-        'Awaiting event integration',
-        Icons.shield_outlined,
-        Color(0xFFFFF5D9),
-        Color(0xFFB58A20),
+      (
+        'Logged security events',
+        '$_loggedEvents',
+        'Routine + warning + critical events',
+        Icons.receipt_long_outlined,
+        _forest,
       ),
-      _DashboardMetric(
-        'Platform health',
-        'Not connected',
-        'Monitoring not configured',
-        Icons.monitor_heart_outlined,
-        Color(0xFFF2ECFC),
-        Color(0xFF8C66B3),
+      (
+        'Critical alerts',
+        '$_criticalEvents',
+        'Categorized sample critical events',
+        Icons.warning_amber_rounded,
+        _crimson,
       ),
     ];
     return LayoutBuilder(
-      builder: (context, constraints) {
-        final columns = constraints.maxWidth >= 1040
-            ? 4
-            : constraints.maxWidth >= 540
-            ? 2
-            : 1;
-        const gap = 13.0;
-        final width = (constraints.maxWidth - gap * (columns - 1)) / columns;
+      builder: (context, c) {
+        final columns = c.maxWidth >= 980 ? 4 : (c.maxWidth >= 510 ? 2 : 1);
+        const gap = 12.0;
+        final width = (c.maxWidth - gap * (columns - 1)) / columns;
         return Wrap(
           spacing: gap,
           runSpacing: gap,
           children: [
-            for (final item in data)
+            for (final item in items)
               SizedBox(
                 width: width,
                 child: Container(
-                  padding: const EdgeInsets.all(19),
                   decoration: _surface(),
+                  padding: const EdgeInsets.all(17),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(11),
-                            decoration: BoxDecoration(
-                              color: item.bg,
-                              borderRadius: BorderRadius.circular(13),
-                            ),
-                            child: Icon(
-                              item.icon,
-                              size: 22,
-                              color: item.accent,
-                            ),
-                          ),
-                          const Icon(
-                            Icons.more_horiz_rounded,
-                            size: 19,
-                            color: _muted,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 19),
+                      Icon(item.$4, color: item.$5, size: 24),
+                      const SizedBox(height: 11),
                       Text(
-                        item.value,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: item.value.length > 9 ? 19 : 30,
-                          fontWeight: FontWeight.w900,
+                        item.$2,
+                        style: const TextStyle(
                           color: _ink,
+                          fontSize: 29,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        item.$1,
+                        style: const TextStyle(
+                          color: _ink,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
                       const SizedBox(height: 5),
                       Text(
-                        item.label,
-                        style: const TextStyle(
-                          color: _ink,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 12,
-                        ),
-                      ),
-                      const SizedBox(height: 7),
-                      Text(
-                        item.description,
-                        style: const TextStyle(
-                          color: _muted,
-                          fontSize: 11,
-                          height: 1.4,
-                        ),
+                        item.$3,
+                        style: const TextStyle(color: _muted, fontSize: 11),
                       ),
                     ],
                   ),
@@ -467,588 +333,476 @@ class LguItDashboardPage extends StatelessWidget {
   }
 
   Widget _charts() => LayoutBuilder(
-    builder: (context, constraints) {
-      final sideBySide = constraints.maxWidth >= 850;
-      final leftWidth = sideBySide
-          ? (constraints.maxWidth - 14) * .58
-          : constraints.maxWidth;
-      final rightWidth = sideBySide
-          ? (constraints.maxWidth - 14) * .42
-          : constraints.maxWidth;
+    builder: (context, c) {
+      final wide = c.maxWidth >= 860;
+      final leftWidth = wide ? (c.maxWidth - 14) * .58 : c.maxWidth;
+      final rightWidth = wide ? (c.maxWidth - 14) * .42 : c.maxWidth;
       return Wrap(
         spacing: 14,
         runSpacing: 14,
         children: [
-          SizedBox(
-            width: leftWidth,
-            child: _panel(
-              'Illustrative activity',
-              'Sample event volume across seven days',
-              Icons.show_chart_rounded,
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const _DemoTag(),
-                  const SizedBox(height: 20),
-                  SizedBox(
-                    height: 180,
-                    width: double.infinity,
-                    child: CustomPaint(painter: _ActivityChartPainter()),
-                  ),
-                  const SizedBox(height: 11),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      for (final day in [
-                        'Mon',
-                        'Tue',
-                        'Wed',
-                        'Thu',
-                        'Fri',
-                        'Sat',
-                        'Sun',
-                      ])
-                        Text(
-                          day,
-                          style: const TextStyle(color: _muted, fontSize: 10),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 15),
-                  const Text(
-                    'Example activity pattern • not platform analytics',
-                    style: TextStyle(color: _muted, fontSize: 11),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          SizedBox(
-            width: rightWidth,
-            child: _panel(
-              'Illustrative categories',
-              'Example security event distribution',
-              Icons.donut_large_rounded,
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  const _DemoTag(),
-                  const SizedBox(height: 17),
-                  SizedBox(
-                    height: 160,
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        const CustomPaint(
-                          size: Size(160, 160),
-                          painter: _RingChartPainter(),
-                        ),
-                        Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Text(
-                              'SAMPLE',
-                              style: TextStyle(
-                                fontSize: 11,
-                                letterSpacing: 1.4,
-                                color: _muted,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                            Text(
-                              '100%',
-                              style: TextStyle(
-                                fontSize: 23,
-                                fontWeight: FontWeight.w900,
-                                color: _forest,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  const Wrap(
-                    alignment: WrapAlignment.center,
-                    spacing: 14,
-                    runSpacing: 8,
-                    children: [
-                      _LegendDot('Routine 60%', _green),
-                      _LegendDot('Review 25%', _gold),
-                      _LegendDot('Alerts 15%', Color(0xFF85B9D3)),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
+          SizedBox(width: leftWidth, child: _activityPanel()),
+          SizedBox(width: rightWidth, child: _eventPanel()),
         ],
       );
     },
   );
 
-  Widget _moduleGrid(BuildContext context) => LayoutBuilder(
-    builder: (context, constraints) {
-      final columns = constraints.maxWidth >= 1000
-          ? 3
-          : constraints.maxWidth >= 590
-          ? 2
-          : 1;
-      const gap = 13.0;
-      final width = (constraints.maxWidth - gap * (columns - 1)) / columns;
-      return Wrap(
-        spacing: gap,
-        runSpacing: gap,
+  Widget _activityPanel() {
+    final current = _activity[_selectedDay];
+    return Container(
+      decoration: _surface(),
+      padding: const EdgeInsets.all(19),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          for (final module in _modules)
-            SizedBox(
-              width: width,
-              child: Material(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(18),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(18),
-                  onTap: () => context.go(module.route),
-                  child: Container(
-                    padding: const EdgeInsets.all(18),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: _line),
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(11),
-                              decoration: BoxDecoration(
-                                color: _mint,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Icon(module.icon, color: _green, size: 23),
-                            ),
-                            const Icon(
-                              Icons.arrow_outward_rounded,
-                              color: _muted,
-                              size: 19,
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 17),
-                        Text(
-                          module.title,
-                          style: const TextStyle(
-                            color: _ink,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                        const SizedBox(height: 7),
-                        Text(
-                          module.description,
-                          style: const TextStyle(
-                            color: _muted,
-                            fontSize: 11,
-                            height: 1.5,
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-                        const Text(
-                          'OPEN WORKSPACE',
-                          style: TextStyle(
-                            color: _green,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: .7,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-        ],
-      );
-    },
-  );
-
-  Widget _readinessPanels() => LayoutBuilder(
-    builder: (context, constraints) {
-      final wide = constraints.maxWidth >= 760;
-      final width = wide
-          ? (constraints.maxWidth - 14) / 2
-          : constraints.maxWidth;
-      return Wrap(
-        spacing: 14,
-        runSpacing: 14,
-        children: [
-          SizedBox(
-            width: width,
-            child: _panel(
-              'System health',
-              'Connection checklist',
-              Icons.monitor_heart_outlined,
-              const Column(
-                children: [
-                  _ReadinessRow('Supabase availability', 'Not connected'),
-                  _ReadinessRow('API monitoring', 'Not configured'),
-                  _ReadinessRow('Error tracking', 'Not configured'),
-                  _ReadinessRow('Backup monitoring', 'Not configured'),
-                ],
-              ),
+          const Text(
+            '7-Day System & Auth Activity',
+            style: TextStyle(
+              fontSize: 16,
+              color: _ink,
+              fontWeight: FontWeight.w900,
             ),
           ),
-          SizedBox(
-            width: width,
-            child: _panel(
-              'Security monitoring',
-              'Integration checklist',
-              Icons.shield_outlined,
-              const Column(
-                children: [
-                  _ReadinessRow('Authentication logs', 'Not connected'),
-                  _ReadinessRow('Suspicious activity alerts', 'Not configured'),
-                  _ReadinessRow('Access review', 'Pending integration'),
-                  _ReadinessRow('Security audit feed', 'Pending integration'),
-                ],
-              ),
-            ),
+          const SizedBox(height: 5),
+          const Text(
+            'Daily successful requests vs failed/blocked requests',
+            style: TextStyle(color: _muted, fontSize: 11),
           ),
-        ],
-      );
-    },
-  );
-
-  Widget _accountPanel(BuildContext context) => Container(
-    width: double.infinity,
-    padding: const EdgeInsets.all(22),
-    decoration: _surface(),
-    child: Wrap(
-      alignment: WrapAlignment.spaceBetween,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      spacing: 20,
-      runSpacing: 15,
-      children: [
-        ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 690),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.manage_accounts_outlined, color: _green, size: 24),
-                  SizedBox(width: 10),
-                  Text(
-                    'User Account Management',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w900,
-                      color: _ink,
-                      fontSize: 17,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              const Text(
-                'Account administration exists as a separate prototype workspace. '
-                'Live account listings, filters and management actions still require '
-                'secure Supabase integration.',
-                style: TextStyle(color: _muted, fontSize: 12, height: 1.6),
-              ),
-              const SizedBox(height: 10),
-              const Text(
-                'Live account data: Not connected',
-                style: TextStyle(
-                  color: _green,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 11,
-                ),
-              ),
+          const SizedBox(height: 15),
+          Wrap(
+            spacing: 14,
+            runSpacing: 6,
+            children: const [
+              _Legend('Authenticated / API', _forest),
+              _Legend('Failed / blocked', _gold),
             ],
           ),
-        ),
-        FilledButton.icon(
-          onPressed: () => context.go('/lgu-admin/it/accounts'),
-          style: FilledButton.styleFrom(
-            backgroundColor: _forest,
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 17),
-          ),
-          icon: const Icon(Icons.arrow_forward_rounded, size: 18),
-          label: const Text('Open accounts'),
-        ),
-      ],
-    ),
-  );
-
-  Widget _panel(String title, String subtitle, IconData icon, Widget content) =>
-      Container(
-        padding: const EdgeInsets.all(21),
-        decoration: _surface(),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(9),
-                  decoration: BoxDecoration(
-                    color: _mint,
-                    borderRadius: BorderRadius.circular(11),
+          const SizedBox(height: 14),
+          SizedBox(
+            height: 205,
+            width: double.infinity,
+            child: LayoutBuilder(
+              builder: (context, c) => MouseRegion(
+                onHover: (event) {
+                  final x = event.localPosition.dx.clamp(
+                    26.0,
+                    math.max(26.0, c.maxWidth - 12),
+                  );
+                  final fraction = (x - 26) / math.max(1, c.maxWidth - 38);
+                  final i = (fraction * (_activity.length - 1)).round().clamp(
+                    0,
+                    _activity.length - 1,
+                  );
+                  if (i != _selectedDay) setState(() => _selectedDay = i);
+                },
+                child: GestureDetector(
+                  onTapDown: (details) {
+                    final fraction =
+                        (details.localPosition.dx - 26) /
+                        math.max(1, c.maxWidth - 38);
+                    setState(
+                      () => _selectedDay = (fraction * (_activity.length - 1))
+                          .round()
+                          .clamp(0, _activity.length - 1),
+                    );
+                  },
+                  child: CustomPaint(
+                    painter: _AuthChartPainter(_activity, _selectedDay),
+                    size: Size.infinite,
                   ),
-                  child: Icon(icon, color: _green, size: 19),
                 ),
-                const SizedBox(width: 10),
+              ),
+            ),
+          ),
+          const SizedBox(height: 5),
+          Row(
+            children: [
+              for (var i = 0; i < _activity.length; i++)
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: const TextStyle(
-                          color: _ink,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 15,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        subtitle,
-                        style: const TextStyle(color: _muted, fontSize: 11),
-                      ),
-                    ],
+                  child: Text(
+                    _activity[i].day.split(' ').first,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: i == _selectedDay
+                          ? FontWeight.w900
+                          : FontWeight.normal,
+                      color: i == _selectedDay ? _forest : _muted,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: _mint,
+              borderRadius: BorderRadius.circular(11),
+            ),
+            padding: const EdgeInsets.all(12),
+            child: Wrap(
+              spacing: 15,
+              runSpacing: 6,
+              children: [
+                Text(
+                  current.day,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w900,
+                    color: _ink,
+                  ),
+                ),
+                Text(
+                  'Successful: ${current.success}',
+                  style: const TextStyle(
+                    color: _forest,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                Text(
+                  'Failed / blocked: ${current.failed}',
+                  style: const TextStyle(
+                    color: Color(0xFF94650D),
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 20),
-            content,
-          ],
-        ),
+          ),
+          const SizedBox(height: 9),
+          const Text(
+            'Each plotted point comes from the seven numerical samples defined in this file.',
+            style: TextStyle(color: _muted, fontSize: 10),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _eventPanel() {
+    const groups = <(String, int, Color, String)>[
+      (
+        'Routine',
+        _routineEvents,
+        _forest,
+        'Sign-ins, password resets, backup completions',
+      ),
+      (
+        'Warnings / Review',
+        _warningEvents,
+        _gold,
+        'Role changes, suspensions, rate-limit triggers',
+      ),
+      (
+        'Critical Alerts',
+        _criticalEvents,
+        _crimson,
+        'Lockouts, unauthorized requests, API errors',
+      ),
+    ];
+    return Container(
+      decoration: _surface(),
+      padding: const EdgeInsets.all(19),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Security & System Event Breakdown',
+            style: TextStyle(
+              fontSize: 16,
+              color: _ink,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 5),
+          const Text(
+            'Categorized system and audit events over the sample 7 days',
+            style: TextStyle(color: _muted, fontSize: 11),
+          ),
+          const SizedBox(height: 15),
+          Center(
+            child: SizedBox(
+              height: 195,
+              width: 195,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  CustomPaint(
+                    size: const Size(195, 195),
+                    painter: const _EventDonutPainter([
+                      _routineEvents,
+                      _warningEvents,
+                      _criticalEvents,
+                    ]),
+                  ),
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      Text(
+                        '1,420',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w900,
+                          color: _ink,
+                          fontSize: 29,
+                        ),
+                      ),
+                      Text(
+                        'DEMO EVENTS',
+                        style: TextStyle(
+                          color: _muted,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          for (final group in groups)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 7),
+              child: Tooltip(
+                message: group.$4,
+                child: Row(
+                  children: [
+                    Container(
+                      height: 10,
+                      width: 10,
+                      decoration: BoxDecoration(
+                        color: group.$3,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        group.$1,
+                        style: const TextStyle(color: _ink, fontSize: 12),
+                      ),
+                    ),
+                    Text(
+                      '${group.$2}  (${(group.$2 / _loggedEvents * 100).toStringAsFixed(1)}%)',
+                      style: const TextStyle(
+                        color: _ink,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          const SizedBox(height: 7),
+          const Text(
+            'Event categories are a separate demo dataset; they are not a sum of the login chart.',
+            style: TextStyle(color: _muted, fontSize: 10),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _moduleGrid(BuildContext context) => LayoutBuilder(
+    builder: (context, c) {
+      final columns = c.maxWidth >= 960 ? 3 : (c.maxWidth >= 560 ? 2 : 1);
+      const gap = 12.0;
+      final width = (c.maxWidth - (columns - 1) * gap) / columns;
+      return Wrap(
+        spacing: gap,
+        runSpacing: gap,
+        children: [
+          for (final item in _modules)
+            SizedBox(
+              width: width,
+              child: Material(
+                color: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15),
+                  side: const BorderSide(color: _line),
+                ),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(15),
+                  onTap: () => context.go(item.$3),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 15,
+                      vertical: 18,
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(item.$2, color: _forest, size: 22),
+                        const SizedBox(width: 11),
+                        Expanded(
+                          child: Text(
+                            item.$1,
+                            style: const TextStyle(
+                              color: _ink,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                        const Icon(
+                          Icons.arrow_forward_ios_rounded,
+                          size: 14,
+                          color: _muted,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
       );
-
-  BoxDecoration _surface() => BoxDecoration(
-    color: Colors.white,
-    borderRadius: BorderRadius.circular(19),
-    border: Border.all(color: _line),
-    boxShadow: [
-      BoxShadow(
-        color: _deep.withValues(alpha: .025),
-        blurRadius: 20,
-        offset: const Offset(0, 7),
-      ),
-    ],
+    },
   );
 }
 
-class _DashboardMetric {
-  final String label, value, description;
-  final IconData icon;
-  final Color bg, accent;
-  const _DashboardMetric(
-    this.label,
-    this.value,
-    this.description,
-    this.icon,
-    this.bg,
-    this.accent,
-  );
-}
-
-class _DashboardModule {
-  final String title, description, route;
-  final IconData icon;
-  const _DashboardModule(this.title, this.description, this.icon, this.route);
-}
-
-class _DecorativeOrb extends StatelessWidget {
-  final double diameter;
-  const _DecorativeOrb({required this.diameter});
-  @override
-  Widget build(BuildContext context) => IgnorePointer(
-    child: Container(
-      width: diameter,
-      height: diameter,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(
-          color: Colors.white.withValues(alpha: .12),
-          width: 36,
-        ),
-      ),
-    ),
-  );
-}
-
-class _DemoTag extends StatelessWidget {
-  const _DemoTag();
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-    decoration: BoxDecoration(
-      color: const Color(0xFFFFF6DE),
-      borderRadius: BorderRadius.circular(20),
-    ),
-    child: const Text(
-      'ILLUSTRATIVE DATA',
-      style: TextStyle(
-        fontSize: 9,
-        letterSpacing: .7,
-        fontWeight: FontWeight.w900,
-        color: Color(0xFF936C18),
-      ),
-    ),
-  );
-}
-
-class _LegendDot extends StatelessWidget {
-  final String label;
+class _Legend extends StatelessWidget {
+  const _Legend(this.name, this.color);
+  final String name;
   final Color color;
-  const _LegendDot(this.label, this.color);
   @override
   Widget build(BuildContext context) => Row(
     mainAxisSize: MainAxisSize.min,
     children: [
       Container(
-        width: 8,
-        height: 8,
+        width: 9,
+        height: 9,
         decoration: BoxDecoration(color: color, shape: BoxShape.circle),
       ),
       const SizedBox(width: 6),
-      Text(label, style: const TextStyle(color: _muted, fontSize: 10)),
+      Text(name, style: const TextStyle(color: _muted, fontSize: 11)),
     ],
   );
 }
 
-class _ReadinessRow extends StatelessWidget {
-  final String label, status;
-  const _ReadinessRow(this.label, this.status);
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 10),
-    child: Row(
-      children: [
-        const Icon(Icons.circle_outlined, color: _green, size: 13),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Text(
-            label,
-            style: const TextStyle(
-              color: _ink,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-        const SizedBox(width: 5),
-        Flexible(
-          child: Text(
-            status,
-            textAlign: TextAlign.right,
-            style: const TextStyle(color: _muted, fontSize: 11),
-          ),
-        ),
-      ],
-    ),
-  );
-}
+// Plot real numerical values from the seven-day sample (not normalized decorative points).
+class _AuthChartPainter extends CustomPainter {
+  const _AuthChartPainter(this.days, this.selected);
+  final List<_DayActivity> days;
+  final int selected;
 
-// Purely decorative sample graph; intentionally does not imply live monitoring.
-class _ActivityChartPainter extends CustomPainter {
-  const _ActivityChartPainter();
   @override
   void paint(Canvas canvas, Size size) {
-    if (size.isEmpty) return;
+    if (size.width < 50 || size.height < 50) return;
+    const left = 26.0;
+    const right = 12.0;
+    const top = 13.0;
+    const bottom = 13.0;
+    final width = size.width - left - right;
+    final height = size.height - top - bottom;
+    final highest = days.fold<int>(
+      0,
+      (n, d) => math.max(n, math.max(d.success, d.failed)),
+    );
+    final ymax = ((highest + 49) ~/ 50) * 50;
     final grid = Paint()
       ..color = _line
       ..strokeWidth = 1;
-    for (int i = 0; i <= 4; i++) {
-      final y = 6 + (size.height - 14) * i / 4;
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), grid);
+    final labelStyle = const TextStyle(fontSize: 9, color: _muted);
+    for (var i = 0; i <= 4; i++) {
+      final y = top + height * i / 4;
+      canvas.drawLine(Offset(left, y), Offset(left + width, y), grid);
+      final text = TextPainter(
+        text: TextSpan(
+          text: '${(ymax * (4 - i) / 4).round()}',
+          style: labelStyle,
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      text.paint(canvas, Offset(0, y - 6));
     }
-    const data = [.34, .52, .46, .78, .61, .89, .71];
-    final step = size.width / (data.length - 1);
-    final points = <Offset>[
-      for (int i = 0; i < data.length; i++)
-        Offset(i * step, size.height - 12 - data[i] * (size.height - 24)),
+    List<Offset> points(int Function(_DayActivity) value) => [
+      for (var i = 0; i < days.length; i++)
+        Offset(
+          left + width * i / (days.length - 1),
+          top + height * (1 - value(days[i]) / ymax),
+        ),
     ];
-    final path = Path()..moveTo(points.first.dx, points.first.dy);
-    for (int i = 1; i < points.length; i++) {
-      final midX = (points[i - 1].dx + points[i].dx) / 2;
-      path.cubicTo(
-        midX,
-        points[i - 1].dy,
-        midX,
-        points[i].dy,
-        points[i].dx,
-        points[i].dy,
+    void drawSeries(List<Offset> pts, Color color) {
+      final path = Path()..moveTo(pts.first.dx, pts.first.dy);
+      for (final p in pts.skip(1)) {
+        path.lineTo(p.dx, p.dy);
+      }
+      canvas.drawPath(
+        path,
+        Paint()
+          ..color = color
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.8
+          ..strokeJoin = StrokeJoin.round
+          ..strokeCap = StrokeCap.round,
       );
+      for (var i = 0; i < pts.length; i++) {
+        canvas.drawCircle(
+          pts[i],
+          i == selected ? 5 : 3.0,
+          Paint()..color = Colors.white,
+        );
+        canvas.drawCircle(
+          pts[i],
+          i == selected ? 3.5 : 2.2,
+          Paint()..color = color,
+        );
+      }
     }
-    final area = Path.from(path)
-      ..lineTo(size.width, size.height)
-      ..lineTo(0, size.height)
-      ..close();
-    canvas.drawPath(
-      area,
+
+    drawSeries(points((e) => e.success), _forest);
+    drawSeries(points((e) => e.failed), _gold);
+    final selectedX = left + width * selected / (days.length - 1);
+    canvas.drawLine(
+      Offset(selectedX, top),
+      Offset(selectedX, top + height),
       Paint()
-        ..shader = LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            _green.withValues(alpha: .25),
-            _green.withValues(alpha: .015),
-          ],
-        ).createShader(Offset.zero & size),
+        ..color = _forest.withValues(alpha: .3)
+        ..strokeWidth = 1,
     );
-    canvas.drawPath(
-      path,
-      Paint()
-        ..color = _green
-        ..strokeWidth = 3
-        ..style = PaintingStyle.stroke
-        ..strokeCap = StrokeCap.round,
-    );
-    for (final point in points) {
-      canvas.drawCircle(point, 4, Paint()..color = Colors.white);
-      canvas.drawCircle(point, 2.4, Paint()..color = _green);
-    }
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _AuthChartPainter oldDelegate) =>
+      oldDelegate.selected != selected || oldDelegate.days != days;
 }
 
-class _RingChartPainter extends CustomPainter {
-  const _RingChartPainter();
+class _EventDonutPainter extends CustomPainter {
+  const _EventDonutPainter(this.values);
+  final List<int> values;
+
   @override
   void paint(Canvas canvas, Size size) {
-    final radius = math.min(size.width, size.height) / 2 - 10;
-    if (radius <= 0) return;
-    final rect = Rect.fromCircle(
+    final radius = math.min(size.width, size.height) / 2 - 13;
+    final bounds = Rect.fromCircle(
       center: size.center(Offset.zero),
       radius: radius,
     );
+    final total = values.fold(0, (int a, int b) => a + b);
+    if (total <= 0) return;
+    const colors = [_forest, _gold, _crimson];
+    var start = -math.pi / 2;
     final paint = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 17
-      ..strokeCap = StrokeCap.butt;
-    double start = -math.pi / 2;
-    for (final (fraction, color) in [
-      (.60, _green),
-      (.25, _gold),
-      (.15, const Color(0xFF85B9D3)),
-    ]) {
-      final sweep = math.pi * 2 * fraction;
-      paint.color = color;
-      canvas.drawArc(rect, start + .025, sweep - .05, false, paint);
+      ..strokeWidth = 19;
+    for (var i = 0; i < values.length; i++) {
+      final sweep = 2 * math.pi * values[i] / total;
+      paint.color = colors[i];
+      canvas.drawArc(
+        bounds,
+        start + .012,
+        math.max(0, sweep - .024),
+        false,
+        paint,
+      );
       start += sweep;
     }
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _EventDonutPainter oldDelegate) =>
+      oldDelegate.values != values;
 }

@@ -1,14 +1,27 @@
+import 'dart:convert';
+import 'dart:math' as math;
+import 'dart:typed_data';
+
+import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../shared/repositories/verification_case_repository.dart';
+
+// KAISA · Verification Superadmin · Reporting prototype.
+// All figures are derived from the shared in-memory DEMO repository.
+// This widget never fetches personal documents or changes account tiers.
 const _forest = Color(0xFF00492C);
-const _green = Color(0xFF2A7F57);
-const _paper = Color(0xFFF4F4F0);
-const _ink = Color(0xFF0E3A27);
-const _muted = Color(0xFF6E7773);
-const _stroke = Color(0xFFECECE6);
-const _soft = Color(0xFFE3F1E9);
+const _green = Color(0xFF237A50);
 const _gold = Color(0xFFFBBA16);
+const _ink = Color(0xFF173D2B);
+const _muted = Color(0xFF687B70);
+const _paper = Color(0xFFF7F9F6);
+const _stroke = Color(0xFFE2EBE4);
+const _mint = Color(0xFFEAF5EE);
+const _amber = Color(0xFFAC7614);
+const _red = Color(0xFFB74A43);
+const _blue = Color(0xFF477DB0);
 
 class VerificationReportsPage extends StatefulWidget {
   const VerificationReportsPage({super.key});
@@ -19,510 +32,1111 @@ class VerificationReportsPage extends StatefulWidget {
 }
 
 class _VerificationReportsPageState extends State<VerificationReportsPage> {
-  String _period = 'All Demo Periods';
+  final _repository = VerificationCaseRepository.instance;
+  String _month = 'All periods';
+  String _type = 'All types';
+  String _platform = 'All platforms';
+  String _archive = 'All records';
+  String _exportKind = 'Applications';
+  bool _downloading = false;
 
-  // Fictional, independent reporting dataset.
-  // Not connected to the other demo modules or Supabase.
-  static const _records = <_ReportRecord>[
-    _ReportRecord('VER-DEMO-001', 'Nov 2026', 'Pending'),
-    _ReportRecord('VER-DEMO-002', 'Nov 2026', 'Under Review'),
-    _ReportRecord('VER-DEMO-003', 'Nov 2026', 'Pending'),
-    _ReportRecord('VER-DEMO-004', 'Nov 2026', 'Approved'),
-    _ReportRecord('VER-DEMO-005', 'Nov 2026', 'Resubmission Requested'),
-    _ReportRecord('VER-DEMO-006', 'Oct 2026', 'Rejected'),
-    _ReportRecord('VER-DEMO-007', 'Oct 2026', 'Approved'),
-    _ReportRecord('VER-DEMO-008', 'Oct 2026', 'Approved'),
-    _ReportRecord('VER-DEMO-009', 'Sep 2026', 'Approved'),
-    _ReportRecord('VER-DEMO-010', 'Sep 2026', 'Rejected'),
-  ];
-
-  static const _statuses = [
-    'Approved',
+  static const _statusOrder = <String>[
     'Pending',
     'Under Review',
+    'Resubmission',
+    'Approved',
     'Rejected',
-    'Resubmission Requested',
   ];
+  static const _statusColors = <Color>[_gold, _blue, _amber, _green, _red];
 
-  static const _months = ['Sep 2026', 'Oct 2026', 'Nov 2026'];
-
-  int _count(List<_ReportRecord> records, String status) {
-    return records.where((r) => r.status == status).length;
-  }
-
-  void _copyCsv(List<_ReportRecord> records) {
-    final rows = [
-      'Application ID,Demo Period,Status',
-      for (final r in records) '${r.id},${r.period},${r.status}',
-    ];
-
-    Clipboard.setData(ClipboardData(text: rows.join('\n')));
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Fictional report CSV copied to clipboard.'),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+  @override
+  void initState() {
+    super.initState();
+    _repository.addListener(_refresh);
   }
 
   @override
-  Widget build(BuildContext context) {
-    final records = _records.where((r) {
-      return _period == 'All Demo Periods' || r.period == _period;
-    }).toList();
-
-    final total = records.length;
-    final approved = _count(records, 'Approved');
-    final pending =
-        _count(records, 'Pending') + _count(records, 'Under Review');
-    final rejected = _count(records, 'Rejected');
-    final resubmission = _count(records, 'Resubmission Requested');
-
-    final completed = approved + rejected;
-    final approvalRate = completed == 0 ? 0.0 : approved / completed * 100;
-
-    return ColoredBox(
-      color: _paper,
-      child: ListView(
-        padding: const EdgeInsets.all(24),
-        children: [
-          Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1260),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Verification Reports',
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      color: _ink,
-                      fontSize: 29,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 7),
-                  const Text(
-                    'Analyze Tier 2 verification workload '
-                    'and application outcomes.',
-                    style: TextStyle(color: _muted, fontSize: 13),
-                  ),
-                  const SizedBox(height: 20),
-                  _notice(),
-                  const SizedBox(height: 22),
-
-                  Wrap(
-                    spacing: 12,
-                    runSpacing: 12,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      SizedBox(
-                        width: 240,
-                        child: DropdownButtonFormField<String>(
-                          initialValue: _period,
-                          decoration: const InputDecoration(
-                            labelText: 'Reporting Period',
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.all(
-                                Radius.circular(12),
-                              ),
-                              borderSide: BorderSide(color: _stroke),
-                            ),
-                            isDense: true,
-                          ),
-                          items: const [
-                            DropdownMenuItem(
-                              value: 'All Demo Periods',
-                              child: Text('All Demo Periods'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'Sep 2026',
-                              child: Text('September 2026'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'Oct 2026',
-                              child: Text('October 2026'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'Nov 2026',
-                              child: Text('November 2026'),
-                            ),
-                          ],
-                          onChanged: (value) {
-                            if (value != null) {
-                              setState(() => _period = value);
-                            }
-                          },
-                        ),
-                      ),
-                      FilledButton.icon(
-                        onPressed: () => _copyCsv(records),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: _forest,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 17,
-                          ),
-                        ),
-                        icon: const Icon(Icons.content_copy_rounded, size: 18),
-                        label: const Text('Copy Demo CSV'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      final columns = constraints.maxWidth >= 850
-                          ? 4
-                          : constraints.maxWidth >= 480
-                          ? 2
-                          : 1;
-                      const gap = 12.0;
-                      final width =
-                          (constraints.maxWidth - gap * (columns - 1)) /
-                          columns;
-
-                      return Wrap(
-                        spacing: gap,
-                        runSpacing: gap,
-                        children: [
-                          _metric(
-                            'Applications',
-                            '$total',
-                            Icons.description_outlined,
-                            width,
-                          ),
-                          _metric(
-                            'Approved',
-                            '$approved',
-                            Icons.verified_user_outlined,
-                            width,
-                          ),
-                          _metric(
-                            'Awaiting Review',
-                            '$pending',
-                            Icons.pending_actions_outlined,
-                            width,
-                          ),
-                          _metric(
-                            'Approval Rate*',
-                            '${approvalRate.toStringAsFixed(1)}%',
-                            Icons.trending_up_rounded,
-                            width,
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    '*Approval rate = approved / '
-                    '(approved + rejected). '
-                    'Pending and resubmission records '
-                    'are excluded from this rate.',
-                    style: TextStyle(fontSize: 11, color: _muted),
-                  ),
-                  const SizedBox(height: 25),
-
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      final wide = constraints.maxWidth >= 850;
-                      final width = wide
-                          ? (constraints.maxWidth - 18) / 2
-                          : constraints.maxWidth;
-
-                      return Wrap(
-                        spacing: 18,
-                        runSpacing: 18,
-                        children: [
-                          SizedBox(width: width, child: _breakdown(records)),
-                          SizedBox(
-                            width: width,
-                            child: _summary(
-                              total,
-                              approved,
-                              pending,
-                              rejected,
-                              resubmission,
-                            ),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 24),
-                  _monthlyTable(records),
-                  const SizedBox(height: 20),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+  void dispose() {
+    _repository.removeListener(_refresh);
+    super.dispose();
   }
 
-  Widget _notice() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFF3CF),
-        borderRadius: BorderRadius.circular(13),
-      ),
-      child: const Row(
-        children: [
-          Icon(Icons.info_outline, color: Color(0xFF92650D)),
-          SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              'DEVELOPMENT PREVIEW — All reporting data '
-              'is fictional and independent of the other '
-              'demo pages. No actual resident records '
-              'or Supabase analytics are accessed.',
-              style: TextStyle(
-                color: Color(0xFF73550E),
-                fontSize: 12,
-                height: 1.5,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+  void _refresh() {
+    if (mounted) setState(() {});
   }
 
-  Widget _metric(String label, String value, IconData icon, double width) {
-    return Container(
-      width: width,
-      padding: const EdgeInsets.all(19),
-      decoration: _surface(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 26, color: _green),
-          const SizedBox(height: 16),
-          Text(
-            value,
-            style: const TextStyle(
-              fontFamily: 'Poppins',
-              color: _forest,
-              fontSize: 28,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(label, style: const TextStyle(color: _muted, fontSize: 12)),
-        ],
-      ),
-    );
+  String _period(DateTime d) =>
+      '${d.year}-${d.month.toString().padLeft(2, '0')}';
+
+  String _date(DateTime? d) => d == null
+      ? ''
+      : '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')} ${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+
+  List<String> get _months {
+    final values =
+        _repository.applications
+            .map((a) => _period(a.submitted))
+            .toSet()
+            .toList()
+          ..sort((a, b) => b.compareTo(a));
+    return ['All periods', ...values];
   }
 
-  Widget _breakdown(List<_ReportRecord> records) {
-    return _card('Application Status Breakdown', [
-      const Text(
-        'Distribution of fictional applications '
-        'in the selected reporting period.',
-        style: TextStyle(color: _muted, fontSize: 12),
-      ),
-      const SizedBox(height: 22),
-      for (final status in _statuses) ...[
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                status,
-                style: const TextStyle(
-                  color: _ink,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            Text(
-              '${_count(records, status)}',
-              style: const TextStyle(
-                color: _forest,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        LinearProgressIndicator(
-          value: records.isEmpty ? 0 : _count(records, status) / records.length,
-          minHeight: 10,
-          borderRadius: BorderRadius.circular(10),
-          backgroundColor: _soft,
-          color: status == 'Approved'
-              ? _green
-              : status == 'Rejected'
-              ? const Color(0xFFB95757)
-              : status == 'Pending'
-              ? _gold
-              : const Color(0xFF75A7A0),
-        ),
-        const SizedBox(height: 20),
+  List<VerificationApplication> get _filtered {
+    return _repository.applications.where((a) {
+      return (_month == 'All periods' || _period(a.submitted) == _month) &&
+          (_type == 'All types' || a.type == _type) &&
+          (_platform == 'All platforms' || a.platform == _platform) &&
+          (_archive == 'All records' ||
+              (_archive == 'Archived only' ? a.archived : !a.archived));
+    }).toList()..sort((a, b) => b.submitted.compareTo(a.submitted));
+  }
+
+  int _count(List<VerificationApplication> cases, String status) =>
+      cases.where((a) => a.status == status).length;
+
+  int _percent(int count, int total) =>
+      total == 0 ? 0 : (100 * count / total).round();
+
+  String _csvCell(String value) {
+    final clean = value.replaceAll('\r', ' ').replaceAll('\n', ' ').trim();
+    final escaped = RegExp(r'^[=+@\-]').hasMatch(clean) ? "'$clean" : clean;
+    return '"${escaped.replaceAll('"', '""')}"';
+  }
+
+  String _csv(List<List<String>> rows) =>
+      '\uFEFF${rows.map((row) => row.map(_csvCell).join(',')).join('\r\n')}\r\n';
+
+  List<List<String>> _applicationRows(List<VerificationApplication> cases) => [
+    [
+      'Application ID',
+      'Applicant (DEMO)',
+      'Request Type',
+      'Platform',
+      'Submitted At',
+      'Status',
+      'Priority',
+      'Archived',
+      'Archived At',
+      'Archive Reason',
+      'Purpose',
+    ],
+    for (final a in cases)
+      [
+        a.id,
+        a.name,
+        a.type,
+        a.platform,
+        _date(a.submitted),
+        a.status,
+        a.priority,
+        a.archived ? 'Yes' : 'No',
+        _date(a.archivedAt),
+        a.archiveReason ?? '',
+        a.purpose,
       ],
-    ]);
+  ];
+
+  List<List<String>> _summaryRows(List<VerificationApplication> cases) {
+    final approved = _count(cases, 'Approved');
+    final rejected = _count(cases, 'Rejected');
+    final finalDecisions = approved + rejected;
+    final rows = <List<String>>[
+      ['Metric', 'Value'],
+      ['Data classification', 'FICTIONAL DEMONSTRATION DATA'],
+      ['Report period', _month],
+      ['Request type filter', _type],
+      ['Platform filter', _platform],
+      ['Archive filter', _archive],
+      ['Applications', '${cases.length}'],
+      [
+        'Resident Tier 2',
+        '${cases.where((a) => a.type == 'Resident Tier 2').length}',
+      ],
+      [
+        'Organization Accreditation',
+        '${cases.where((a) => a.type != 'Resident Tier 2').length}',
+      ],
+      ..._statusOrder.map((s) => [s, '${_count(cases, s)}']),
+      ['Finalized Decisions', '$finalDecisions'],
+      [
+        'Approval Rate (finalized only)',
+        finalDecisions == 0
+            ? 'N/A'
+            : '${(100 * approved / finalDecisions).toStringAsFixed(1)}%',
+      ],
+      ['Archived Applications', '${cases.where((a) => a.archived).length}'],
+    ];
+    for (final platform in ['Web', 'Mobile']) {
+      rows.add([
+        'Platform: $platform',
+        '${cases.where((a) => a.platform == platform).length}',
+      ]);
+    }
+    return rows;
   }
 
-  Widget _summary(
-    int total,
-    int approved,
-    int pending,
-    int rejected,
-    int resubmission,
-  ) {
-    return _card('Verification Performance Summary', [
-      _summaryRow('Applications received', '$total'),
-      const Divider(color: _stroke),
-      _summaryRow('Approved', '$approved'),
-      const Divider(color: _stroke),
-      _summaryRow('Awaiting review', '$pending'),
-      const Divider(color: _stroke),
-      _summaryRow('Rejected', '$rejected'),
-      const Divider(color: _stroke),
-      _summaryRow('Resubmission requested', '$resubmission'),
-      const SizedBox(height: 16),
-      Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: _soft,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: const Row(
-          children: [
-            Icon(Icons.insights_rounded, color: _green),
-            SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                'These indicators demonstrate the '
-                'planned reporting interface only. '
-                'They do not represent LGU performance.',
-                style: TextStyle(color: _forest, fontSize: 12, height: 1.5),
-              ),
-            ),
-          ],
-        ),
-      ),
-    ]);
+  List<List<String>> _historyRows(List<VerificationApplication> cases) {
+    final ids = cases.map((a) => a.id).toSet();
+    return [
+      ['Application ID', 'Action', 'Recorded At', 'Reason (DEMO)'],
+      for (final event in _repository.events)
+        if (ids.contains(event.caseId))
+          [event.caseId, event.action, _date(event.at), event.reason],
+    ];
   }
 
-  Widget _summaryRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 11),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(color: _muted, fontSize: 13),
-            ),
-          ),
-          Text(
-            value,
-            style: const TextStyle(
-              color: _forest,
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
+  Future<void> _export() async {
+    if (_downloading) return;
+    final cases = _filtered;
+    final rows = switch (_exportKind) {
+      'Summary' => _summaryRows(cases),
+      'Review Activity' => _historyRows(cases),
+      'Approved Tier 2' => _applicationRows(
+        cases
+            .where((a) => a.type == 'Resident Tier 2' && a.status == 'Approved')
+            .toList(),
       ),
-    );
+      _ => _applicationRows(cases),
+    };
+    final base = _exportKind.toLowerCase().replaceAll(' ', '_');
+    setState(() => _downloading = true);
+    try {
+      await FileSaver.instance.saveFile(
+        name: 'kaisa_verification_${base}_demo',
+        bytes: Uint8List.fromList(utf8.encode(_csv(rows))),
+        fileExtension: 'csv',
+        mimeType: MimeType.csv,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$_exportKind CSV exported (demo records).')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('CSV export failed: $e')));
+    } finally {
+      if (mounted) setState(() => _downloading = false);
+    }
   }
 
-  Widget _monthlyTable(List<_ReportRecord> records) {
-    return _card('Monthly Verification Activity', [
-      const Text(
-        'Sample application totals by month.',
-        style: TextStyle(color: _muted, fontSize: 12),
-      ),
-      const SizedBox(height: 15),
-      SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: DataTable(
-          headingRowColor: WidgetStateProperty.all(_soft),
-          columns: const [
-            DataColumn(label: Text('PERIOD')),
-            DataColumn(label: Text('APPLICATIONS')),
-            DataColumn(label: Text('APPROVED')),
-            DataColumn(label: Text('REJECTED')),
-            DataColumn(label: Text('AWAITING REVIEW')),
-          ],
-          rows: [
-            for (final month in _months)
-              if (records.any((r) => r.period == month))
-                DataRow(
-                  cells: [
-                    DataCell(Text(month)),
-                    DataCell(
-                      Text('${records.where((r) => r.period == month).length}'),
-                    ),
-                    DataCell(
-                      Text(
-                        '${_count(records.where((r) => r.period == month).toList(), 'Approved')}',
-                      ),
-                    ),
-                    DataCell(
-                      Text(
-                        '${_count(records.where((r) => r.period == month).toList(), 'Rejected')}',
-                      ),
-                    ),
-                    DataCell(
-                      Text(
-                        '${records.where((r) => r.period == month && (r.status == 'Pending' || r.status == 'Under Review')).length}',
-                      ),
-                    ),
-                  ],
-                ),
-          ],
-        ),
-      ),
-    ]);
-  }
-
-  Widget _card(String title, List<Widget> children) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: _surface(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontFamily: 'Poppins',
-              color: _ink,
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 17),
-          ...children,
-        ],
-      ),
-    );
+  Future<void> _copySummary() async {
+    await Clipboard.setData(ClipboardData(text: _csv(_summaryRows(_filtered))));
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Filtered report summary copied as CSV.')),
+      );
+    }
   }
 
   BoxDecoration _surface() => BoxDecoration(
     color: Colors.white,
-    borderRadius: BorderRadius.circular(22),
+    borderRadius: BorderRadius.circular(19),
     border: Border.all(color: _stroke),
     boxShadow: const [
-      BoxShadow(color: Color(0x0A00492C), blurRadius: 24, offset: Offset(0, 8)),
+      BoxShadow(color: Color(0x0700492C), blurRadius: 20, offset: Offset(0, 6)),
     ],
+  );
+
+  Widget _card(Widget child) => Container(
+    width: double.infinity,
+    decoration: _surface(),
+    padding: const EdgeInsets.all(19),
+    child: child,
+  );
+
+  Widget _heading(String title, String caption) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        title,
+        style: const TextStyle(
+          color: _ink,
+          fontSize: 17,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+      const SizedBox(height: 4),
+      Text(caption, style: const TextStyle(color: _muted, fontSize: 12)),
+    ],
+  );
+
+  Widget _metric(String name, String value, String detail, IconData icon) =>
+      Tooltip(
+        message: detail,
+        child: _card(
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: _mint,
+                  borderRadius: BorderRadius.circular(13),
+                ),
+                child: Icon(icon, color: _forest),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      value,
+                      style: const TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.w900,
+                        color: _forest,
+                      ),
+                    ),
+                    Text(
+                      name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: _ink,
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      detail,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 11, color: _muted),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+
+  Widget _responsiveCards(List<Widget> cards) => LayoutBuilder(
+    builder: (_, c) {
+      final n = c.maxWidth >= 970 ? 4 : (c.maxWidth >= 520 ? 2 : 1);
+      const gap = 12.0;
+      final width = (c.maxWidth - (n - 1) * gap) / n;
+      return Wrap(
+        spacing: gap,
+        runSpacing: gap,
+        children: [
+          for (final card in cards) SizedBox(width: width, child: card),
+        ],
+      );
+    },
+  );
+
+  Widget _dropdown(
+    String label,
+    String value,
+    List<String> options,
+    ValueChanged<String?> change, {
+    double width = 175,
+  }) => SizedBox(
+    width: width,
+    child: DropdownButtonFormField<String>(
+      key: ValueKey('$label:$value'),
+      initialValue: value,
+      isExpanded: true,
+      decoration: InputDecoration(
+        labelText: label,
+        isDense: true,
+        filled: true,
+        fillColor: Colors.white,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+      items: [
+        for (final option in options)
+          DropdownMenuItem(
+            value: option,
+            child: Text(option, overflow: TextOverflow.ellipsis),
+          ),
+      ],
+      onChanged: change,
+    ),
+  );
+
+  Widget _filters() => _card(
+    Wrap(
+      spacing: 10,
+      runSpacing: 12,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        _dropdown(
+          'Reporting month',
+          _month,
+          _months,
+          (v) => setState(() => _month = v ?? 'All periods'),
+          width: 175,
+        ),
+        _dropdown(
+          'Request type',
+          _type,
+          ['All types', 'Resident Tier 2', 'Org Accreditation'],
+          (v) => setState(() => _type = v ?? 'All types'),
+          width: 195,
+        ),
+        _dropdown(
+          'Platform',
+          _platform,
+          ['All platforms', 'Web', 'Mobile'],
+          (v) => setState(() => _platform = v ?? 'All platforms'),
+        ),
+        _dropdown('Archive', _archive, [
+          'All records',
+          'Active only',
+          'Archived only',
+        ], (v) => setState(() => _archive = v ?? 'All records')),
+        TextButton.icon(
+          onPressed: () => setState(() {
+            _month = 'All periods';
+            _type = 'All types';
+            _platform = 'All platforms';
+            _archive = 'All records';
+          }),
+          icon: const Icon(Icons.restart_alt_rounded),
+          label: const Text('Reset'),
+        ),
+      ],
+    ),
+  );
+
+  Widget _statusChart(List<VerificationApplication> cases) => _card(
+    Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _heading(
+          'Application outcomes',
+          'Hover or tap a bar to inspect counts and percentages',
+        ),
+        const SizedBox(height: 20),
+        for (var i = 0; i < _statusOrder.length; i++)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 17),
+            child: Tooltip(
+              message:
+                  '${_statusOrder[i]}: ${_count(cases, _statusOrder[i])} of ${cases.length} '
+                  '(${_percent(_count(cases, _statusOrder[i]), cases.length)}%)',
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          _statusOrder[i],
+                          style: const TextStyle(
+                            color: _ink,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        '${_count(cases, _statusOrder[i])}  ·  ${_percent(_count(cases, _statusOrder[i]), cases.length)}%',
+                        style: const TextStyle(color: _muted, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 7),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(9),
+                    child: LinearProgressIndicator(
+                      value: cases.isEmpty
+                          ? 0
+                          : _count(cases, _statusOrder[i]) / cases.length,
+                      minHeight: 13,
+                      backgroundColor: _mint,
+                      color: _statusColors[i],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
+    ),
+  );
+
+  Widget _donut(List<VerificationApplication> cases) {
+    final resident = cases.where((a) => a.type == 'Resident Tier 2').length;
+    final org = cases.length - resident;
+    return _card(
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _heading(
+            'Application composition',
+            'Resident Tier 2 vs organization accreditation',
+          ),
+          const SizedBox(height: 20),
+          Center(
+            child: Tooltip(
+              message:
+                  '$resident resident applications; $org organization applications',
+              child: SizedBox(
+                width: 185,
+                height: 185,
+                child: CustomPaint(
+                  painter: _DonutPainter(
+                    values: [resident.toDouble(), org.toDouble()],
+                    colors: [_green, _gold],
+                  ),
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '${cases.length}',
+                          style: const TextStyle(
+                            fontSize: 27,
+                            color: _forest,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const Text(
+                          'applications',
+                          style: TextStyle(fontSize: 11, color: _muted),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 15),
+          _legend(
+            _green,
+            'Resident Tier 2',
+            '$resident · ${_percent(resident, cases.length)}%',
+          ),
+          const SizedBox(height: 7),
+          _legend(
+            _gold,
+            'Organization Accreditation',
+            '$org · ${_percent(org, cases.length)}%',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _legend(Color color, String title, String result) => Row(
+    children: [
+      Container(
+        width: 11,
+        height: 11,
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(3),
+        ),
+      ),
+      const SizedBox(width: 8),
+      Expanded(
+        child: Text(title, style: const TextStyle(fontSize: 12, color: _ink)),
+      ),
+      Text(
+        result,
+        style: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          color: _ink,
+        ),
+      ),
+    ],
+  );
+
+  Widget _platformChart(List<VerificationApplication> cases) {
+    final web = cases.where((a) => a.platform == 'Web').length;
+    final mobile = cases.where((a) => a.platform == 'Mobile').length;
+    return _card(
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _heading(
+            'Submission platform',
+            'Works across locations; no barangay-based reporting',
+          ),
+          const SizedBox(height: 22),
+          for (final pair in [('Web', web, _blue), ('Mobile', mobile, _green)])
+            Padding(
+              padding: const EdgeInsets.only(bottom: 22),
+              child: Tooltip(
+                message:
+                    '${pair.$1}: ${pair.$2} applications (${_percent(pair.$2, cases.length)}%)',
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          pair.$1 == 'Web' ? Icons.language : Icons.smartphone,
+                          color: pair.$3,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            pair.$1,
+                            style: const TextStyle(
+                              color: _ink,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          '${pair.$2} (${_percent(pair.$2, cases.length)}%)',
+                          style: const TextStyle(color: _muted, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 9),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: LinearProgressIndicator(
+                        value: cases.isEmpty ? 0 : pair.$2 / cases.length,
+                        minHeight: 16,
+                        color: pair.$3,
+                        backgroundColor: _mint,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _monthlyChart(List<VerificationApplication> cases) {
+    final months = cases.map((a) => _period(a.submitted)).toSet().toList()
+      ..sort();
+    final highest = math.max(
+      1,
+      months.fold<int>(
+        0,
+        (n, m) =>
+            math.max(n, cases.where((a) => _period(a.submitted) == m).length),
+      ),
+    );
+    return _card(
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _heading(
+            'Monthly submission trend',
+            'Based on application submission date',
+          ),
+          const SizedBox(height: 22),
+          if (months.isEmpty)
+            const Text(
+              'No applications for the selected filters.',
+              style: TextStyle(color: _muted),
+            )
+          else
+            SizedBox(
+              height: 176,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  for (final month in months)
+                    Expanded(
+                      child: Tooltip(
+                        message:
+                            '$month: ${cases.where((a) => _period(a.submitted) == month).length} submissions',
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 5),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              Text(
+                                '${cases.where((a) => _period(a.submitted) == month).length}',
+                                style: const TextStyle(
+                                  color: _forest,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Flexible(
+                                child: FractionallySizedBox(
+                                  heightFactor:
+                                      cases
+                                          .where(
+                                            (a) =>
+                                                _period(a.submitted) == month,
+                                          )
+                                          .length /
+                                      highest,
+                                  alignment: Alignment.bottomCenter,
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: _green,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                month.substring(5),
+                                style: const TextStyle(
+                                  color: _muted,
+                                  fontSize: 11,
+                                ),
+                              ),
+                              Text(
+                                month.substring(0, 4),
+                                style: const TextStyle(
+                                  color: _muted,
+                                  fontSize: 10,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  // Fixed content widths keep DataTable's intrinsic layout from squeezing
+  // longer values into narrow columns. The surrounding scroll view handles
+  // smaller desktops and mobile displays without RenderFlex overflows.
+  Widget _registerText(
+    String text,
+    double width, {
+    bool strong = false,
+    Color color = _ink,
+    int maxLines = 1,
+  }) => SizedBox(
+    width: width,
+    child: Tooltip(
+      message: text,
+      child: Text(
+        text,
+        maxLines: maxLines,
+        softWrap: maxLines > 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          color: color,
+          fontWeight: strong ? FontWeight.w700 : FontWeight.w500,
+          fontSize: 12,
+        ),
+      ),
+    ),
+  );
+
+  Widget _table(List<VerificationApplication> cases) => _card(
+    Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _heading(
+          'Filtered application register',
+          '${cases.length} matching demonstration records',
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'Scroll horizontally to inspect the full register on smaller screens.',
+          style: TextStyle(fontSize: 11, color: _muted),
+        ),
+        const SizedBox(height: 15),
+        if (cases.isEmpty)
+          const Padding(
+            padding: EdgeInsets.all(20),
+            child: Center(
+              child: Text(
+                'No applications match the selected filters.',
+                style: TextStyle(color: _muted),
+              ),
+            ),
+          )
+        else
+          Scrollbar(
+            thumbVisibility: true,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: DataTable(
+                headingRowColor: const WidgetStatePropertyAll(_mint),
+                columnSpacing: 18,
+                horizontalMargin: 14,
+                dataRowMinHeight: 62,
+                dataRowMaxHeight: 68,
+                columns: [
+                  DataColumn(
+                    label: _registerText('APPLICATION', 210, strong: true),
+                  ),
+                  DataColumn(
+                    label: _registerText('REQUEST', 160, strong: true),
+                  ),
+                  DataColumn(
+                    label: _registerText('PLATFORM', 100, strong: true),
+                  ),
+                  DataColumn(
+                    label: _registerText('SUBMITTED', 116, strong: true),
+                  ),
+                  DataColumn(label: _registerText('STATUS', 130, strong: true)),
+                  DataColumn(
+                    label: _registerText('ARCHIVED', 85, strong: true),
+                  ),
+                ],
+                rows: [
+                  for (final a in cases)
+                    DataRow(
+                      cells: [
+                        DataCell(
+                          Tooltip(
+                            message: '${a.name}\n${a.id}',
+                            child: SizedBox(
+                              width: 210,
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    a.name,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: _ink,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    a.id,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: _muted,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        DataCell(_registerText(a.type, 160, maxLines: 2)),
+                        DataCell(_registerText(a.platform, 100)),
+                        DataCell(
+                          _registerText(
+                            _date(a.submitted).substring(0, 10),
+                            116,
+                          ),
+                        ),
+                        DataCell(_registerText(a.status, 130)),
+                        DataCell(_registerText(a.archived ? 'Yes' : 'No', 85)),
+                      ],
+                    ),
+                ],
+              ),
+            ),
+          ),
+      ],
+    ),
+  );
+
+  @override
+  Widget build(BuildContext context) => ColoredBox(
+    color: _paper,
+    child: LayoutBuilder(
+      builder: (context, layout) {
+        final compact = layout.maxWidth < 670;
+        final cases = _filtered;
+        final approved = _count(cases, 'Approved');
+        final rejected = _count(cases, 'Rejected');
+        final finalized = approved + rejected;
+        final rate = finalized == 0 ? 0 : 100 * approved / finalized;
+        return ListView(
+          padding: EdgeInsets.fromLTRB(
+            compact ? 14 : 26,
+            24,
+            compact ? 14 : 26,
+            45,
+          ),
+          children: [
+            Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1260),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.all(compact ? 20 : 30),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [
+                            Color(0xFF0A3225),
+                            _forest,
+                            Color(0xFF247B51),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(23),
+                      ),
+                      child: Wrap(
+                        alignment: WrapAlignment.spaceBetween,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 18,
+                        runSpacing: 14,
+                        children: [
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 700),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'KAISA  /  LGU VERIFICATION  /  ANALYTICS',
+                                  style: TextStyle(
+                                    color: _gold,
+                                    fontSize: 11,
+                                    letterSpacing: 1.2,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  'Verification Reports',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: compact ? 25 : 32,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                const Text(
+                                  'Monitor resident Tier 2 and organization-accreditation requests, decisions, and workload.',
+                                  style: TextStyle(
+                                    color: Color(0xFFE6F2E9),
+                                    fontSize: 13,
+                                    height: 1.5,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Icon(
+                            Icons.query_stats_rounded,
+                            size: 40,
+                            color: _gold,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFF5DA),
+                        border: Border.all(color: const Color(0xFFEFE0B7)),
+                        borderRadius: BorderRadius.circular(13),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.info_outline, color: _amber),
+                          SizedBox(width: 11),
+                          Expanded(
+                            child: Text(
+                              'DEVELOPMENT PREVIEW — Live values update with the shared in-memory demo repository. '
+                              'No real Supabase profiles, identity documents, or biometric data are accessed.',
+                              style: TextStyle(color: _ink, fontSize: 12),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    _filters(),
+                    const SizedBox(height: 20),
+                    _responsiveCards([
+                      _metric(
+                        'Total applications',
+                        '${cases.length}',
+                        'All filtered resident and organization requests',
+                        Icons.folder_open_outlined,
+                      ),
+                      _metric(
+                        'Needs action',
+                        '${cases.where((a) => a.needsAction).length}',
+                        'Pending, under review, and resubmission',
+                        Icons.pending_actions_rounded,
+                      ),
+                      _metric(
+                        'Approved',
+                        '$approved',
+                        'Approved applications, including archived',
+                        Icons.verified_outlined,
+                      ),
+                      _metric(
+                        'Approval rate',
+                        '${rate.toStringAsFixed(1)}%',
+                        'Approved / (approved + rejected); unfinished excluded',
+                        Icons.trending_up_rounded,
+                      ),
+                    ]),
+                    const SizedBox(height: 19),
+                    LayoutBuilder(
+                      builder: (_, c) {
+                        final wide = c.maxWidth >= 850;
+                        return Wrap(
+                          spacing: 15,
+                          runSpacing: 15,
+                          children: [
+                            SizedBox(
+                              width: wide ? (c.maxWidth - 15) / 2 : c.maxWidth,
+                              child: _statusChart(cases),
+                            ),
+                            SizedBox(
+                              width: wide ? (c.maxWidth - 15) / 2 : c.maxWidth,
+                              child: _donut(cases),
+                            ),
+                            SizedBox(
+                              width: wide ? (c.maxWidth - 15) / 2 : c.maxWidth,
+                              child: _monthlyChart(cases),
+                            ),
+                            SizedBox(
+                              width: wide ? (c.maxWidth - 15) / 2 : c.maxWidth,
+                              child: _platformChart(cases),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 19),
+                    _card(
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _heading(
+                            'Export verification reports',
+                            'Download filtered CSV data; no sensitive ID or selfie contents',
+                          ),
+                          const SizedBox(height: 12),
+                          Wrap(
+                            spacing: 10,
+                            runSpacing: 12,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              _dropdown(
+                                'Report format',
+                                _exportKind,
+                                [
+                                  'Applications',
+                                  'Summary',
+                                  'Review Activity',
+                                  'Approved Tier 2',
+                                ],
+                                (v) => setState(
+                                  () => _exportKind = v ?? 'Applications',
+                                ),
+                                width: 210,
+                              ),
+                              FilledButton.icon(
+                                onPressed: _downloading ? null : _export,
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: _forest,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 22,
+                                    vertical: 17,
+                                  ),
+                                ),
+                                icon: _downloading
+                                    ? const SizedBox(
+                                        width: 17,
+                                        height: 17,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                    : const Icon(Icons.download_rounded),
+                                label: Text(
+                                  _downloading ? 'Exporting...' : 'Export CSV',
+                                ),
+                              ),
+                              OutlinedButton.icon(
+                                onPressed: _copySummary,
+                                icon: const Icon(Icons.copy_all_outlined),
+                                label: const Text('Copy summary'),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          const Text(
+                            'Approval is a demonstration status only; this report does not certify any real Tier 2 resident.',
+                            style: TextStyle(fontSize: 11, color: _muted),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 19),
+                    _table(cases),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Report records reset on full application restart. Production reporting requires secure Supabase queries and role-based export authorization.',
+                      style: TextStyle(color: _muted, fontSize: 11),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    ),
   );
 }
 
-class _ReportRecord {
-  final String id;
-  final String period;
-  final String status;
+class _DonutPainter extends CustomPainter {
+  const _DonutPainter({required this.values, required this.colors});
+  final List<double> values;
+  final List<Color> colors;
 
-  const _ReportRecord(this.id, this.period, this.status);
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = math.min(size.width, size.height) / 2 - 12;
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 17
+      ..strokeCap = StrokeCap.round;
+    final rect = Rect.fromCircle(center: center, radius: radius);
+    final total = values.fold<double>(0, (a, b) => a + b);
+    if (total <= 0) {
+      paint.color = _mint;
+      canvas.drawArc(rect, -math.pi / 2, math.pi * 2, false, paint);
+      return;
+    }
+    var start = -math.pi / 2;
+    for (var i = 0; i < values.length; i++) {
+      if (values[i] == 0) continue;
+      final sweep = values[i] / total * 2 * math.pi;
+      paint.color = colors[i];
+      canvas.drawArc(
+        rect,
+        start + .015,
+        math.max(0, sweep - .03),
+        false,
+        paint,
+      );
+      start += sweep;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DonutPainter oldDelegate) =>
+      oldDelegate.values.toString() != values.toString() ||
+      oldDelegate.colors.toString() != colors.toString();
 }
