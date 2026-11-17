@@ -61,11 +61,6 @@ class LguAdminShell extends StatelessWidget {
       '/lgu-admin/it/security-logs',
     ),
     _NavItem(
-      'Backup & Recovery',
-      Icons.backup_outlined,
-      '/lgu-admin/it/backup-recovery',
-    ),
-    _NavItem(
       'System Health',
       Icons.monitor_heart_outlined,
       '/lgu-admin/it/system-health',
@@ -168,7 +163,6 @@ class LguAdminShell extends StatelessWidget {
             '/lgu-admin/it/roles',
             '/lgu-admin/it/security-logs',
             '/lgu-admin/it/system-health',
-            '/lgu-admin/it/backup-recovery',
             '/lgu-admin/it/system-settings',
           }.contains(path)) {
             content = child;
@@ -269,7 +263,7 @@ class LguAdminShell extends StatelessWidget {
                     child: Image.asset(
                       'assets/images/kaisa_logo.png',
                       fit: BoxFit.contain,
-                      errorBuilder: (_, __, ___) =>
+                      errorBuilder: (_, _, _) =>
                           const Icon(Icons.diversity_3_rounded, color: _forest),
                     ),
                   ),
