@@ -6,6 +6,9 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/services/kaisa_auth_service.dart';
 import '../widgets/compact_auth_shell.dart';
 
+/// KAISA login. Authenticates against Supabase through KaisaAuthService.
+/// Navigation is based on server-controlled app_metadata, never the email.
+/// Backend RLS / authorization must independently protect privileged data.
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
@@ -21,6 +24,8 @@ class _LoginPageState extends State<LoginPage> {
   bool _isLoading = false;
   bool _socialLoading = false;
 
+  bool get _working => _isLoading || _socialLoading;
+
   @override
   void dispose() {
     _email.dispose();
@@ -28,8 +33,35 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
+  /// Returns null for residents. Throws for incomplete / unrecognized admin
+  /// metadata rather than allowing a privileged account to fall through to
+  /// an ordinary resident experience.
+  String? _destinationFor(User user) {
+    final metadata = user.appMetadata;
+    if (metadata['is_super_admin'] != true) {
+      return null;
+    }
+
+    switch (metadata['kaisa_lgu_role']) {
+      case 'lgu_it_admin':
+        // The existing LGU shell selects the IT dashboard by authenticated role.
+        return '/lgu-admin/dashboard';
+      case 'lgu_verification_admin':
+        return '/lgu-admin/verification/dashboard';
+      case 'lgu_operations_admin':
+        return '/lgu-admin/dashboard';
+      default:
+        throw const FormatException(
+          'Your administrator role is not configured correctly. '
+          'Please contact the KAISA IT administrator.',
+        );
+    }
+  }
+
   Future<void> _signIn() async {
-    if (_isLoading || !_formKey.currentState!.validate()) return;
+    if (_working) return;
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+
     FocusScope.of(context).unfocus();
     setState(() => _isLoading = true);
 
@@ -45,30 +77,55 @@ class _LoginPageState extends State<LoginPage> {
         return;
       }
 
-      // For now, only resident login is wired. Do not infer a role from email.
-      // Implement trusted server-side role lookup before directing admin users.
-      context.go('/resident/home');
+      // Read the latest user record from Supabase Auth after the new session
+      // is established. The Admin API / service-role key is NOT used here.
+      final fresh = await Supabase.instance.client.auth.getUser();
+      if (!mounted) return;
+
+      final user = fresh.user;
+      if (user == null || user.id != response.user!.id) {
+        _showError('Could not verify your account. Please sign in again.');
+        await Supabase.instance.client.auth.signOut();
+        return;
+      }
+
+      final destination = _destinationFor(user);
+      if (!mounted) return;
+
+      // Preserve existing resident path; privileged users are routed first.
+      context.go(destination ?? '/resident/home');
     } on AuthException catch (error) {
-      if (!mounted) return;
-      _showError(_messageForAuthError(error));
+      if (mounted) _showError(_messageForAuthError(error));
+    } on FormatException catch (error) {
+      // Refuse an account with incomplete administrator claims.
+      try {
+        await Supabase.instance.client.auth.signOut();
+      } catch (_) {
+        // The user-facing error still explains that access was not granted.
+      }
+      if (mounted) _showError(error.message);
     } catch (_) {
-      if (!mounted) return;
-      _showError(
-        'Could not connect to KAISA. Check your connection and try again.',
-      );
+      if (mounted) {
+        _showError(
+          'Could not verify your KAISA login. Check your connection '
+          'and try again.',
+        );
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
   Future<void> _social(OAuthProvider provider) async {
-    if (_socialLoading) return;
+    if (_working) return;
+    FocusScope.of(context).unfocus();
     setState(() => _socialLoading = true);
     try {
       await KaisaAuthService.instance.socialSignIn(provider);
-      // Supabase redirects back; router listens for the authenticated session.
+      // Supabase completes OAuth via redirect. The application's existing
+      // auth-state listener/router handles the callback and social OTP flow.
     } on AuthException catch (error) {
-      if (mounted) _showError(error.message);
+      if (mounted) _showError(_messageForAuthError(error));
     } catch (_) {
       if (mounted) _showError('Unable to open social login. Please try again.');
     } finally {
@@ -92,6 +149,7 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   void _showError(String message) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(message)));
@@ -126,7 +184,7 @@ class _LoginPageState extends State<LoginPage> {
           const SizedBox(height: 28),
           TextFormField(
             controller: _email,
-            enabled: !_isLoading,
+            enabled: !_working,
             keyboardType: TextInputType.emailAddress,
             autofillHints: const [AutofillHints.email],
             textInputAction: TextInputAction.next,
@@ -145,7 +203,7 @@ class _LoginPageState extends State<LoginPage> {
           const SizedBox(height: 16),
           TextFormField(
             controller: _password,
-            enabled: !_isLoading,
+            enabled: !_working,
             obscureText: _hidden,
             autofillHints: const [AutofillHints.password],
             textInputAction: TextInputAction.done,
@@ -155,7 +213,9 @@ class _LoginPageState extends State<LoginPage> {
               prefixIcon: const Icon(Icons.lock_outline_rounded),
               suffixIcon: IconButton(
                 tooltip: _hidden ? 'Show password' : 'Hide password',
-                onPressed: () => setState(() => _hidden = !_hidden),
+                onPressed: _working
+                    ? null
+                    : () => setState(() => _hidden = !_hidden),
                 icon: Icon(
                   _hidden
                       ? Icons.visibility_outlined
@@ -169,9 +229,7 @@ class _LoginPageState extends State<LoginPage> {
           Align(
             alignment: Alignment.centerRight,
             child: TextButton(
-              onPressed: _isLoading
-                  ? null
-                  : () => context.go('/forgot-password'),
+              onPressed: _working ? null : () => context.go('/forgot-password'),
               child: const Text('Forgot password?'),
             ),
           ),
@@ -184,7 +242,7 @@ class _LoginPageState extends State<LoginPage> {
                 backgroundColor: AppColors.forest,
                 foregroundColor: Colors.white,
               ),
-              onPressed: _isLoading ? null : _signIn,
+              onPressed: _working ? null : _signIn,
               child: _isLoading
                   ? const SizedBox(
                       width: 22,
@@ -219,7 +277,7 @@ class _LoginPageState extends State<LoginPage> {
             children: [
               Expanded(
                 child: OutlinedButton(
-                  onPressed: _socialLoading
+                  onPressed: _working
                       ? null
                       : () => _social(OAuthProvider.google),
                   child: const Text('Google'),
@@ -228,7 +286,7 @@ class _LoginPageState extends State<LoginPage> {
               const SizedBox(width: 12),
               Expanded(
                 child: OutlinedButton(
-                  onPressed: _socialLoading
+                  onPressed: _working
                       ? null
                       : () => _social(OAuthProvider.facebook),
                   child: const Text('Facebook'),
@@ -247,7 +305,7 @@ class _LoginPageState extends State<LoginPage> {
                 ),
               ),
               TextButton(
-                onPressed: _isLoading ? null : () => context.go('/signup'),
+                onPressed: _working ? null : () => context.go('/signup'),
                 child: const Text(
                   'Create Account',
                   style: TextStyle(fontWeight: FontWeight.w800),
