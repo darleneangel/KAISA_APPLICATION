@@ -18,7 +18,6 @@ import '../../features/lgu_admin/it/account_management_page.dart';
 import '../../features/lgu_admin/it/roles_permissions_page.dart';
 import '../../features/lgu_admin/it/security_logs_page.dart';
 import '../../features/lgu_admin/it/system_health_page.dart';
-import '../../features/lgu_admin/it/backup_recovery_page.dart';
 import '../../features/lgu_admin/it/system_settings_page.dart';
 
 import '../../features/lgu_admin/verification/verification_dashboard_page.dart';
@@ -65,8 +64,6 @@ import '../../features/resident/messaging/messages_page.dart';
 import '../../features/resident/my-qr/kaisa_my_qr_page.dart';
 
 import '../../features/auth/views/reset_password_page.dart';
-import '../../features/resident/messaging/messages_page.dart';
-import '../../features/auth/views/profile_setup_page.dart';
 
 final _authRefresh = _AuthRouterRefresh();
 
@@ -348,11 +345,7 @@ final appRouter = GoRouter(
           builder: (context, state) => const SecurityLogsPage(),
         ),
 
-        GoRoute(
-          path: '/lgu-admin/it/backup-recovery',
-          builder: (context, state) => const BackupRecoveryPage(),
-        ),
-
+       
         GoRoute(
           path: '/lgu-admin/it/system-health',
           builder: (context, state) => const SystemHealthPage(),
