@@ -7,14 +7,14 @@ import '../../../shared/repositories/organization_repository.dart';
 // KAISA · OPERATIONS SUPERADMIN · ORGANIZATION ADMIN ASSIGNMENTS
 // These are prototype directory assignments, NOT Supabase Auth grants.
 const _deep = Color(0xFF092E23);
-const _forest = Color(0xFF14532D);
-const _green = Color(0xFF237A50);
-const _paper = Color(0xFFF7FAF7);
+const _forest = Color(0xFF00492C);
+const _green = Color(0xFF287D55);
+const _paper = Color(0xFFF6F8F5);
 const _ink = Color(0xFF173D2B);
 const _muted = Color(0xFF687B70);
 const _stroke = Color(0xFFE2EBE4);
 const _soft = Color(0xFFEAF5EE);
-const _gold = Color(0xFFFFCF53);
+const _gold = Color(0xFFFBBA16);
 
 class AdminAssignmentsPage extends StatefulWidget {
   const AdminAssignmentsPage({super.key});

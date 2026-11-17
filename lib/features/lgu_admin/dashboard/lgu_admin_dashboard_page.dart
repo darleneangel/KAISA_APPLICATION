@@ -4,14 +4,16 @@ import 'package:go_router/go_router.dart';
 import '../../../shared/models/organization_model.dart';
 import '../../../shared/repositories/organization_repository.dart';
 import '../../../shared/repositories/community_event_repository.dart';
+import 'operations_insights_section.dart';
 
-// KAISA administration design tokens — aligned with the Organization Admin UI.
-const _forest = Color(0xFF14532D);
-const _green = Color(0xFF237A50);
-const _paper = Color(0xFFF8FAF8);
+// KAISA Operations visual system — shared with Registry and Admin Assignments.
+// Data remains sourced from the current repositories, not from Supabase queries.
+const _forest = Color(0xFF00492C);
+const _green = Color(0xFF287D55);
+const _paper = Color(0xFFF6F8F5);
 const _ink = Color(0xFF173D2B);
 const _muted = Color(0xFF687B70);
-const _gold = Color(0xFFFBC02D);
+const _gold = Color(0xFFFBBA16);
 const _stroke = Color(0xFFE2EBE4);
 const _soft = Color(0xFFEAF5EE);
 
@@ -99,12 +101,14 @@ class _LguAdminDashboardPageState extends State<LguAdminDashboardPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _pageHeader(compact),
-                      const SizedBox(height: 17),
+                      const SizedBox(height: 16),
+                      _quickAccess(),
+                      const SizedBox(height: 16),
                       _attentionPanel(unassigned, inactive),
                       const SizedBox(height: 24),
                       _sectionHeading(
-                        'System overview',
-                        'Counts reflect the connected local organization and event repositories.',
+                        'Operations at a glance',
+                        'Registry and event counts use local repositories; performance insights use clearly labeled fictional demo data.',
                       ),
                       const SizedBox(height: 13),
                       _kpiGrid([
@@ -146,6 +150,18 @@ class _LguAdminDashboardPageState extends State<LguAdminDashboardPage> {
                         ),
                       ]),
                       const SizedBox(height: 25),
+                      _sectionHeading(
+                        'Organization performance & insights',
+                        'Interactive prototype rankings and charts using sample data. Not official LGU statistics.',
+                      ),
+                      const SizedBox(height: 13),
+                      const OperationsInsightsSection(),
+                      const SizedBox(height: 25),
+                      _sectionHeading(
+                        'Registry distribution',
+                        'Organization status and categories from the prototype registry.',
+                      ),
+                      const SizedBox(height: 13),
                       LayoutBuilder(
                         builder: (context, box) {
                           final two = box.maxWidth >= 800;
@@ -178,8 +194,8 @@ class _LguAdminDashboardPageState extends State<LguAdminDashboardPage> {
                       ),
                       const SizedBox(height: 25),
                       _sectionHeading(
-                        'Operational workspaces',
-                        'Manage records, assignments, and community activity.',
+                        'Operations workspaces',
+                        'Quick access to the six currently configured Operations routes.',
                       ),
                       const SizedBox(height: 13),
                       _workspaceLinks(),
@@ -221,7 +237,7 @@ class _LguAdminDashboardPageState extends State<LguAdminDashboardPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'KAISA  /  OPERATIONS COMMAND CENTER',
+                'KAISA  /  LGU OPERATIONS',
                 style: TextStyle(
                   color: _gold,
                   fontSize: 10,
@@ -231,7 +247,7 @@ class _LguAdminDashboardPageState extends State<LguAdminDashboardPage> {
               ),
               const SizedBox(height: 13),
               Text(
-                'Community Operations',
+                'Operations Command Center',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: compact ? 27 : 34,
@@ -240,7 +256,7 @@ class _LguAdminDashboardPageState extends State<LguAdminDashboardPage> {
               ),
               const SizedBox(height: 9),
               const Text(
-                'A clear view of organization registrations, responsible representatives, and community events.',
+                'Oversee registered organizations, authorized representatives, community events, and operational activity in one workspace.',
                 style: TextStyle(
                   color: Color(0xFFE2F0E6),
                   fontSize: 13,
@@ -263,6 +279,74 @@ class _LguAdminDashboardPageState extends State<LguAdminDashboardPage> {
       ],
     ),
   );
+
+  // Compact quick actions mirror the desktop Operations navigation.
+  // They use existing GoRouter destinations, so no new routes are required.
+  Widget _quickAccess() {
+    final actions = <(String, IconData, String)>[
+      ('Registry', Icons.apartment_rounded, '/lgu-admin/organizations'),
+      ('Assignments', Icons.manage_accounts_outlined, '/lgu-admin/assignments'),
+      ('Events', Icons.event_note_outlined, '/lgu-admin/events'),
+      ('Reports', Icons.bar_chart_outlined, '/lgu-admin/reports'),
+    ];
+    return LayoutBuilder(
+      builder: (context, bounds) {
+        final columns = bounds.maxWidth >= 760
+            ? 4
+            : bounds.maxWidth >= 430
+            ? 2
+            : 1;
+        const space = 10.0;
+        final tileWidth = (bounds.maxWidth - (columns - 1) * space) / columns;
+        return Wrap(
+          spacing: space,
+          runSpacing: space,
+          children: [
+            for (final item in actions)
+              SizedBox(
+                width: tileWidth,
+                child: Material(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(16),
+                    onTap: () => _go(item.$3),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 15,
+                        vertical: 15,
+                      ),
+                      decoration: _surface(radius: 16),
+                      child: Row(
+                        children: [
+                          Icon(item.$2, color: _forest, size: 21),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              item.$1,
+                              style: const TextStyle(
+                                color: _ink,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                          const Icon(
+                            Icons.arrow_forward_ios_rounded,
+                            size: 12,
+                            color: _muted,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
 
   Widget _attentionPanel(int unassigned, int inactive) => Container(
     padding: const EdgeInsets.all(19),
@@ -793,15 +877,15 @@ class _LguAdminDashboardPageState extends State<LguAdminDashboardPage> {
         child: Text(
           'Operations overview: organization counts, categories, and upcoming '
           'event counts use local repositories. Member totals and attendance '
-          'cannot be calculated until the relevant authorized Supabase data '
-          'sources are connected. Refresh does not query Supabase.',
+          'remain unavailable in local metrics. The performance panel independently '
+          'queries Supabase and reports errors when its authorized view is unavailable.',
           style: TextStyle(color: _muted, fontSize: 11, height: 1.5),
         ),
       ),
     ],
   );
 
-  BoxDecoration _surface({double radius = 15}) => BoxDecoration(
+  BoxDecoration _surface({double radius = 18}) => BoxDecoration(
     color: Colors.white,
     borderRadius: BorderRadius.circular(radius),
     border: Border.all(color: _stroke),

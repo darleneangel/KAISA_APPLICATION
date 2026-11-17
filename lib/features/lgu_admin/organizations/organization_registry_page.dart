@@ -4,13 +4,14 @@ import '../../../shared/models/organization_model.dart';
 import '../../../shared/repositories/organization_repository.dart';
 
 // Same design tokens as the redesigned KAISA LGU dashboard.
-const _forest = Color(0xFF14532D);
-const _green = Color(0xFF237A50);
-const _paper = Color(0xFFF8FAF8);
+const _forest = Color(0xFF00492C);
+const _green = Color(0xFF287D55);
+const _paper = Color(0xFFF6F8F5);
 const _ink = Color(0xFF173D2B);
 const _muted = Color(0xFF687B70);
 const _stroke = Color(0xFFE2EBE4);
-const _gold = Color(0xFFFFCC47);
+const _gold = Color(0xFFFBBA16);
+const _soft = Color(0xFFEAF5EE);
 
 class OrganizationRegistryPage extends StatefulWidget {
   const OrganizationRegistryPage({super.key});
@@ -56,7 +57,10 @@ class _OrganizationRegistryPageState extends State<OrganizationRegistryPage> {
       final matchesSearch =
           org.name.toLowerCase().contains(query) ||
           org.category.toLowerCase().contains(query) ||
-          org.registryReference.toLowerCase().contains(query);
+          org.registryReference.toLowerCase().contains(query) ||
+          org.id.toLowerCase().contains(query) ||
+          org.adminEmail.toLowerCase().contains(query) ||
+          org.email.toLowerCase().contains(query);
 
       final matchesStatus = statusFilter == 'All' || org.status == statusFilter;
       final matchesCategory =
@@ -101,38 +105,50 @@ class _OrganizationRegistryPageState extends State<OrganizationRegistryPage> {
     final email = await showDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Assign organization representative'),
-        content: Form(
-          key: formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(org.name),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: controller,
-                keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(
-                  labelText: 'Authorized representative email',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (value) {
-                  final email = value?.trim() ?? '';
-                  if (email.isEmpty ||
-                      !RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)) {
-                    return 'Enter a valid email address';
-                  }
-                  return null;
-                },
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          'Assign organization representative',
+          style: TextStyle(color: _forest, fontWeight: FontWeight.w800),
+        ),
+        content: SizedBox(
+          width: 440,
+          child: SingleChildScrollView(
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(org.name),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: controller,
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: const InputDecoration(
+                      labelText: 'Authorized representative email',
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (value) {
+                      final email = value?.trim() ?? '';
+                      if (email.isEmpty ||
+                          !RegExp(
+                            r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
+                          ).hasMatch(email)) {
+                        return 'Enter a valid email address';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Draft registry assignment only. This does not create a user, '
+                    'change an account role, or grant access. IT provisions approved access separately.',
+                    style: TextStyle(fontSize: 12),
+                  ),
+                ],
               ),
-              const SizedBox(height: 12),
-              const Text(
-                'Draft registry assignment only. This does not create a user, '
-                'change an account role, or grant access. IT provisions approved access separately.',
-                style: TextStyle(fontSize: 12),
-              ),
-            ],
+            ),
           ),
         ),
         actions: [
@@ -146,6 +162,10 @@ class _OrganizationRegistryPageState extends State<OrganizationRegistryPage> {
                 Navigator.pop(dialogContext, controller.text.trim());
               }
             },
+            style: FilledButton.styleFrom(
+              backgroundColor: _forest,
+              foregroundColor: Colors.white,
+            ),
             child: const Text('Save Assignment'),
           ),
         ],
@@ -330,7 +350,7 @@ class _OrganizationRegistryPageState extends State<OrganizationRegistryPage> {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final compact = constraints.maxWidth < 720;
+        final compact = constraints.maxWidth < 780;
         final results = filteredOrganizations;
         final total = organizations.length;
         final active = organizations.where((o) => o.status == 'Active').length;
@@ -342,23 +362,23 @@ class _OrganizationRegistryPageState extends State<OrganizationRegistryPage> {
           color: _paper,
           child: ListView(
             padding: EdgeInsets.fromLTRB(
-              compact ? 16 : 30,
-              26,
-              compact ? 16 : 30,
+              compact ? 16 : 28,
+              24,
+              compact ? 16 : 28,
               48,
             ),
             children: [
               Center(
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 1320),
+                  constraints: const BoxConstraints(maxWidth: 1260),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Container(
                         width: double.infinity,
-                        padding: EdgeInsets.all(compact ? 22 : 29),
+                        padding: EdgeInsets.all(compact ? 23 : 30),
                         decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(22),
+                          borderRadius: BorderRadius.circular(24),
                           gradient: const LinearGradient(
                             colors: [
                               Color(0xFF0B3024),
@@ -511,7 +531,7 @@ class _OrganizationRegistryPageState extends State<OrganizationRegistryPage> {
                             const Divider(height: 1, color: _stroke),
                             Padding(
                               padding: const EdgeInsets.all(18),
-                              child: _filterBar(compact),
+                              child: _filterBar(),
                             ),
                             Padding(
                               padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
@@ -677,13 +697,13 @@ class _OrganizationRegistryPageState extends State<OrganizationRegistryPage> {
     );
   }
 
-  Widget _filterBar(bool compact) {
+  Widget _filterBar() {
     final search = TextField(
       controller: searchController,
       onChanged: (_) => setState(() {}),
       decoration: InputDecoration(
-        hintText: 'Search name, category or reference...',
-        hintStyle: const TextStyle(fontSize: 13, color: _muted),
+        hintText: 'Search organizations, reference or administrator',
+        hintStyle: const TextStyle(fontSize: 12, color: _muted),
         prefixIcon: const Icon(Icons.search_rounded, color: _muted, size: 20),
         suffixIcon: searchController.text.isEmpty
             ? null
@@ -697,7 +717,7 @@ class _OrganizationRegistryPageState extends State<OrganizationRegistryPage> {
         isDense: true,
         filled: true,
         fillColor: Colors.white,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
     final filter = DropdownButtonFormField<String>(
@@ -709,15 +729,21 @@ class _OrganizationRegistryPageState extends State<OrganizationRegistryPage> {
         isDense: true,
         filled: true,
         fillColor: Colors.white,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
       ),
       items: const ['All', 'Active', 'Inactive']
-          .map((status) => DropdownMenuItem(value: status, child: Text(status)))
+          .map(
+            (status) => DropdownMenuItem(
+              value: status,
+              child: Text(status, overflow: TextOverflow.ellipsis),
+            ),
+          )
           .toList(),
       onChanged: (value) => setState(() => statusFilter = value ?? 'All'),
     );
     final categoryOptions = <String>{
       'All',
+      categoryFilter, // Keeps selected value valid after a record is edited.
       ...organizations.map((o) => o.category),
     }.toList()..sort();
     final categorySelect = DropdownButtonFormField<String>(
@@ -727,7 +753,7 @@ class _OrganizationRegistryPageState extends State<OrganizationRegistryPage> {
       decoration: InputDecoration(
         labelText: 'Category',
         isDense: true,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
       ),
       items: [
         for (final category in categoryOptions)
@@ -738,25 +764,43 @@ class _OrganizationRegistryPageState extends State<OrganizationRegistryPage> {
       ],
       onChanged: (value) => setState(() => categoryFilter = value ?? 'All'),
     );
-    if (compact) {
-      return Column(
-        children: [
-          search,
-          const SizedBox(height: 12),
-          filter,
-          const SizedBox(height: 12),
-          categorySelect,
-        ],
-      );
-    }
-    return Row(
-      children: [
-        Expanded(flex: 3, child: search),
-        const SizedBox(width: 12),
-        SizedBox(width: 160, child: filter),
-        const SizedBox(width: 12),
-        SizedBox(width: 180, child: categorySelect),
-      ],
+    // Let filters wrap independently of the page breakpoint. This avoids
+    // RenderFlex overflow on narrow browsers, split screens and tablets.
+    return LayoutBuilder(
+      builder: (context, limits) {
+        final narrow = limits.maxWidth < 760;
+        if (narrow) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              search,
+              const SizedBox(height: 12),
+              if (limits.maxWidth >= 420)
+                Row(
+                  children: [
+                    Expanded(child: filter),
+                    const SizedBox(width: 12),
+                    Expanded(child: categorySelect),
+                  ],
+                )
+              else ...[
+                filter,
+                const SizedBox(height: 12),
+                categorySelect,
+              ],
+            ],
+          );
+        }
+        return Row(
+          children: [
+            Expanded(flex: 3, child: search),
+            const SizedBox(width: 12),
+            Expanded(flex: 2, child: filter),
+            const SizedBox(width: 12),
+            Expanded(flex: 2, child: categorySelect),
+          ],
+        );
+      },
     );
   }
 
@@ -784,6 +828,9 @@ class _OrganizationRegistryPageState extends State<OrganizationRegistryPage> {
             rows: [
               for (final org in records)
                 DataRow(
+                  color: WidgetStateProperty.resolveWith<Color?>((states) {
+                    return states.contains(WidgetState.hovered) ? _soft : null;
+                  }),
                   cells: [
                     DataCell(
                       SizedBox(
@@ -813,6 +860,7 @@ class _OrganizationRegistryPageState extends State<OrganizationRegistryPage> {
                           ],
                         ),
                       ),
+                      onTap: () => showOrganizationDetails(org),
                     ),
                     DataCell(
                       Text(org.category, style: const TextStyle(fontSize: 12)),
@@ -959,7 +1007,7 @@ class _OrganizationRegistryPageState extends State<OrganizationRegistryPage> {
   BoxDecoration _surfaceDecoration() => BoxDecoration(
     color: Colors.white,
     border: Border.all(color: _stroke),
-    borderRadius: BorderRadius.circular(12),
+    borderRadius: BorderRadius.circular(18),
   );
 }
 
@@ -1062,6 +1110,7 @@ class _OrganizationFormDialogState extends State<_OrganizationFormDialog> {
           child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _field(name, 'Organization Name'),
                 const SizedBox(height: 12),
@@ -1071,8 +1120,14 @@ class _OrganizationFormDialogState extends State<_OrganizationFormDialog> {
                     labelText: 'Category',
                     border: OutlineInputBorder(),
                   ),
-                  items: categories
-                      .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                  isExpanded: true,
+                  items: {...categories, category}
+                      .map(
+                        (c) => DropdownMenuItem(
+                          value: c,
+                          child: Text(c, overflow: TextOverflow.ellipsis),
+                        ),
+                      )
                       .toList(),
                   onChanged: (v) => setState(() => category = v ?? 'Youth'),
                 ),
@@ -1085,6 +1140,7 @@ class _OrganizationFormDialogState extends State<_OrganizationFormDialog> {
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   initialValue: status,
+                  isExpanded: true,
                   decoration: const InputDecoration(
                     labelText: 'Status',
                     border: OutlineInputBorder(),
@@ -1107,7 +1163,7 @@ class _OrganizationFormDialogState extends State<_OrganizationFormDialog> {
         FilledButton(
           onPressed: save,
           style: FilledButton.styleFrom(
-            backgroundColor: _green,
+            backgroundColor: _forest,
             foregroundColor: Colors.white,
           ),
           child: const Text('Save organization'),
