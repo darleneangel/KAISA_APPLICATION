@@ -68,206 +68,360 @@ class _LguAdminDashboardPageState extends State<LguAdminDashboardPage> {
         return byCount != 0 ? byCount : a.key.compareTo(b.key);
       });
 
-    final preview = all.where((org) {
-      final q = _registrySearch.trim().toLowerCase();
-      return q.isEmpty ||
-          org.name.toLowerCase().contains(q) ||
-          org.category.toLowerCase().contains(q) ||
-          org.registryReference.toLowerCase().contains(q);
-    }).take(6).toList();
+    final preview = all
+        .where((org) {
+          final q = _registrySearch.trim().toLowerCase();
+          return q.isEmpty ||
+              org.name.toLowerCase().contains(q) ||
+              org.category.toLowerCase().contains(q) ||
+              org.registryReference.toLowerCase().contains(q);
+        })
+        .take(6)
+        .toList();
 
-    return LayoutBuilder(builder: (context, constraints) {
-      final compact = constraints.maxWidth < 650;
-      return ColoredBox(
-        color: _paper,
-        child: ListView(
-          padding: EdgeInsets.fromLTRB(compact ? 16 : 28, 24,
-              compact ? 16 : 28, 48),
-          children: [
-            Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 1260),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _pageHeader(compact),
-                    const SizedBox(height: 24),
-                    _sectionHeading('System overview',
-                        'Organization-wide metrics from the current prototype data.'),
-                    const SizedBox(height: 13),
-                    _kpiGrid([
-                      _Kpi('Registered organizations', '$total',
-                          Icons.apartment_rounded, 'All registry records'),
-                      _Kpi('Active organizations', '$active',
-                          Icons.verified_outlined, 'Inactive: $inactive'),
-                      _Kpi('Assigned administrators', '$assigned',
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 650;
+        return ColoredBox(
+          color: _paper,
+          child: ListView(
+            padding: EdgeInsets.fromLTRB(
+              compact ? 16 : 28,
+              24,
+              compact ? 16 : 28,
+              48,
+            ),
+            children: [
+              Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 1260),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _pageHeader(compact),
+                      const SizedBox(height: 17),
+                      _attentionPanel(unassigned, inactive),
+                      const SizedBox(height: 24),
+                      _sectionHeading(
+                        'System overview',
+                        'Counts reflect the connected local organization and event repositories.',
+                      ),
+                      const SizedBox(height: 13),
+                      _kpiGrid([
+                        _Kpi(
+                          'Registered organizations',
+                          '$total',
+                          Icons.apartment_rounded,
+                          'All registry records',
+                        ),
+                        _Kpi(
+                          'Active organizations',
+                          '$active',
+                          Icons.verified_outlined,
+                          'Inactive: $inactive',
+                        ),
+                        _Kpi(
+                          'Assigned administrators',
+                          '$assigned',
                           Icons.admin_panel_settings_outlined,
-                          'Unassigned: $unassigned'),
-                      _Kpi('Upcoming events', '${eventRepository.upcomingEvents}',
-                          Icons.event_available_outlined, 'Prototype event schedule'),
-                      const _Kpi('Total organization members', '—',
-                          Icons.groups_2_outlined, 'Awaiting member data'),
-                      const _Kpi('Event participation', '—',
-                          Icons.how_to_reg_outlined, 'Awaiting attendance data'),
-                    ]),
-                    const SizedBox(height: 25),
-                    LayoutBuilder(builder: (context, box) {
-                      final two = box.maxWidth >= 800;
-                      final width = two
-                          ? (box.maxWidth - 14) / 2
-                          : box.maxWidth;
-                      return Wrap(
-                        spacing: 14,
-                        runSpacing: 14,
-                        children: [
-                          SizedBox(
-                            width: width,
-                            child: _panel(
-                              'Organization status',
-                              'Active and inactive registry records',
-                              _statusChart(total, active, inactive),
-                            ),
-                          ),
-                          SizedBox(
-                            width: width,
-                            child: _panel(
-                              'Organizations by category',
-                              'Distribution across registered sectors',
-                              _categoryChart(categoryRows, total),
-                            ),
-                          ),
-                        ],
-                      );
-                    }),
-                    const SizedBox(height: 25),
-                    _sectionHeading('Operational workspaces',
-                        'Manage records, assignments, and community activity.'),
-                    const SizedBox(height: 13),
-                    _workspaceLinks(),
-                    const SizedBox(height: 25),
-                    _registryPreview(preview, total),
-                    const SizedBox(height: 15),
-                    _notice(),
-                  ],
+                          'Unassigned: $unassigned',
+                        ),
+                        _Kpi(
+                          'Upcoming events',
+                          '${eventRepository.upcomingEvents}',
+                          Icons.event_available_outlined,
+                          'Repository event schedule',
+                        ),
+                        const _Kpi(
+                          'Total organization members',
+                          '—',
+                          Icons.groups_2_outlined,
+                          'Awaiting member data',
+                        ),
+                        const _Kpi(
+                          'Event participation',
+                          '—',
+                          Icons.how_to_reg_outlined,
+                          'Awaiting attendance data',
+                        ),
+                      ]),
+                      const SizedBox(height: 25),
+                      LayoutBuilder(
+                        builder: (context, box) {
+                          final two = box.maxWidth >= 800;
+                          final width = two
+                              ? (box.maxWidth - 14) / 2
+                              : box.maxWidth;
+                          return Wrap(
+                            spacing: 14,
+                            runSpacing: 14,
+                            children: [
+                              SizedBox(
+                                width: width,
+                                child: _panel(
+                                  'Organization status',
+                                  'Active and inactive registry records',
+                                  _statusChart(total, active, inactive),
+                                ),
+                              ),
+                              SizedBox(
+                                width: width,
+                                child: _panel(
+                                  'Organizations by category',
+                                  'Distribution across registered sectors',
+                                  _categoryChart(categoryRows, total),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 25),
+                      _sectionHeading(
+                        'Operational workspaces',
+                        'Manage records, assignments, and community activity.',
+                      ),
+                      const SizedBox(height: 13),
+                      _workspaceLinks(),
+                      const SizedBox(height: 25),
+                      _registryPreview(preview, total),
+                      const SizedBox(height: 15),
+                      _notice(),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
-        ),
-      );
-    });
+            ],
+          ),
+        );
+      },
+    );
   }
 
-  Widget _pageHeader(bool compact) => Wrap(
-        alignment: WrapAlignment.spaceBetween,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        spacing: 12,
-        runSpacing: 12,
-        children: [
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 700),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('KAISA  /  LGU ADMINISTRATION',
-                    style: TextStyle(color: _green, fontSize: 11,
-                        fontWeight: FontWeight.w800, letterSpacing: 1.5)),
-                const SizedBox(height: 6),
-                Text('Dashboard & Analytics',
-                    style: TextStyle(color: _ink,
-                        fontSize: compact ? 25 : 30,
-                        fontWeight: FontWeight.w900)),
-                const SizedBox(height: 6),
-                const Text('Citywide oversight of registered organizations, '
-                    'administrators, and community programs.',
-                    style: TextStyle(color: _muted, fontSize: 13, height: 1.4)),
-              ],
-            ),
+  Widget _pageHeader(bool compact) => Container(
+    width: double.infinity,
+    padding: EdgeInsets.all(compact ? 23 : 30),
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(24),
+      gradient: const LinearGradient(
+        colors: [Color(0xFF0B3024), Color(0xFF15543A), Color(0xFF288258)],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
+    ),
+    child: Wrap(
+      alignment: WrapAlignment.spaceBetween,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 18,
+      runSpacing: 18,
+      children: [
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 610),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'KAISA  /  OPERATIONS COMMAND CENTER',
+                style: TextStyle(
+                  color: _gold,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.5,
+                ),
+              ),
+              const SizedBox(height: 13),
+              Text(
+                'Community Operations',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: compact ? 27 : 34,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 9),
+              const Text(
+                'A clear view of organization registrations, responsible representatives, and community events.',
+                style: TextStyle(
+                  color: Color(0xFFE2F0E6),
+                  fontSize: 13,
+                  height: 1.5,
+                ),
+              ),
+            ],
           ),
-          OutlinedButton.icon(
-            onPressed: () => setState(() {}),
-            icon: const Icon(Icons.refresh_rounded, size: 18),
-            label: const Text('Refresh overview'),
-            style: OutlinedButton.styleFrom(
-                foregroundColor: _forest,
-                side: const BorderSide(color: _stroke)),
+        ),
+        OutlinedButton.icon(
+          onPressed: () => _go('/lgu-admin/organizations'),
+          icon: const Icon(Icons.apartment_rounded, size: 18),
+          label: const Text('Open registry'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: Colors.white,
+            side: const BorderSide(color: Colors.white54),
+            padding: const EdgeInsets.symmetric(horizontal: 17, vertical: 15),
           ),
-        ],
-      );
+        ),
+      ],
+    ),
+  );
+
+  Widget _attentionPanel(int unassigned, int inactive) => Container(
+    padding: const EdgeInsets.all(19),
+    decoration: _surface(radius: 18),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(11),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFF5D8),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: const Icon(
+            Icons.fact_check_outlined,
+            color: Color(0xFF92650D),
+          ),
+        ),
+        const SizedBox(width: 13),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Items to review',
+                style: TextStyle(
+                  color: _ink,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 15,
+                ),
+              ),
+              const SizedBox(height: 5),
+              Text(
+                '$unassigned organization(s) without assigned representatives  •  $inactive inactive organization(s)',
+                style: const TextStyle(
+                  color: _muted,
+                  fontSize: 12,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                'These are registry indicators, not verified incidents or pending approval counts.',
+                style: TextStyle(color: _muted, fontSize: 11),
+              ),
+            ],
+          ),
+        ),
+        IconButton(
+          tooltip: 'Review organization registry',
+          onPressed: () => _go('/lgu-admin/organizations'),
+          icon: const Icon(Icons.arrow_forward_rounded, color: _forest),
+        ),
+      ],
+    ),
+  );
 
   Widget _sectionHeading(String title, String caption) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title, style: const TextStyle(
-              color: _ink, fontSize: 17, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 4),
-          Text(caption, style: const TextStyle(color: _muted, fontSize: 12)),
-        ],
-      );
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        title,
+        style: const TextStyle(
+          color: _ink,
+          fontSize: 17,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+      const SizedBox(height: 4),
+      Text(caption, style: const TextStyle(color: _muted, fontSize: 12)),
+    ],
+  );
 
   Widget _kpiGrid(List<_Kpi> cards) => LayoutBuilder(
-        builder: (context, constraints) {
-          final cols = constraints.maxWidth >= 1050
-              ? 3
-              : constraints.maxWidth >= 590
-                  ? 2
-                  : 1;
-          const gap = 12.0;
-          final width = (constraints.maxWidth - gap * (cols - 1)) / cols;
-          return Wrap(
-            spacing: gap,
-            runSpacing: gap,
-            children: [for (final item in cards) _kpiCard(item, width)],
-          );
-        },
+    builder: (context, constraints) {
+      final cols = constraints.maxWidth >= 1050
+          ? 3
+          : constraints.maxWidth >= 590
+          ? 2
+          : 1;
+      const gap = 12.0;
+      final width = (constraints.maxWidth - gap * (cols - 1)) / cols;
+      return Wrap(
+        spacing: gap,
+        runSpacing: gap,
+        children: [for (final item in cards) _kpiCard(item, width)],
       );
+    },
+  );
 
   Widget _kpiCard(_Kpi item, double width) => Container(
-        width: width,
-        padding: const EdgeInsets.all(17),
-        decoration: _surface(),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                  color: _soft, borderRadius: BorderRadius.circular(12)),
-              child: Icon(item.icon, color: _forest, size: 24),
-            ),
-            const SizedBox(width: 14),
-            Expanded(child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(item.value, style: const TextStyle(color: _forest,
-                    fontSize: 27, fontWeight: FontWeight.w900)),
-                Text(item.label, style: const TextStyle(color: _ink,
-                    fontSize: 12, fontWeight: FontWeight.w700)),
-                const SizedBox(height: 3),
-                Text(item.detail, style: const TextStyle(color: _muted,
-                    fontSize: 11)),
-              ],
-            )),
-          ],
+    width: width,
+    padding: const EdgeInsets.all(17),
+    decoration: _surface(),
+    child: Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: _soft,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(item.icon, color: _forest, size: 24),
         ),
-      );
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                item.value,
+                style: const TextStyle(
+                  color: _forest,
+                  fontSize: 27,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              Text(
+                item.label,
+                style: const TextStyle(
+                  color: _ink,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                item.detail,
+                style: const TextStyle(color: _muted, fontSize: 11),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
 
   Widget _panel(String title, String subtitle, Widget content) => Container(
-        constraints: const BoxConstraints(minHeight: 280),
-        padding: const EdgeInsets.all(19),
-        decoration: _surface(),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title, style: const TextStyle(color: _forest,
-                fontSize: 16, fontWeight: FontWeight.w800)),
-            const SizedBox(height: 4),
-            Text(subtitle, style: const TextStyle(color: _muted,
-                fontSize: 12)),
-            const SizedBox(height: 23),
-            content,
-          ],
+    constraints: const BoxConstraints(minHeight: 280),
+    padding: const EdgeInsets.all(19),
+    decoration: _surface(),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            color: _forest,
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+          ),
         ),
-      );
+        const SizedBox(height: 4),
+        Text(subtitle, style: const TextStyle(color: _muted, fontSize: 12)),
+        const SizedBox(height: 23),
+        content,
+      ],
+    ),
+  );
 
   Widget _statusChart(int total, int active, int inactive) {
     if (total == 0) return _emptyChart('No organization records available.');
@@ -275,128 +429,211 @@ class _LguAdminDashboardPageState extends State<LguAdminDashboardPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(children: [
-          Text('${(ratio * 100).toStringAsFixed(0)}%',
-              style: const TextStyle(color: _forest, fontSize: 31,
-                  fontWeight: FontWeight.w900)),
-          const SizedBox(width: 9),
-          const Text('currently active',
-              style: TextStyle(color: _muted, fontSize: 12)),
-        ]),
+        Row(
+          children: [
+            Text(
+              '${(ratio * 100).toStringAsFixed(0)}%',
+              style: const TextStyle(
+                color: _forest,
+                fontSize: 31,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(width: 9),
+            const Text(
+              'currently active',
+              style: TextStyle(color: _muted, fontSize: 12),
+            ),
+          ],
+        ),
         const SizedBox(height: 15),
         ClipRRect(
           borderRadius: BorderRadius.circular(7),
-          child: Row(children: [
-            if (active > 0)
-              Expanded(flex: active, child: Container(height: 16, color: _green)),
-            if (inactive > 0)
-              Expanded(flex: inactive,
-                  child: Container(height: 16, color: _gold)),
-          ]),
+          child: Row(
+            children: [
+              if (active > 0)
+                Expanded(
+                  flex: active,
+                  child: Container(height: 16, color: _green),
+                ),
+              if (inactive > 0)
+                Expanded(
+                  flex: inactive,
+                  child: Container(height: 16, color: _gold),
+                ),
+            ],
+          ),
         ),
         const SizedBox(height: 20),
         _legend('Active', active, _green),
         const SizedBox(height: 10),
         _legend('Inactive / other', inactive, _gold),
         const SizedBox(height: 9),
-        const Text('Based on organization registry status.',
-            style: TextStyle(color: _muted, fontSize: 11)),
+        const Text(
+          'Based on organization registry status.',
+          style: TextStyle(color: _muted, fontSize: 11),
+        ),
       ],
     );
   }
 
-  Widget _legend(String name, int count, Color color) => Row(children: [
-        Container(width: 10, height: 10,
-            decoration: BoxDecoration(color: color,
-                borderRadius: BorderRadius.circular(3))),
-        const SizedBox(width: 9),
-        Expanded(child: Text(name, style: const TextStyle(
-            color: _ink, fontSize: 12))),
-        Text('$count', style: const TextStyle(color: _ink,
-            fontSize: 12, fontWeight: FontWeight.w800)),
-      ]);
+  Widget _legend(String name, int count, Color color) => Row(
+    children: [
+      Container(
+        width: 10,
+        height: 10,
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(3),
+        ),
+      ),
+      const SizedBox(width: 9),
+      Expanded(
+        child: Text(name, style: const TextStyle(color: _ink, fontSize: 12)),
+      ),
+      Text(
+        '$count',
+        style: const TextStyle(
+          color: _ink,
+          fontSize: 12,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    ],
+  );
 
   Widget _categoryChart(List<MapEntry<String, int>> categories, int total) {
     if (categories.isEmpty) {
-      return _emptyChart('Category analytics appear when organizations are added.');
+      return _emptyChart(
+        'Category analytics appear when organizations are added.',
+      );
     }
     final maxCount = categories.first.value;
-    return Column(children: [
-      for (final item in categories.take(6)) ...[
-        Row(children: [
-          Expanded(child: Text(item.key, maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: _ink, fontSize: 12))),
-          Text('${item.value}  ·  ${(item.value * 100 / total).toStringAsFixed(0)}%',
-              style: const TextStyle(color: _muted, fontSize: 11)),
-        ]),
-        const SizedBox(height: 7),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(5),
-          child: LinearProgressIndicator(
-            value: item.value / maxCount,
-            minHeight: 9,
-            color: _green,
-            backgroundColor: _soft,
+    return Column(
+      children: [
+        for (final item in categories.take(6)) ...[
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  item.key,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: _ink, fontSize: 12),
+                ),
+              ),
+              Text(
+                '${item.value}  ·  ${(item.value * 100 / total).toStringAsFixed(0)}%',
+                style: const TextStyle(color: _muted, fontSize: 11),
+              ),
+            ],
           ),
-        ),
-        const SizedBox(height: 14),
+          const SizedBox(height: 7),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(5),
+            child: LinearProgressIndicator(
+              value: item.value / maxCount,
+              minHeight: 9,
+              color: _green,
+              backgroundColor: _soft,
+            ),
+          ),
+          const SizedBox(height: 14),
+        ],
+        if (categories.length > 6)
+          Text(
+            '+ ${categories.length - 6} more categories',
+            style: const TextStyle(color: _muted, fontSize: 11),
+          ),
       ],
-      if (categories.length > 6)
-        Text('+ ${categories.length - 6} more categories',
-            style: const TextStyle(color: _muted, fontSize: 11)),
-    ]);
+    );
   }
 
   Widget _emptyChart(String message) => SizedBox(
-        height: 145,
-        child: Center(child: Text(message,
-          textAlign: TextAlign.center,
-          style: const TextStyle(color: _muted, fontSize: 12))),
-      );
+    height: 145,
+    child: Center(
+      child: Text(
+        message,
+        textAlign: TextAlign.center,
+        style: const TextStyle(color: _muted, fontSize: 12),
+      ),
+    ),
+  );
 
   Widget _workspaceLinks() {
     final links = <(String, IconData, String)>[
-      ('Organization Registry', Icons.apartment_rounded,
-          '/lgu-admin/organizations'),
-      ('Admin Assignments', Icons.manage_accounts_outlined,
-          '/lgu-admin/assignments'),
-      ('Event Monitoring', Icons.event_note_outlined,
-          '/lgu-admin/events'),
+      (
+        'Organization Registry',
+        Icons.apartment_rounded,
+        '/lgu-admin/organizations',
+      ),
+      (
+        'Admin Assignments',
+        Icons.manage_accounts_outlined,
+        '/lgu-admin/assignments',
+      ),
+      ('Event Monitoring', Icons.event_note_outlined, '/lgu-admin/events'),
       ('Reports', Icons.bar_chart_outlined, '/lgu-admin/reports'),
       ('Audit Logs', Icons.history_rounded, '/lgu-admin/audit-logs'),
       ('Settings', Icons.settings_outlined, '/lgu-admin/settings'),
     ];
-    return LayoutBuilder(builder: (context, box) {
-      final cols = box.maxWidth >= 1050 ? 3 : box.maxWidth >= 570 ? 2 : 1;
-      const gap = 11.0;
-      final width = (box.maxWidth - (cols - 1) * gap) / cols;
-      return Wrap(spacing: gap, runSpacing: gap, children: [
-        for (final item in links)
-          SizedBox(width: width, child: Material(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(13),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(13),
-              onTap: () => _go(item.$3),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16,
-                    vertical: 15),
-                decoration: _surface(radius: 13),
-                child: Row(children: [
-                  Icon(item.$2, color: _green, size: 22),
-                  const SizedBox(width: 11),
-                  Expanded(child: Text(item.$1, style: const TextStyle(
-                      color: _ink, fontSize: 12,
-                      fontWeight: FontWeight.w700))),
-                  const Icon(Icons.chevron_right_rounded,
-                      size: 19, color: _muted),
-                ]),
+    return LayoutBuilder(
+      builder: (context, box) {
+        final cols = box.maxWidth >= 1050
+            ? 3
+            : box.maxWidth >= 570
+            ? 2
+            : 1;
+        const gap = 11.0;
+        final width = (box.maxWidth - (cols - 1) * gap) / cols;
+        return Wrap(
+          spacing: gap,
+          runSpacing: gap,
+          children: [
+            for (final item in links)
+              SizedBox(
+                width: width,
+                child: Material(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(13),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(13),
+                    onTap: () => _go(item.$3),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 15,
+                      ),
+                      decoration: _surface(radius: 13),
+                      child: Row(
+                        children: [
+                          Icon(item.$2, color: _green, size: 22),
+                          const SizedBox(width: 11),
+                          Expanded(
+                            child: Text(
+                              item.$1,
+                              style: const TextStyle(
+                                color: _ink,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          const Icon(
+                            Icons.chevron_right_rounded,
+                            size: 19,
+                            color: _muted,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
               ),
-            ),
-          )),
-      ]);
-    });
+          ],
+        );
+      },
+    );
   }
 
   Widget _registryPreview(List<RegistryOrganization> organizations, int total) {
@@ -413,14 +650,24 @@ class _LguAdminDashboardPageState extends State<LguAdminDashboardPage> {
               spacing: 10,
               runSpacing: 10,
               children: [
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  const Text('Organization Registry', style: TextStyle(
-                      color: _forest, fontWeight: FontWeight.w800,
-                      fontSize: 17)),
-                  const SizedBox(height: 4),
-                  Text('$total registered organization records',
-                      style: const TextStyle(color: _muted, fontSize: 12)),
-                ]),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Organization Registry',
+                      style: TextStyle(
+                        color: _forest,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 17,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '$total registered organization records',
+                      style: const TextStyle(color: _muted, fontSize: 12),
+                    ),
+                  ],
+                ),
                 TextButton.icon(
                   onPressed: () => _go('/lgu-admin/organizations'),
                   label: const Text('View full registry'),
@@ -432,8 +679,7 @@ class _LguAdminDashboardPageState extends State<LguAdminDashboardPage> {
           ),
           const Divider(height: 1, color: _stroke),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 18,
-                vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
             child: TextField(
               onChanged: (value) => setState(() => _registrySearch = value),
               decoration: InputDecoration(
@@ -442,45 +688,76 @@ class _LguAdminDashboardPageState extends State<LguAdminDashboardPage> {
                 hintText: 'Search organization name, category or reference',
                 hintStyle: const TextStyle(fontSize: 12),
                 border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10)),
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
             ),
           ),
           if (organizations.isEmpty)
             const Padding(
               padding: EdgeInsets.all(26),
-              child: Center(child: Text('No matching organizations found.',
-                  style: TextStyle(color: _muted))),
+              child: Center(
+                child: Text(
+                  'No matching organizations found.',
+                  style: TextStyle(color: _muted),
+                ),
+              ),
             )
           else
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: DataTable(
-                headingRowColor: WidgetStateProperty.all(_soft),
-                columnSpacing: 32,
-                columns: const [
-                  DataColumn(label: Text('ORGANIZATION')),
-                  DataColumn(label: Text('CATEGORY')),
-                  DataColumn(label: Text('STATUS')),
-                  DataColumn(label: Text('ASSIGNED ADMIN')),
-                ],
-                rows: [
-                  for (final org in organizations)
-                    DataRow(cells: [
-                      DataCell(SizedBox(width: 220,
-                        child: Text(org.name, maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(color: _forest,
-                                fontWeight: FontWeight.w700))),
-                        onTap: () => _go('/lgu-admin/organizations')),
-                      DataCell(Text(org.category)),
-                      DataCell(_statusLabel(org.status)),
-                      DataCell(SizedBox(width: 180,
-                        child: Text(org.adminEmail.isEmpty
-                            ? 'Not assigned' : org.adminEmail,
-                            maxLines: 1, overflow: TextOverflow.ellipsis))),
-                    ]),
-                ],
+            LayoutBuilder(
+              builder: (context, tableBounds) => SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: SizedBox(
+                  width: tableBounds.maxWidth < 865
+                      ? 865
+                      : tableBounds.maxWidth,
+                  child: DataTable(
+                    headingRowColor: WidgetStateProperty.all(_soft),
+                    columnSpacing: 32,
+                    columns: const [
+                      DataColumn(label: Text('ORGANIZATION')),
+                      DataColumn(label: Text('CATEGORY')),
+                      DataColumn(label: Text('STATUS')),
+                      DataColumn(label: Text('ASSIGNED ADMIN')),
+                    ],
+                    rows: [
+                      for (final org in organizations)
+                        DataRow(
+                          cells: [
+                            DataCell(
+                              SizedBox(
+                                width: 220,
+                                child: Text(
+                                  org.name,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: _forest,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                              onTap: () => _go('/lgu-admin/organizations'),
+                            ),
+                            DataCell(Text(org.category)),
+                            DataCell(_statusLabel(org.status)),
+                            DataCell(
+                              SizedBox(
+                                width: 180,
+                                child: Text(
+                                  org.adminEmail.isEmpty
+                                      ? 'Not assigned'
+                                      : org.adminEmail,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                    ],
+                  ),
+                ),
               ),
             ),
         ],
@@ -496,32 +773,39 @@ class _LguAdminDashboardPageState extends State<LguAdminDashboardPage> {
         color: active ? _soft : const Color(0xFFFFF5DA),
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Text(status, style: TextStyle(
-        fontSize: 11, fontWeight: FontWeight.w700,
-        color: active ? _forest : const Color(0xFF92650D))),
+      child: Text(
+        status,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: active ? _forest : const Color(0xFF92650D),
+        ),
+      ),
     );
   }
 
   Widget _notice() => Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(Icons.info_outline_rounded, color: _muted, size: 17),
-          const SizedBox(width: 8),
-          const Expanded(child: Text(
-            'Prototype analytics: organization counts, categories, and upcoming '
-            'event counts use local repositories. Member totals and attendance '
-            'cannot be calculated until the relevant authorized Supabase data '
-            'sources are connected. Refresh does not query Supabase.',
-            style: TextStyle(color: _muted, fontSize: 11, height: 1.5),
-          )),
-        ],
-      );
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const Icon(Icons.info_outline_rounded, color: _muted, size: 17),
+      const SizedBox(width: 8),
+      const Expanded(
+        child: Text(
+          'Operations overview: organization counts, categories, and upcoming '
+          'event counts use local repositories. Member totals and attendance '
+          'cannot be calculated until the relevant authorized Supabase data '
+          'sources are connected. Refresh does not query Supabase.',
+          style: TextStyle(color: _muted, fontSize: 11, height: 1.5),
+        ),
+      ),
+    ],
+  );
 
   BoxDecoration _surface({double radius = 15}) => BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(radius),
-        border: Border.all(color: _stroke),
-      );
+    color: Colors.white,
+    borderRadius: BorderRadius.circular(radius),
+    border: Border.all(color: _stroke),
+  );
 }
 
 class _Kpi {

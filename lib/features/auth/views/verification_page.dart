@@ -19,18 +19,30 @@ class _VerificationPageState extends State<VerificationPage> {
   int _attemptsUsed = 0;
   int _resendsUsed = 0;
   bool _sending = false;
-  bool get _social => widget.social;
+  bool _canceling = false;
+  bool _resendingSignup = false;
+  bool _hasSocialCode = false;
+  String? _socialError;
+  // Supports both explicit router configuration and /verification?mode=social.
+  // This prevents a social OTP screen from accidentally running signup OTP logic.
+  bool get _social =>
+      widget.social ||
+      GoRouterState.of(context).uri.queryParameters['mode'] == 'social';
   final _fields = List.generate(6, (_) => TextEditingController());
   final _focus = List.generate(6, (_) => FocusNode());
   Timer? _timer;
-  int _seconds = 60;
+  int _seconds = 0;
   bool _busy = false;
   @override
   void initState() {
     super.initState();
-    if (!_social) _startTimer();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && _social) _sendSocialCode();
+      if (!mounted) return;
+      if (_social) {
+        _sendSocialCode();
+      } else {
+        _startTimer();
+      }
     });
   }
 
@@ -69,11 +81,17 @@ class _VerificationPageState extends State<VerificationPage> {
     setState(() {
       _attemptsUsed = state.attempts;
       _resendsUsed = state.resends;
-      _seconds = state.secondsLeft;
+      // The server owns validity and attempt limits; this is only a display.
+      _seconds = state.secondsLeft < 0 ? 0 : state.secondsLeft;
+      _hasSocialCode = _seconds > 0;
+      if (_hasSocialCode) _socialSent = true;
+      _socialError = null;
     });
+    if (_seconds == 0) return;
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!mounted || _seconds <= 0) {
+      if (!mounted || _seconds <= 1) {
         timer.cancel();
+        if (mounted) setState(() => _seconds = 0);
         return;
       }
       setState(() => _seconds--);
@@ -82,38 +100,80 @@ class _VerificationPageState extends State<VerificationPage> {
 
   Future<void> _refreshSocialState() async {
     try {
-      _applyOtpState(await SocialOtpService.instance.status());
+      final state = await SocialOtpService.instance.status();
+      _applyOtpState(state);
     } catch (error) {
-      debugPrint('KAISA OTP status: $error');
+      debugPrint('KAISA OTP status could not be refreshed: $error');
+      if (mounted) {
+        setState(
+          () => _socialError =
+              'Cannot check the code status. Try again or return to login.',
+        );
+      }
     }
   }
 
   Future<void> _sendSocialCode() async {
-    if (_socialSent || _sending) return;
-    _socialSent = true;
-    setState(() => _sending = true);
+    if (_socialSent || _sending || _canceling) return;
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) {
+      setState(
+        () => _socialError =
+            'Your social sign-in session is missing. Return to login and sign in again.',
+      );
+      return;
+    }
+    setState(() {
+      _sending = true;
+      _socialError = null;
+    });
     try {
       final state = await SocialOtpService.instance.send();
-      _applyOtpState(state);
       if (!mounted) return;
+      _socialSent = true;
+      _applyOtpState(state);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
             state.sent
-                ? 'Your six-digit KAISA code has been sent.'
-                : 'An OTP has already been requested. Check your inbox.',
+                ? 'Your KAISA verification code has been requested.'
+                : 'A code request already exists. Check your email or resend when available.',
           ),
         ),
       );
     } catch (error) {
+      if (!mounted) return;
       _socialSent = false;
-      if (mounted)
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not request OTP: $error')),
-        );
+      setState(() => _socialError = 'Could not request a code: $error');
+      // A failed network request may have succeeded on the server.
       await _refreshSocialState();
     } finally {
       if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  Future<void> _cancelVerification() async {
+    if (_busy || _canceling) return;
+    if (!_social) {
+      context.go('/signup');
+      return;
+    }
+    setState(() => _canceling = true);
+    try {
+      // Social verification is an additional KAISA gate; canceling it must
+      // invalidate the signed-in OAuth session, not just change the route.
+      await Supabase.instance.client.auth.signOut();
+      if (mounted) context.go('/login');
+    } catch (error) {
+      if (!mounted) return;
+      setState(
+        () => _socialError = 'Could not securely cancel sign-in: $error',
+      );
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Sign-out failed. Please try again.')),
+      );
+    } finally {
+      if (mounted) setState(() => _canceling = false);
     }
   }
 
@@ -168,7 +228,7 @@ class _VerificationPageState extends State<VerificationPage> {
       return;
     }
     if (_social) {
-      if (_seconds <= 0) {
+      if (!_hasSocialCode || _seconds <= 0) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('This code expired. Request a new code.'),
@@ -184,6 +244,7 @@ class _VerificationPageState extends State<VerificationPage> {
         );
         return;
       }
+      if (_busy) return;
       setState(() => _busy = true);
       try {
         await SocialOtpService.instance.verify(
@@ -238,37 +299,53 @@ class _VerificationPageState extends State<VerificationPage> {
   }
 
   Future<void> _resend() async {
-    if (_seconds > 0) return;
+    if (_busy || _sending || _canceling) return;
     if (_social) {
-      if (_resendsUsed >= 5 || _sending) return;
-      setState(() => _sending = true);
+      if (_resendsUsed >= 5) return;
+      if (!_socialSent) {
+        await _sendSocialCode();
+        return;
+      }
+      if (_seconds > 0) return;
+      setState(() {
+        _sending = true;
+        _socialError = null;
+      });
       try {
         final state = await SocialOtpService.instance.resend();
+        if (!mounted) return;
         _applyOtpState(state);
         for (final field in _fields) {
           field.clear();
         }
-        if (mounted) {
-          _focus.first.requestFocus();
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('A fresh verification code has been sent.'),
+        _focus.first.requestFocus();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              state.sent
+                  ? 'A new verification code has been requested.'
+                  : 'A code request already exists. Check your email.',
             ),
-          );
-        }
+          ),
+        );
       } catch (error) {
-        if (mounted)
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('Could not resend: $error')));
+        if (!mounted) return;
+        setState(() => _socialError = 'Could not resend code: $error');
         await _refreshSocialState();
       } finally {
         if (mounted) setState(() => _sending = false);
       }
       return;
     }
+    if (_seconds > 0 || _resendingSignup) return;
     final email = ResidentAccountRepository.instance.email;
-    if (email == null || email.isEmpty) return;
+    if (email == null || email.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please return to Sign Up.')),
+      );
+      return;
+    }
+    setState(() => _resendingSignup = true);
     try {
       await Supabase.instance.client.auth.resend(
         type: OtpType.signup,
@@ -284,10 +361,22 @@ class _VerificationPageState extends State<VerificationPage> {
         const SnackBar(content: Text('Verification email requested.')),
       );
     } on AuthException catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Unable to resend. Check your connection and retry.'),
+          ),
+        );
+      }
+      debugPrint('KAISA signup OTP resend error: $error');
+    } finally {
+      if (mounted) setState(() => _resendingSignup = false);
     }
   }
 
@@ -300,10 +389,14 @@ class _VerificationPageState extends State<VerificationPage> {
     const ink = Color(0xFF18392C);
     const muted = Color(0xFF667970);
     const yellow = Color(0xFFFFD65A);
-    final expired = _social && _seconds <= 0;
+    final expired = _social && _socialSent && _seconds <= 0;
     final attemptsExhausted = _social && _attemptsUsed >= 5;
     final resendUnavailable = _social && _resendsUsed >= 5;
-    final canVerify = !_busy && !_sending && !expired && !attemptsExhausted;
+    final canVerify =
+        !_busy &&
+        !_sending &&
+        !_canceling &&
+        (!_social || (_hasSocialCode && !expired && !attemptsExhausted));
 
     return Scaffold(
       backgroundColor: const Color(0xFFFAFCFA),
@@ -330,14 +423,9 @@ class _VerificationPageState extends State<VerificationPage> {
                                 vertical: 10,
                               ),
                             ),
-                            onPressed: () async {
-                              if (_social) {
-                                await Supabase.instance.client.auth.signOut();
-                                if (context.mounted) context.go('/login');
-                              } else {
-                                context.go('/signup');
-                              }
-                            },
+                            onPressed: (_busy || _canceling)
+                                ? null
+                                : _cancelVerification,
                             icon: const Icon(
                               Icons.arrow_back_rounded,
                               size: 19,
@@ -515,6 +603,24 @@ class _VerificationPageState extends State<VerificationPage> {
                           },
                         ),
                         const SizedBox(height: 17),
+                        if (_socialError != null) ...[
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFF0E9),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              _socialError!,
+                              style: const TextStyle(
+                                color: Color(0xFF994A30),
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                        ],
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
@@ -527,9 +633,17 @@ class _VerificationPageState extends State<VerificationPage> {
                             ),
                             const SizedBox(width: 6),
                             Text(
-                              expired
-                                  ? 'Code expired. Request a new one.'
-                                  : 'Code expires in 00:${_seconds.toString().padLeft(2, '0')}',
+                              _social && _sending
+                                  ? 'Requesting verification code...'
+                                  : _social && !_socialSent
+                                  ? 'No code requested yet.'
+                                  : expired
+                                  ? 'Code expired or unavailable. Request a new one.'
+                                  : _social
+                                  ? 'Code time remaining: ${_seconds ~/ 60}:${(_seconds % 60).toString().padLeft(2, '0')}'
+                                  : _seconds > 0
+                                  ? 'Resend available in $_seconds seconds'
+                                  : 'You can request a new code.',
                               style: TextStyle(
                                 color: expired
                                     ? const Color(0xFFBB674C)
@@ -601,15 +715,20 @@ class _VerificationPageState extends State<VerificationPage> {
                             const SizedBox(width: 4),
                             TextButton(
                               onPressed:
-                                  (_seconds > 0 ||
+                                  (_busy ||
+                                      _canceling ||
+                                      _resendingSignup ||
+                                      _seconds > 0 ||
                                       _sending ||
                                       resendUnavailable)
                                   ? null
                                   : _resend,
                               child: Text(
                                 resendUnavailable
-                                    ? 'Contact support'
-                                    : (_seconds > 0
+                                    ? 'Resend limit reached'
+                                    : (_social && !_socialSent
+                                          ? 'Retry sending code'
+                                          : _seconds > 0
                                           ? 'Resend in ${_seconds}s'
                                           : 'Resend code'),
                                 style: const TextStyle(
