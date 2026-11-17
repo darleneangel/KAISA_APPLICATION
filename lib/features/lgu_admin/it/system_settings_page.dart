@@ -1,26 +1,22 @@
-
 import 'package:flutter/material.dart';
 
-const _forest = Color(0xFF14532D);
-const _green = Color(0xFF237A50);
-const _paper = Color(0xFFF8FAF8);
-const _ink = Color(0xFF173D2B);
-const _muted = Color(0xFF687B70);
-const _stroke = Color(0xFFE2EBE4);
-const _soft = Color(0xFFEAF5EE);
+const _forest = Color(0xFF00492C);
+const _green = Color(0xFF2A7F57);
+const _paper = Color(0xFFF4F4F0);
+const _ink = Color(0xFF0E3A27);
+const _muted = Color(0xFF6E7773);
+const _stroke = Color(0xFFECECE6);
+const _soft = Color(0xFFE3F1E9);
 
 class SystemSettingsPage extends StatefulWidget {
   const SystemSettingsPage({super.key});
 
   @override
-  State<SystemSettingsPage> createState() =>
-      _SystemSettingsPageState();
+  State<SystemSettingsPage> createState() => _SystemSettingsPageState();
 }
 
-class _SystemSettingsPageState
-    extends State<SystemSettingsPage> {
-  final _nameController =
-      TextEditingController(text: 'KAISA');
+class _SystemSettingsPageState extends State<SystemSettingsPage> {
+  final _nameController = TextEditingController(text: 'KAISA');
 
   final _descriptionController = TextEditingController(
     text: 'Community engagement and organization management',
@@ -61,102 +57,90 @@ class _SystemSettingsPageState
         children: [
           Center(
             child: ConstrainedBox(
-              constraints:
-                  const BoxConstraints(maxWidth: 1150),
+              constraints: const BoxConstraints(maxWidth: 1150),
               child: Column(
-                crossAxisAlignment:
-                    CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'KAISA / LGU ADMINISTRATION / IT',
-                    style: TextStyle(
-                      color: _green,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1.4,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
                   const Text(
                     'System Settings',
                     style: TextStyle(
+                      fontFamily: 'Poppins',
                       color: _ink,
                       fontSize: 29,
-                      fontWeight: FontWeight.w900,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                   const SizedBox(height: 7),
                   const Text(
                     'Preview platform configuration, '
                     'notifications, and maintenance preferences.',
-                    style: TextStyle(
-                      color: _muted,
-                      fontSize: 13,
-                    ),
+                    style: TextStyle(color: _muted, fontSize: 13),
                   ),
                   const SizedBox(height: 20),
                   _notice(),
                   const SizedBox(height: 25),
 
-                  _sectionCard(
-                    'General Configuration',
-                    Icons.tune_rounded,
-                    [
-                      TextField(
-                        controller: _nameController,
-                        decoration: const InputDecoration(
-                          labelText: 'Application Name',
-                          border: OutlineInputBorder(),
+                  _sectionCard('General Configuration', Icons.tune_rounded, [
+                    TextField(
+                      controller: _nameController,
+                      decoration: const InputDecoration(
+                        labelText: 'Application Name',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(12)),
+                          borderSide: BorderSide(color: _stroke),
                         ),
                       ),
-                      const SizedBox(height: 16),
-                      TextField(
-                        controller: _descriptionController,
-                        maxLines: 2,
-                        decoration: const InputDecoration(
-                          labelText: 'Application Description',
-                          border: OutlineInputBorder(),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: _descriptionController,
+                      maxLines: 2,
+                      decoration: const InputDecoration(
+                        labelText: 'Application Description',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(12)),
+                          borderSide: BorderSide(color: _stroke),
                         ),
                       ),
-                      const SizedBox(height: 16),
-                      DropdownButtonFormField<String>(
-                        initialValue: _environment,
-                        decoration: const InputDecoration(
-                          labelText: 'Preview Environment',
-                          border: OutlineInputBorder(),
-                        ),
-                        items: const [
-                          DropdownMenuItem(
-                            value: 'Development',
-                            child: Text('Development'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'Staging',
-                            child: Text('Staging'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'Production',
-                            child: Text('Production'),
-                          ),
-                        ],
-                        onChanged: (value) {
-                          if (value != null) {
-                            setState(() => _environment = value);
-                          }
-                        },
-                      ),
-                      const SizedBox(height: 10),
-                      const Text(
-                        'Environment selection is a display '
-                        'preference only. It does not change '
-                        'the connected Supabase project.',
-                        style: TextStyle(
-                          color: _muted,
-                          fontSize: 11,
+                    ),
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<String>(
+                      initialValue: _environment,
+                      decoration: const InputDecoration(
+                        labelText: 'Preview Environment',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(12)),
+                          borderSide: BorderSide(color: _stroke),
                         ),
                       ),
-                    ],
-                  ),
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'Development',
+                          child: Text('Development'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'Staging',
+                          child: Text('Staging'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'Production',
+                          child: Text('Production'),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        if (value != null) {
+                          setState(() => _environment = value);
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                    const Text(
+                      'Environment selection is a display '
+                      'preference only. It does not change '
+                      'the connected Supabase project.',
+                      style: TextStyle(color: _muted, fontSize: 11),
+                    ),
+                  ]),
 
                   const SizedBox(height: 18),
 
@@ -170,7 +154,7 @@ class _SystemSettingsPageState
                           'Security Notifications',
                           style: TextStyle(
                             color: _ink,
-                            fontWeight: FontWeight.w700,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                         subtitle: const Text(
@@ -179,9 +163,8 @@ class _SystemSettingsPageState
                         ),
                         activeThumbColor: _green,
                         value: _securityNotifications,
-                        onChanged: (value) => setState(
-                          () => _securityNotifications = value,
-                        ),
+                        onChanged: (value) =>
+                            setState(() => _securityNotifications = value),
                       ),
                       const Divider(color: _stroke),
                       SwitchListTile(
@@ -190,7 +173,7 @@ class _SystemSettingsPageState
                           'System Notifications',
                           style: TextStyle(
                             color: _ink,
-                            fontWeight: FontWeight.w700,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                         subtitle: const Text(
@@ -199,9 +182,8 @@ class _SystemSettingsPageState
                         ),
                         activeThumbColor: _green,
                         value: _systemNotifications,
-                        onChanged: (value) => setState(
-                          () => _systemNotifications = value,
-                        ),
+                        onChanged: (value) =>
+                            setState(() => _systemNotifications = value),
                       ),
                     ],
                   ),
@@ -218,7 +200,7 @@ class _SystemSettingsPageState
                           'Display Maintenance Notice',
                           style: TextStyle(
                             color: _ink,
-                            fontWeight: FontWeight.w700,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                         subtitle: const Text(
@@ -227,9 +209,8 @@ class _SystemSettingsPageState
                         ),
                         value: _maintenanceNotice,
                         activeThumbColor: _green,
-                        onChanged: (value) => setState(
-                          () => _maintenanceNotice = value,
-                        ),
+                        onChanged: (value) =>
+                            setState(() => _maintenanceNotice = value),
                       ),
                       const SizedBox(height: 14),
                       DropdownButtonFormField<String>(
@@ -237,7 +218,10 @@ class _SystemSettingsPageState
                         isExpanded: true,
                         decoration: const InputDecoration(
                           labelText: 'Sample Maintenance Window',
-                          border: OutlineInputBorder(),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.all(Radius.circular(12)),
+                            borderSide: BorderSide(color: _stroke),
+                          ),
                         ),
                         items: const [
                           DropdownMenuItem(
@@ -255,9 +239,7 @@ class _SystemSettingsPageState
                         ],
                         onChanged: (value) {
                           if (value != null) {
-                            setState(
-                              () => _maintenanceWindow = value,
-                            );
+                            setState(() => _maintenanceWindow = value);
                           }
                         },
                       ),
@@ -267,7 +249,7 @@ class _SystemSettingsPageState
                           width: double.infinity,
                           padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFFFF8DE),
+                            color: const Color(0xFFFFF3CF),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Text(
@@ -327,9 +309,7 @@ class _SystemSettingsPageState
                         ),
                       ),
                       icon: const Icon(Icons.check_rounded),
-                      label: const Text(
-                        'Apply Preview Changes',
-                      ),
+                      label: const Text('Apply Preview Changes'),
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -347,18 +327,13 @@ class _SystemSettingsPageState
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF8DE),
+        color: const Color(0xFFFFF3CF),
         borderRadius: BorderRadius.circular(13),
-        border: Border.all(
-          color: const Color(0xFFF1E3A7),
-        ),
+        border: Border.all(color: const Color(0xFFF3D98A)),
       ),
       child: const Row(
         children: [
-          Icon(
-            Icons.info_outline_rounded,
-            color: Color(0xFF92650D),
-          ),
+          Icon(Icons.info_outline_rounded, color: Color(0xFF92650D)),
           SizedBox(width: 12),
           Expanded(
             child: Text(
@@ -378,33 +353,44 @@ class _SystemSettingsPageState
     );
   }
 
-  Widget _sectionCard(
-    String title,
-    IconData icon,
-    List<Widget> children,
-  ) {
+  Widget _sectionCard(String title, IconData icon, List<Widget> children) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(21),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
+        borderRadius: BorderRadius.circular(22),
         border: Border.all(color: _stroke),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0A00492C),
+            blurRadius: 24,
+            offset: Offset(0, 8),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(icon, color: _green, size: 22),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: _soft,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(icon, color: _forest, size: 22),
+              ),
               const SizedBox(width: 11),
               Expanded(
                 child: Text(
                   title,
                   style: const TextStyle(
+                    fontFamily: 'Poppins',
                     color: _ink,
                     fontSize: 18,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
@@ -417,20 +403,13 @@ class _SystemSettingsPageState
     );
   }
 
-  Widget _readOnlySetting(
-    String title,
-    String description,
-  ) {
+  Widget _readOnlySetting(String title, String description) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(
-            Icons.lock_outline_rounded,
-            color: _green,
-            size: 20,
-          ),
+          const Icon(Icons.lock_outline_rounded, color: _green, size: 20),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -440,17 +419,14 @@ class _SystemSettingsPageState
                   title,
                   style: const TextStyle(
                     color: _ink,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w600,
                     fontSize: 13,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   description,
-                  style: const TextStyle(
-                    color: _muted,
-                    fontSize: 12,
-                  ),
+                  style: const TextStyle(color: _muted, fontSize: 12),
                 ),
               ],
             ),

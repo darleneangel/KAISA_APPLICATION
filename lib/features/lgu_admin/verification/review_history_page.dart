@@ -1,20 +1,18 @@
-
 import 'package:flutter/material.dart';
 
-const _forest = Color(0xFF14532D);
-const _green = Color(0xFF237A50);
-const _paper = Color(0xFFF8FAF8);
-const _ink = Color(0xFF173D2B);
-const _muted = Color(0xFF687B70);
-const _stroke = Color(0xFFE2EBE4);
-const _soft = Color(0xFFEAF5EE);
+const _forest = Color(0xFF00492C);
+const _green = Color(0xFF2A7F57);
+const _paper = Color(0xFFF4F4F0);
+const _ink = Color(0xFF0E3A27);
+const _muted = Color(0xFF6E7773);
+const _stroke = Color(0xFFECECE6);
+const _soft = Color(0xFFE3F1E9);
 
 class ReviewHistoryPage extends StatefulWidget {
   const ReviewHistoryPage({super.key});
 
   @override
-  State<ReviewHistoryPage> createState() =>
-      _ReviewHistoryPageState();
+  State<ReviewHistoryPage> createState() => _ReviewHistoryPageState();
 }
 
 class _ReviewHistoryPageState extends State<ReviewHistoryPage> {
@@ -30,7 +28,8 @@ class _ReviewHistoryPageState extends State<ReviewHistoryPage> {
       decision: 'Approved',
       reviewer: 'Demo Verification Admin',
       date: 'Nov 15, 2026 · 03:20 PM',
-      notes: 'Sample identity details were reviewed and '
+      notes:
+          'Sample identity details were reviewed and '
           'marked complete for the prototype.',
     ),
     _DemoReview(
@@ -40,7 +39,8 @@ class _ReviewHistoryPageState extends State<ReviewHistoryPage> {
       decision: 'Resubmission Requested',
       reviewer: 'Demo Verification Admin',
       date: 'Nov 14, 2026 · 10:45 AM',
-      notes: 'Sample document is incomplete. '
+      notes:
+          'Sample document is incomplete. '
           'A clearer replacement is requested.',
     ),
     _DemoReview(
@@ -50,7 +50,8 @@ class _ReviewHistoryPageState extends State<ReviewHistoryPage> {
       decision: 'Rejected',
       reviewer: 'Demo Verification Admin',
       date: 'Nov 13, 2026 · 02:15 PM',
-      notes: 'Sample application did not satisfy '
+      notes:
+          'Sample application did not satisfy '
           'the illustrative verification requirements.',
     ),
     _DemoReview(
@@ -76,19 +77,14 @@ class _ReviewHistoryPageState extends State<ReviewHistoryPage> {
           review.reviewer.toLowerCase().contains(query);
 
       final matchesDecision =
-          _decisionFilter == 'All' ||
-          review.decision == _decisionFilter;
+          _decisionFilter == 'All' || review.decision == _decisionFilter;
 
       return matchesSearch && matchesDecision;
     }).toList();
 
-    final approved = _reviews
-        .where((r) => r.decision == 'Approved')
-        .length;
+    final approved = _reviews.where((r) => r.decision == 'Approved').length;
 
-    final rejected = _reviews
-        .where((r) => r.decision == 'Rejected')
-        .length;
+    final rejected = _reviews.where((r) => r.decision == 'Rejected').length;
 
     final resubmission = _reviews
         .where((r) => r.decision == 'Resubmission Requested')
@@ -106,20 +102,11 @@ class _ReviewHistoryPageState extends State<ReviewHistoryPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'KAISA / LGU ADMINISTRATION / VERIFICATION',
-                    style: TextStyle(
-                      color: _green,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 11,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
                     'Review History',
                     style: TextStyle(
+                      fontFamily: 'Poppins',
                       color: _ink,
-                      fontWeight: FontWeight.w900,
+                      fontWeight: FontWeight.w700,
                       fontSize: 29,
                     ),
                   ),
@@ -127,23 +114,18 @@ class _ReviewHistoryPageState extends State<ReviewHistoryPage> {
                   const Text(
                     'Review historical identity verification '
                     'decisions and reviewer notes.',
-                    style: TextStyle(
-                      color: _muted,
-                      fontSize: 13,
-                    ),
+                    style: TextStyle(color: _muted, fontSize: 13),
                   ),
                   const SizedBox(height: 20),
                   _notice(),
                   const SizedBox(height: 24),
                   LayoutBuilder(
                     builder: (context, constraints) {
-                      final columns =
-                          constraints.maxWidth >= 750 ? 3 : 1;
+                      final columns = constraints.maxWidth >= 750 ? 3 : 1;
                       const gap = 12.0;
                       final width =
-                          (constraints.maxWidth -
-                                  gap * (columns - 1)) /
-                              columns;
+                          (constraints.maxWidth - gap * (columns - 1)) /
+                          columns;
 
                       return Wrap(
                         spacing: gap,
@@ -179,11 +161,7 @@ class _ReviewHistoryPageState extends State<ReviewHistoryPage> {
                     'Live reviewer histories will require '
                     'an authorized audit trail and '
                     'backend-enforced access control.',
-                    style: TextStyle(
-                      color: _muted,
-                      fontSize: 11,
-                      height: 1.5,
-                    ),
+                    style: TextStyle(color: _muted, fontSize: 11, height: 1.5),
                   ),
                 ],
               ),
@@ -199,15 +177,12 @@ class _ReviewHistoryPageState extends State<ReviewHistoryPage> {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF8DE),
+        color: const Color(0xFFFFF3CF),
         borderRadius: BorderRadius.circular(13),
       ),
       child: const Row(
         children: [
-          Icon(
-            Icons.info_outline_rounded,
-            color: Color(0xFF92650D),
-          ),
+          Icon(Icons.info_outline_rounded, color: Color(0xFF92650D)),
           SizedBox(width: 12),
           Expanded(
             child: Text(
@@ -226,12 +201,7 @@ class _ReviewHistoryPageState extends State<ReviewHistoryPage> {
     );
   }
 
-  Widget _statCard(
-    String label,
-    String value,
-    IconData icon,
-    double width,
-  ) {
+  Widget _statCard(String label, String value, IconData icon, double width) {
     return Container(
       width: width,
       padding: const EdgeInsets.all(19),
@@ -239,24 +209,26 @@ class _ReviewHistoryPageState extends State<ReviewHistoryPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: _green, size: 26),
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: _soft,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(icon, color: _forest, size: 22),
+          ),
           const SizedBox(height: 16),
           Text(
             value,
             style: const TextStyle(
+              fontFamily: 'Poppins',
               fontSize: 29,
-              fontWeight: FontWeight.w900,
+              fontWeight: FontWeight.w700,
               color: _forest,
             ),
           ),
           const SizedBox(height: 5),
-          Text(
-            label,
-            style: const TextStyle(
-              color: _muted,
-              fontSize: 12,
-            ),
-          ),
+          Text(label, style: const TextStyle(color: _muted, fontSize: 12)),
         ],
       ),
     );
@@ -272,18 +244,16 @@ class _ReviewHistoryPageState extends State<ReviewHistoryPage> {
           const Text(
             'Verification Decision Records',
             style: TextStyle(
+              fontFamily: 'Poppins',
               color: _ink,
               fontSize: 18,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(height: 5),
           const Text(
             'Search or filter completed demo reviews.',
-            style: TextStyle(
-              color: _muted,
-              fontSize: 12,
-            ),
+            style: TextStyle(color: _muted, fontSize: 12),
           ),
           const SizedBox(height: 20),
           Wrap(
@@ -293,12 +263,14 @@ class _ReviewHistoryPageState extends State<ReviewHistoryPage> {
               SizedBox(
                 width: 310,
                 child: TextField(
-                  onChanged: (value) =>
-                      setState(() => _search = value),
+                  onChanged: (value) => setState(() => _search = value),
                   decoration: const InputDecoration(
                     hintText: 'Search name, ID, or reviewer',
                     prefixIcon: Icon(Icons.search_rounded),
-                    border: OutlineInputBorder(),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(12)),
+                      borderSide: BorderSide(color: _stroke),
+                    ),
                     isDense: true,
                   ),
                 ),
@@ -310,14 +282,14 @@ class _ReviewHistoryPageState extends State<ReviewHistoryPage> {
                   isExpanded: true,
                   decoration: const InputDecoration(
                     labelText: 'Decision',
-                    border: OutlineInputBorder(),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(12)),
+                      borderSide: BorderSide(color: _stroke),
+                    ),
                     isDense: true,
                   ),
                   items: const [
-                    DropdownMenuItem(
-                      value: 'All',
-                      child: Text('All'),
-                    ),
+                    DropdownMenuItem(value: 'All', child: Text('All')),
                     DropdownMenuItem(
                       value: 'Approved',
                       child: Text('Approved'),
@@ -333,9 +305,7 @@ class _ReviewHistoryPageState extends State<ReviewHistoryPage> {
                   ],
                   onChanged: (value) {
                     if (value != null) {
-                      setState(
-                        () => _decisionFilter = value,
-                      );
+                      setState(() => _decisionFilter = value);
                     }
                   },
                 ),
@@ -346,10 +316,7 @@ class _ReviewHistoryPageState extends State<ReviewHistoryPage> {
           Text(
             'Showing ${filtered.length} of '
             '${_reviews.length} demo reviews',
-            style: const TextStyle(
-              color: _muted,
-              fontSize: 12,
-            ),
+            style: const TextStyle(color: _muted, fontSize: 12),
           ),
           const SizedBox(height: 12),
           if (filtered.isEmpty)
@@ -366,8 +333,7 @@ class _ReviewHistoryPageState extends State<ReviewHistoryPage> {
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: DataTable(
-                headingRowColor:
-                    WidgetStateProperty.all(_soft),
+                headingRowColor: WidgetStateProperty.all(_soft),
                 columns: const [
                   DataColumn(label: Text('REVIEW ID')),
                   DataColumn(label: Text('APPLICATION ID')),
@@ -387,8 +353,7 @@ class _ReviewHistoryPageState extends State<ReviewHistoryPage> {
                         DataCell(Text(review.date)),
                         DataCell(
                           TextButton.icon(
-                            onPressed: () =>
-                                _showDetails(review),
+                            onPressed: () => _showDetails(review),
                             icon: const Icon(
                               Icons.visibility_outlined,
                               size: 17,
@@ -425,10 +390,7 @@ class _ReviewHistoryPageState extends State<ReviewHistoryPage> {
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 10,
-        vertical: 7,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
         color: background,
         borderRadius: BorderRadius.circular(8),
@@ -438,7 +400,7 @@ class _ReviewHistoryPageState extends State<ReviewHistoryPage> {
         style: TextStyle(
           color: textColor,
           fontSize: 11,
-          fontWeight: FontWeight.w800,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );
@@ -454,22 +416,15 @@ class _ReviewHistoryPageState extends State<ReviewHistoryPage> {
           child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
                   'Fictional review record',
-                  style: TextStyle(
-                    color: _green,
-                    fontWeight: FontWeight.w800,
-                  ),
+                  style: TextStyle(color: _green, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 18),
                 _detail('Review ID', review.id),
-                _detail(
-                  'Application ID',
-                  review.applicationId,
-                ),
+                _detail('Application ID', review.applicationId),
                 _detail('Applicant', review.applicant),
                 _detail('Decision', review.decision),
                 _detail('Reviewer', review.reviewer),
@@ -477,18 +432,12 @@ class _ReviewHistoryPageState extends State<ReviewHistoryPage> {
                 const Divider(height: 28),
                 const Text(
                   'Reviewer Notes',
-                  style: TextStyle(
-                    color: _ink,
-                    fontWeight: FontWeight.w800,
-                  ),
+                  style: TextStyle(color: _ink, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   review.notes,
-                  style: const TextStyle(
-                    color: _muted,
-                    height: 1.5,
-                  ),
+                  style: const TextStyle(color: _muted, height: 1.5),
                 ),
               ],
             ),
@@ -496,8 +445,7 @@ class _ReviewHistoryPageState extends State<ReviewHistoryPage> {
         ),
         actions: [
           TextButton(
-            onPressed: () =>
-                Navigator.pop(dialogContext),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Close'),
           ),
         ],
@@ -509,17 +457,13 @@ class _ReviewHistoryPageState extends State<ReviewHistoryPage> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 11),
       child: Row(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
             width: 125,
             child: Text(
               label,
-              style: const TextStyle(
-                color: _muted,
-                fontSize: 12,
-              ),
+              style: const TextStyle(color: _muted, fontSize: 12),
             ),
           ),
           Expanded(
@@ -528,7 +472,7 @@ class _ReviewHistoryPageState extends State<ReviewHistoryPage> {
               style: const TextStyle(
                 color: _ink,
                 fontSize: 12,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
@@ -538,10 +482,13 @@ class _ReviewHistoryPageState extends State<ReviewHistoryPage> {
   }
 
   BoxDecoration _surface() => BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: _stroke),
-      );
+    color: Colors.white,
+    borderRadius: BorderRadius.circular(22),
+    border: Border.all(color: _stroke),
+    boxShadow: const [
+      BoxShadow(color: Color(0x0A00492C), blurRadius: 24, offset: Offset(0, 8)),
+    ],
+  );
 }
 
 class _DemoReview {

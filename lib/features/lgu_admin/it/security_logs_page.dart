@@ -1,20 +1,18 @@
-
 import 'package:flutter/material.dart';
 
-const _forest = Color(0xFF14532D);
-const _green = Color(0xFF237A50);
-const _paper = Color(0xFFF8FAF8);
-const _ink = Color(0xFF173D2B);
-const _muted = Color(0xFF687B70);
-const _stroke = Color(0xFFE2EBE4);
-const _soft = Color(0xFFEAF5EE);
+const _forest = Color(0xFF00492C);
+const _green = Color(0xFF2A7F57);
+const _paper = Color(0xFFF4F4F0);
+const _ink = Color(0xFF0E3A27);
+const _muted = Color(0xFF6E7773);
+const _stroke = Color(0xFFECECE6);
+const _soft = Color(0xFFE3F1E9);
 
 class SecurityLogsPage extends StatefulWidget {
   const SecurityLogsPage({super.key});
 
   @override
-  State<SecurityLogsPage> createState() =>
-      _SecurityLogsPageState();
+  State<SecurityLogsPage> createState() => _SecurityLogsPageState();
 }
 
 class _SecurityLogsPageState extends State<SecurityLogsPage> {
@@ -81,8 +79,7 @@ class _SecurityLogsPageState extends State<SecurityLogsPage> {
           log.id.toLowerCase().contains(query) ||
           log.category.toLowerCase().contains(query);
 
-      final matchesSeverity =
-          _filter == 'All' || log.severity == _filter;
+      final matchesSeverity = _filter == 'All' || log.severity == _filter;
 
       return matchesSearch && matchesSeverity;
     }).toList();
@@ -91,9 +88,7 @@ class _SecurityLogsPageState extends State<SecurityLogsPage> {
         .where((log) => log.event == 'Failed login attempt')
         .length;
 
-    final highSeverity = _logs
-        .where((log) => log.severity == 'High')
-        .length;
+    final highSeverity = _logs.where((log) => log.severity == 'High').length;
 
     return ColoredBox(
       color: _paper,
@@ -107,21 +102,12 @@ class _SecurityLogsPageState extends State<SecurityLogsPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'KAISA / LGU ADMINISTRATION / IT',
-                    style: TextStyle(
-                      color: _green,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1.4,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
                     'Security Logs',
                     style: TextStyle(
+                      fontFamily: 'Poppins',
                       color: _ink,
                       fontSize: 29,
-                      fontWeight: FontWeight.w900,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                   const SizedBox(height: 7),
@@ -135,11 +121,10 @@ class _SecurityLogsPageState extends State<SecurityLogsPage> {
                   const SizedBox(height: 24),
                   LayoutBuilder(
                     builder: (context, constraints) {
-                      final columns =
-                          constraints.maxWidth >= 680 ? 3 : 1;
+                      final columns = constraints.maxWidth >= 680 ? 3 : 1;
                       const gap = 12.0;
-                      final width = (constraints.maxWidth -
-                              gap * (columns - 1)) /
+                      final width =
+                          (constraints.maxWidth - gap * (columns - 1)) /
                           columns;
 
                       return Wrap(
@@ -176,11 +161,7 @@ class _SecurityLogsPageState extends State<SecurityLogsPage> {
                     'must come from authorized server-side '
                     'logging services with appropriate access '
                     'controls and retention policies.',
-                    style: TextStyle(
-                      color: _muted,
-                      fontSize: 11,
-                      height: 1.5,
-                    ),
+                    style: TextStyle(color: _muted, fontSize: 11, height: 1.5),
                   ),
                 ],
               ),
@@ -196,25 +177,19 @@ class _SecurityLogsPageState extends State<SecurityLogsPage> {
       width: double.infinity,
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF8DE),
+        color: const Color(0xFFFFF3CF),
         borderRadius: BorderRadius.circular(13),
       ),
       child: const Row(
         children: [
-          Icon(
-            Icons.info_outline_rounded,
-            color: Color(0xFF92650D),
-          ),
+          Icon(Icons.info_outline_rounded, color: Color(0xFF92650D)),
           SizedBox(width: 11),
           Expanded(
             child: Text(
               'Development preview: these are fictional '
               'security events. No live authentication '
               'records are being accessed.',
-              style: TextStyle(
-                color: Color(0xFF73550E),
-                fontSize: 12,
-              ),
+              style: TextStyle(color: Color(0xFF73550E), fontSize: 12),
             ),
           ),
         ],
@@ -222,12 +197,7 @@ class _SecurityLogsPageState extends State<SecurityLogsPage> {
     );
   }
 
-  Widget _statCard(
-    String title,
-    String value,
-    IconData icon,
-    double width,
-  ) {
+  Widget _statCard(String title, String value, IconData icon, double width) {
     return Container(
       width: width,
       padding: const EdgeInsets.all(18),
@@ -235,24 +205,26 @@ class _SecurityLogsPageState extends State<SecurityLogsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: _green, size: 26),
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: _soft,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(icon, color: _forest, size: 22),
+          ),
           const SizedBox(height: 16),
           Text(
             value,
             style: const TextStyle(
+              fontFamily: 'Poppins',
               fontSize: 28,
-              fontWeight: FontWeight.w900,
+              fontWeight: FontWeight.w700,
               color: _forest,
             ),
           ),
           const SizedBox(height: 5),
-          Text(
-            title,
-            style: const TextStyle(
-              color: _muted,
-              fontSize: 12,
-            ),
-          ),
+          Text(title, style: const TextStyle(color: _muted, fontSize: 12)),
         ],
       ),
     );
@@ -268,9 +240,10 @@ class _SecurityLogsPageState extends State<SecurityLogsPage> {
           const Text(
             'Security Event Directory',
             style: TextStyle(
+              fontFamily: 'Poppins',
               color: _ink,
               fontSize: 18,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(height: 5),
@@ -286,12 +259,14 @@ class _SecurityLogsPageState extends State<SecurityLogsPage> {
               SizedBox(
                 width: 315,
                 child: TextField(
-                  onChanged: (value) =>
-                      setState(() => _search = value),
+                  onChanged: (value) => setState(() => _search = value),
                   decoration: const InputDecoration(
                     hintText: 'Search event, actor, or ID',
                     prefixIcon: Icon(Icons.search_rounded),
-                    border: OutlineInputBorder(),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(12)),
+                      borderSide: BorderSide(color: _stroke),
+                    ),
                     isDense: true,
                   ),
                 ),
@@ -302,26 +277,17 @@ class _SecurityLogsPageState extends State<SecurityLogsPage> {
                   initialValue: _filter,
                   decoration: const InputDecoration(
                     labelText: 'Severity',
-                    border: OutlineInputBorder(),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(12)),
+                      borderSide: BorderSide(color: _stroke),
+                    ),
                     isDense: true,
                   ),
                   items: const [
-                    DropdownMenuItem(
-                      value: 'All',
-                      child: Text('All'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'Info',
-                      child: Text('Info'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'Warning',
-                      child: Text('Warning'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'High',
-                      child: Text('High'),
-                    ),
+                    DropdownMenuItem(value: 'All', child: Text('All')),
+                    DropdownMenuItem(value: 'Info', child: Text('Info')),
+                    DropdownMenuItem(value: 'Warning', child: Text('Warning')),
+                    DropdownMenuItem(value: 'High', child: Text('High')),
                   ],
                   onChanged: (value) {
                     if (value != null) {
@@ -347,8 +313,7 @@ class _SecurityLogsPageState extends State<SecurityLogsPage> {
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: DataTable(
-                headingRowColor:
-                    WidgetStateProperty.all(_soft),
+                headingRowColor: WidgetStateProperty.all(_soft),
                 columns: const [
                   DataColumn(label: Text('EVENT ID')),
                   DataColumn(label: Text('EVENT')),
@@ -363,12 +328,7 @@ class _SecurityLogsPageState extends State<SecurityLogsPage> {
                     DataRow(
                       cells: [
                         DataCell(Text(log.id)),
-                        DataCell(
-                          SizedBox(
-                            width: 170,
-                            child: Text(log.event),
-                          ),
-                        ),
+                        DataCell(SizedBox(width: 170, child: Text(log.event))),
                         DataCell(Text(log.actor)),
                         DataCell(Text(log.category)),
                         DataCell(_severityTag(log.severity)),
@@ -403,10 +363,7 @@ class _SecurityLogsPageState extends State<SecurityLogsPage> {
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 10,
-        vertical: 6,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: background,
         borderRadius: BorderRadius.circular(8),
@@ -416,7 +373,7 @@ class _SecurityLogsPageState extends State<SecurityLogsPage> {
         style: TextStyle(
           color: color,
           fontSize: 11,
-          fontWeight: FontWeight.w800,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );
@@ -425,8 +382,15 @@ class _SecurityLogsPageState extends State<SecurityLogsPage> {
   BoxDecoration _surface() {
     return BoxDecoration(
       color: Colors.white,
-      borderRadius: BorderRadius.circular(15),
+      borderRadius: BorderRadius.circular(22),
       border: Border.all(color: _stroke),
+      boxShadow: const [
+        BoxShadow(
+          color: Color(0x0A00492C),
+          blurRadius: 24,
+          offset: Offset(0, 8),
+        ),
+      ],
     );
   }
 }

@@ -1,88 +1,89 @@
 import 'package:flutter/material.dart';
 
-/// KAISA palette: Premium emerald greens + vibrant sun yellows.
-/// Modernized for high contrast, deep dark-mode layering, and punchy accents.
-/// Legacy aliases (blue*, greenLight...) are kept so existing screens compile.
+/// KAISA palette — Cavite City LGU identity.
+/// Forest Depth (#00492C) for structure + Golden Pulse (#FBBA16) for action.
+/// Warm stone canvas (#F4F4F0) instead of stark white.
+/// Legacy aliases (blue*, greenLight, lime...) are kept so existing screens compile.
 class AppColors {
   AppColors._();
 
-  // Greens - Shifted to rich emerald and electric lime tones for a premium feel
-  static const forest =
-          Color(0xFF0A5C45), // Vibrant, clean emerald
-      deepForest =
-          Color(0xFF042B21), // Ultra-deep contrast
-      green =
-          Color(0xFF138A62), // Active, bright green
-      greenDark = forest,
-      lime =
-          Color(0xFFC5F279), // Trendy electric chartreuse
-      limeDark = Color(0xFF94C742),
-      mint =
-          Color(0xFFE6F7F1), // Crisper, cooler mint
-      cream =
-          Color(0xFFFDFBF7), // Warmer, elegant off-white
-      navy = Color(0xFF0C2B29); // Deep slate/teal
+  // ── Core brand ──────────────────────────────────────────────
+  static const forest = Color(0xFF00492C); // Forest Depth
+  static const deepForest = Color(0xFF00331F);
+  static const green = Color(0xFF1F8A5B); // success / positive
+  static const greenDark = forest;
+  static const sage = Color(0xFF7AA895); // chart secondary stroke
+  static const sageTrack = Color(0xFFE3EDE7); // pale ring / bar track
+  static const mint = Color(0xFFE8F1EC);
+  static const cream = Color(0xFFF4F4F0); // warm stone canvas
+  static const lime = Color(0xFFD9EBB5); // legacy: soft sage-lime
+  static const limeDark = Color(0xFF9CC25A);
+  static const navy = Color(0xFF0C2B20);
+  static const night = Color(0xFF00251A);
+  static const canopy = Color(0xFF0B6B45);
 
-  // Depth tones used by the misty hero backdrop
-  static const night =
-          Color(0xFF021C15), // Near-black pine
-      canopy =
-          Color(0xFF0B7555), // Rich mid-tone
-      sage = Color(0xFF87BCA2); // Soft, modern sage
+  // ── Golden Pulse ────────────────────────────────────────────
+  static const yellow = Color(0xFFFBBA16);
+  static const yellowDark = Color(0xFFD99A00);
+  static const yellowLight = Color(0xFFFFF3CF);
 
-  // Sun yellows - Warmed up for better contrast and glow
-  static const yellow =
-          Color(0xFFFFC837), // Punchy, golden yellow
-      yellowDark =
-          Color(0xFFE6A700), // Rich amber
-      yellowLight = Color(0xFFFFF6D6); // Soft pastel glow
+  // ── Neutrals (light) ────────────────────────────────────────
+  static const background = Color(0xFFF4F4F0);
+  static const surface = Colors.white;
+  static const surfaceSoft = Color(0xFFF4F4F0);
+  static const textPrimary = Color(0xFF0E3A27);
+  static const textSecondary = Color(0xFF6E7773);
+  static const textMuted = Color(0xFF9AA19D);
+  static const border = Color(0xFFECECE6); // hairline
 
-  // Neutrals (light mode) - Cooler off-whites for a cleaner, spacious look
-  static const background = Color(0xFFF4F7F5),
-      surface = Colors.white,
-      surfaceSoft = Color(0xFFEBF0EC),
-      textPrimary =
-          Color(0xFF0F1F18), // Deep green-tinted black (softer than pure black)
-      textSecondary = Color(0xFF556B60),
-      textMuted = Color(0xFF899E93),
-      border = Color(0xFFD7E3DA);
-
-  // Legacy aliases (Preserved)
+  // ── Legacy aliases ──────────────────────────────────────────
   static const blue = forest,
       blueDark = deepForest,
       blueLight = mint,
       greenLight = mint;
 
-  // Semantic
+  // ── Semantic ────────────────────────────────────────────────
   static const primary = forest,
       secondary = green,
       accent = yellow,
       success = green,
       warning = yellowDark,
-      error = Color(0xFFFF4D4D); // Modern, slightly coral red
+      error = Color(0xFFE5484D);
 
-  // Gradients - Adjusted for smoother, richer transitions
+  // ── Pastel status tints (pills, icon badges) ────────────────
+  static const tintGreen = Color(0xFFE3F1E9);
+  static const tintYellow = Color(0xFFFFF3CF);
+  static const tintBlue = Color(0xFFE4ECF8);
+  static const tintRed = Color(0xFFFBE4E4);
+
+  // ── Gradients ───────────────────────────────────────────────
   static const heroGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [deepForest, forest, green],
+    colors: [deepForest, forest, Color(0xFF0A5C3B)],
   );
 
   static const mistGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [night, deepForest, canopy],
+    colors: [night, deepForest, forest],
   );
 
   static const sunGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [Color(0xFFFFDF70), yellow, Color(0xFFFFB000)],
+    colors: [Color(0xFFFFD461), yellow, Color(0xFFF0A500)],
+  );
+
+  /// Auth backdrop: warm cream → pale sage.
+  static const authGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [Color(0xFFF7F4EA), Color(0xFFE3EDE7)],
   );
 }
 
-/// Theme-aware colors so every screen looks right in light AND dark mode.
-/// Read with `context.kc`.
+/// Theme-aware colors. Read with `context.kc`.
 @immutable
 class KaisaColors extends ThemeExtension<KaisaColors> {
   const KaisaColors({
@@ -98,26 +99,32 @@ class KaisaColors extends ThemeExtension<KaisaColors> {
     required this.onBrand,
     required this.accentSoft,
     required this.accentInk,
+    this.accent = AppColors.yellow,
+    this.onAccent = AppColors.forest,
+    this.deep = AppColors.forest,
   });
 
-  final Color page; // scaffold background
-  final Color sheet; // white bottom-sheet / web panel
+  final Color page; // scaffold background (warm stone)
+  final Color sheet; // bottom sheets, sidebar, dialogs
   final Color card; // raised cards
   final Color tile; // input fills, soft tiles
-  final Color stroke; // borders and dividers
+  final Color stroke; // hairline borders
   final Color ink; // primary text
   final Color inkSoft; // secondary text
   final Color inkMuted; // hints
-  final Color brand; // primary action colour
-  final Color onBrand; // text/icons on brand
+  final Color brand; // primary action (forest in light)
+  final Color onBrand;
   final Color accentSoft; // soft yellow surface
   final Color accentInk; // text on accentSoft
+  final Color accent; // Golden Pulse — CTAs, stars, highlights
+  final Color onAccent; // text on accent
+  final Color deep; // solid dark feature cards
 
   static const light = KaisaColors(
     page: AppColors.background,
     sheet: Colors.white,
     card: Colors.white,
-    tile: Color(0xFFF7FAF8), // Airy, almost-white tile fill
+    tile: Color(0xFFF4F4F0),
     stroke: AppColors.border,
     ink: AppColors.textPrimary,
     inkSoft: AppColors.textSecondary,
@@ -125,22 +132,28 @@ class KaisaColors extends ThemeExtension<KaisaColors> {
     brand: AppColors.forest,
     onBrand: Colors.white,
     accentSoft: AppColors.yellowLight,
-    accentInk: Color(0xFF755200), // Deep bronze for sharp readability
+    accentInk: Color(0xFF7A5600),
+    accent: AppColors.yellow,
+    onAccent: AppColors.forest,
+    deep: AppColors.forest,
   );
 
   static const dark = KaisaColors(
-    page: Color(0xFF07100D), // Ultra-deep midnight pine
-    sheet: Color(0xFF0E1A16), // Slightly elevated
-    card: Color(0xFF13241E), // Card elevation
-    tile: Color(0xFF1A2F27), // Interactive elements
-    stroke: Color(0xFF2A453A), // Subtle structural borders
-    ink: Color(0xFFF0F5F2), // Soft off-white to prevent eye strain
-    inkSoft: Color(0xFFA3BDAF), // Muted minty grey
-    inkMuted: Color(0xFF6D8579),
-    brand: AppColors.lime, // Electric neon pop in dark mode
-    onBrand: AppColors.deepForest, // Striking dark text on neon button
-    accentSoft: Color(0x26FFC837), // 15% opacity warm yellow
+    page: Color(0xFF0A1511),
+    sheet: Color(0xFF0F1D17),
+    card: Color(0xFF13241C),
+    tile: Color(0xFF1B2F26),
+    stroke: Color(0xFF28443A),
+    ink: Color(0xFFF0F4F1),
+    inkSoft: Color(0xFFA3B8AD),
+    inkMuted: Color(0xFF6F867A),
+    brand: AppColors.yellow, // golden pulse carries actions in dark mode
+    onBrand: AppColors.deepForest,
+    accentSoft: Color(0x26FBBA16),
     accentInk: AppColors.yellow,
+    accent: AppColors.yellow,
+    onAccent: AppColors.deepForest,
+    deep: Color(0xFF0A4A30),
   );
 
   @override
@@ -157,6 +170,9 @@ class KaisaColors extends ThemeExtension<KaisaColors> {
     Color? onBrand,
     Color? accentSoft,
     Color? accentInk,
+    Color? accent,
+    Color? onAccent,
+    Color? deep,
   }) {
     return KaisaColors(
       page: page ?? this.page,
@@ -171,6 +187,9 @@ class KaisaColors extends ThemeExtension<KaisaColors> {
       onBrand: onBrand ?? this.onBrand,
       accentSoft: accentSoft ?? this.accentSoft,
       accentInk: accentInk ?? this.accentInk,
+      accent: accent ?? this.accent,
+      onAccent: onAccent ?? this.onAccent,
+      deep: deep ?? this.deep,
     );
   }
 
@@ -191,6 +210,9 @@ class KaisaColors extends ThemeExtension<KaisaColors> {
       onBrand: l(onBrand, other.onBrand),
       accentSoft: l(accentSoft, other.accentSoft),
       accentInk: l(accentInk, other.accentInk),
+      accent: l(accent, other.accent),
+      onAccent: l(onAccent, other.onAccent),
+      deep: l(deep, other.deep),
     );
   }
 }

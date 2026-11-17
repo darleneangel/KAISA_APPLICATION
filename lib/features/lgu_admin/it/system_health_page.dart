@@ -1,21 +1,19 @@
-
 import 'package:flutter/material.dart';
 
-const _forest = Color(0xFF14532D);
-const _green = Color(0xFF237A50);
-const _paper = Color(0xFFF8FAF8);
-const _ink = Color(0xFF173D2B);
-const _muted = Color(0xFF687B70);
-const _stroke = Color(0xFFE2EBE4);
-const _soft = Color(0xFFEAF5EE);
-const _gold = Color(0xFFFBC02D);
+const _forest = Color(0xFF00492C);
+const _green = Color(0xFF2A7F57);
+const _paper = Color(0xFFF4F4F0);
+const _ink = Color(0xFF0E3A27);
+const _muted = Color(0xFF6E7773);
+const _stroke = Color(0xFFECECE6);
+const _soft = Color(0xFFE3F1E9);
+const _gold = Color(0xFFFBBA16);
 
 class SystemHealthPage extends StatefulWidget {
   const SystemHealthPage({super.key});
 
   @override
-  State<SystemHealthPage> createState() =>
-      _SystemHealthPageState();
+  State<SystemHealthPage> createState() => _SystemHealthPageState();
 }
 
 class _SystemHealthPageState extends State<SystemHealthPage> {
@@ -66,19 +64,16 @@ class _SystemHealthPageState extends State<SystemHealthPage> {
         .where((s) => s.status == 'Operational')
         .length;
 
-    final degraded = _services
-        .where((s) => s.status == 'Degraded')
-        .length;
+    final degraded = _services.where((s) => s.status == 'Degraded').length;
 
-    final unknown = _services
-        .where((s) => s.status == 'Unknown')
-        .length;
+    final unknown = _services.where((s) => s.status == 'Unknown').length;
 
-    final filtered = _services.where(
-      (service) =>
-          _selectedFilter == 'All' ||
-          service.status == _selectedFilter,
-    ).toList();
+    final filtered = _services
+        .where(
+          (service) =>
+              _selectedFilter == 'All' || service.status == _selectedFilter,
+        )
+        .toList();
 
     return ColoredBox(
       color: _paper,
@@ -87,27 +82,16 @@ class _SystemHealthPageState extends State<SystemHealthPage> {
         children: [
           Center(
             child: ConstrainedBox(
-              constraints:
-                  const BoxConstraints(maxWidth: 1260),
+              constraints: const BoxConstraints(maxWidth: 1260),
               child: Column(
-                crossAxisAlignment:
-                    CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'KAISA / LGU ADMINISTRATION / IT',
-                    style: TextStyle(
-                      color: _green,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 11,
-                      letterSpacing: 1.4,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
                   const Text(
                     'System Health',
                     style: TextStyle(
+                      fontFamily: 'Poppins',
                       color: _ink,
-                      fontWeight: FontWeight.w900,
+                      fontWeight: FontWeight.w700,
                       fontSize: 29,
                     ),
                   ),
@@ -115,24 +99,18 @@ class _SystemHealthPageState extends State<SystemHealthPage> {
                   const Text(
                     'Monitor platform availability, '
                     'service status, and system diagnostics.',
-                    style: TextStyle(
-                      color: _muted,
-                      fontSize: 13,
-                    ),
+                    style: TextStyle(color: _muted, fontSize: 13),
                   ),
                   const SizedBox(height: 20),
                   _notice(),
                   const SizedBox(height: 24),
                   LayoutBuilder(
                     builder: (context, constraints) {
-                      final columns =
-                          constraints.maxWidth >= 700
-                              ? 3
-                              : 1;
+                      final columns = constraints.maxWidth >= 700 ? 3 : 1;
                       const gap = 12.0;
                       final width =
-                          (constraints.maxWidth -
-                              gap * (columns - 1)) / columns;
+                          (constraints.maxWidth - gap * (columns - 1)) /
+                          columns;
 
                       return Wrap(
                         spacing: gap,
@@ -174,44 +152,34 @@ class _SystemHealthPageState extends State<SystemHealthPage> {
   }
 
   Widget _notice() => Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: const Color(0xFFFFF8DE),
-          borderRadius: BorderRadius.circular(13),
-          border: Border.all(
-            color: const Color(0xFFF1E3A7),
+    width: double.infinity,
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: const Color(0xFFFFF3CF),
+      borderRadius: BorderRadius.circular(13),
+      border: Border.all(color: const Color(0xFFF3D98A)),
+    ),
+    child: const Row(
+      children: [
+        Icon(Icons.info_outline_rounded, color: Color(0xFF92650D)),
+        SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            'DEVELOPMENT PREVIEW — All service statuses '
+            'below are fictional. This page does not '
+            'check Supabase uptime or production health.',
+            style: TextStyle(
+              color: Color(0xFF73550E),
+              fontSize: 12,
+              height: 1.5,
+            ),
           ),
         ),
-        child: const Row(
-          children: [
-            Icon(
-              Icons.info_outline_rounded,
-              color: Color(0xFF92650D),
-            ),
-            SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                'DEVELOPMENT PREVIEW — All service statuses '
-                'below are fictional. This page does not '
-                'check Supabase uptime or production health.',
-                style: TextStyle(
-                  color: Color(0xFF73550E),
-                  fontSize: 12,
-                  height: 1.5,
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
+      ],
+    ),
+  );
 
-  Widget _stat(
-    String label,
-    String count,
-    IconData icon,
-    double width,
-  ) =>
+  Widget _stat(String label, String count, IconData icon, double width) =>
       Container(
         width: width,
         padding: const EdgeInsets.all(20),
@@ -219,24 +187,26 @@ class _SystemHealthPageState extends State<SystemHealthPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, color: _green, size: 27),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: _soft,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(icon, color: _forest, size: 22),
+            ),
             const SizedBox(height: 17),
             Text(
               count,
               style: const TextStyle(
+                fontFamily: 'Poppins',
                 color: _forest,
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.w700,
                 fontSize: 29,
               ),
             ),
             const SizedBox(height: 5),
-            Text(
-              label,
-              style: const TextStyle(
-                color: _muted,
-                fontSize: 12,
-              ),
-            ),
+            Text(label, style: const TextStyle(color: _muted, fontSize: 12)),
           ],
         ),
       );
@@ -251,18 +221,16 @@ class _SystemHealthPageState extends State<SystemHealthPage> {
           const Text(
             'Service Monitoring',
             style: TextStyle(
+              fontFamily: 'Poppins',
               color: _ink,
               fontSize: 18,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(height: 5),
           const Text(
             'Example services and their sample status.',
-            style: TextStyle(
-              color: _muted,
-              fontSize: 12,
-            ),
+            style: TextStyle(color: _muted, fontSize: 12),
           ),
           const SizedBox(height: 18),
           SizedBox(
@@ -272,21 +240,20 @@ class _SystemHealthPageState extends State<SystemHealthPage> {
               isExpanded: true,
               decoration: const InputDecoration(
                 labelText: 'Filter by status',
-                border: OutlineInputBorder(),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(12)),
+                  borderSide: BorderSide(color: _stroke),
+                ),
                 isDense: true,
               ),
               items: const [
+                DropdownMenuItem(value: 'All', child: Text('All')),
                 DropdownMenuItem(
-                    value: 'All', child: Text('All')),
-                DropdownMenuItem(
-                    value: 'Operational',
-                    child: Text('Operational')),
-                DropdownMenuItem(
-                    value: 'Degraded',
-                    child: Text('Degraded')),
-                DropdownMenuItem(
-                    value: 'Unknown',
-                    child: Text('Unknown')),
+                  value: 'Operational',
+                  child: Text('Operational'),
+                ),
+                DropdownMenuItem(value: 'Degraded', child: Text('Degraded')),
+                DropdownMenuItem(value: 'Unknown', child: Text('Unknown')),
               ],
               onChanged: (value) {
                 if (value != null) {
@@ -336,11 +303,7 @@ class _SystemHealthPageState extends State<SystemHealthPage> {
             color: _soft,
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Icon(
-            service.icon,
-            color: _forest,
-            size: 23,
-          ),
+          child: Icon(service.icon, color: _forest, size: 23),
         ),
         const SizedBox(width: 13),
         Expanded(
@@ -351,17 +314,14 @@ class _SystemHealthPageState extends State<SystemHealthPage> {
                 service.name,
                 style: const TextStyle(
                   color: _ink,
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w600,
                   fontSize: 13,
                 ),
               ),
               const SizedBox(height: 4),
               Text(
                 service.description,
-                style: const TextStyle(
-                  color: _muted,
-                  fontSize: 11,
-                ),
+                style: const TextStyle(color: _muted, fontSize: 11),
               ),
             ],
           ),
@@ -373,7 +333,7 @@ class _SystemHealthPageState extends State<SystemHealthPage> {
             textAlign: TextAlign.end,
             style: TextStyle(
               color: statusColor,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w600,
               fontSize: 12,
             ),
           ),
@@ -392,9 +352,10 @@ class _SystemHealthPageState extends State<SystemHealthPage> {
           Text(
             'Production Monitoring Requirements',
             style: TextStyle(
+              fontFamily: 'Poppins',
               color: _ink,
               fontSize: 17,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w600,
             ),
           ),
           SizedBox(height: 13),
@@ -404,27 +365,19 @@ class _SystemHealthPageState extends State<SystemHealthPage> {
             'latency, database health, and backup status. '
             'Sensitive infrastructure diagnostics must '
             'be retrieved from trusted backend services.',
-            style: TextStyle(
-              color: _muted,
-              fontSize: 12,
-              height: 1.6,
-            ),
+            style: TextStyle(color: _muted, fontSize: 12, height: 1.6),
           ),
           SizedBox(height: 12),
           Row(
             children: [
-              Icon(
-                Icons.circle,
-                color: _gold,
-                size: 11,
-              ),
+              Icon(Icons.circle, color: _gold, size: 11),
               SizedBox(width: 8),
               Expanded(
                 child: Text(
                   'Monitoring integration: Not configured',
                   style: TextStyle(
                     color: _forest,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w600,
                     fontSize: 12,
                   ),
                 ),
@@ -437,10 +390,13 @@ class _SystemHealthPageState extends State<SystemHealthPage> {
   }
 
   BoxDecoration _surface() => BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: _stroke),
-      );
+    color: Colors.white,
+    borderRadius: BorderRadius.circular(22),
+    border: Border.all(color: _stroke),
+    boxShadow: const [
+      BoxShadow(color: Color(0x0A00492C), blurRadius: 24, offset: Offset(0, 8)),
+    ],
+  );
 }
 
 class _DemoService {

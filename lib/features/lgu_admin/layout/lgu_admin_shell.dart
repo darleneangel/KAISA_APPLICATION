@@ -1,26 +1,27 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../dashboard/lgu_it_dashboard_page.dart';
-
 import '../../../shared/models/lgu_admin_role.dart';
 import '../../../shared/models/lgu_admin_preview.dart';
 
-const _forest = Color(0xFF14532D);
-const _green = Color(0xFF237A50);
-const _paper = Color(0xFFF8FAF8);
-const _ink = Color(0xFF173D2B);
-const _muted = Color(0xFF687B70);
-const _gold = Color(0xFFFBC02D);
-const _stroke = Color(0xFFE2EBE4);
+// KAISA | LGU shared layout. UI only: no changes to authentication,
+// backend data, feature pages, route configuration, or inactivity guard.
+const _forest = Color(0xFF103F2C);
+const _deep = Color(0xFF092D23);
+const _green = Color(0xFF24774E);
+const _yellow = Color(0xFFFFCC40);
+const _paper = Color(0xFFF5F8F4);
+const _ink = Color(0xFF183B2B);
+const _muted = Color(0xFF778A7C);
+const _stroke = Color(0xFFE2EAE3);
 
 class LguAdminShell extends StatelessWidget {
   final Widget child;
-
   const LguAdminShell({super.key, required this.child});
 
-  static const _operationsItems = [
+  static const _operationsItems = <_NavItem>[
     _NavItem('Overview', Icons.dashboard_rounded, '/lgu-admin/dashboard'),
     _NavItem(
       'Organizations',
@@ -42,7 +43,7 @@ class LguAdminShell extends StatelessWidget {
     _NavItem('Settings', Icons.settings_rounded, '/lgu-admin/settings'),
   ];
 
-  static const _itItems = [
+  static const _itItems = <_NavItem>[
     _NavItem('Overview', Icons.dashboard_rounded, '/lgu-admin/dashboard'),
     _NavItem(
       'Account Management',
@@ -54,25 +55,21 @@ class LguAdminShell extends StatelessWidget {
       Icons.admin_panel_settings_rounded,
       '/lgu-admin/it/roles',
     ),
-
     _NavItem(
       'Security Logs',
       Icons.security_rounded,
       '/lgu-admin/it/security-logs',
     ),
-
     _NavItem(
       'Backup & Recovery',
       Icons.backup_outlined,
       '/lgu-admin/it/backup-recovery',
     ),
-
     _NavItem(
       'System Health',
       Icons.monitor_heart_outlined,
       '/lgu-admin/it/system-health',
     ),
-
     _NavItem(
       'System Settings',
       Icons.settings_suggest_outlined,
@@ -80,7 +77,7 @@ class LguAdminShell extends StatelessWidget {
     ),
   ];
 
-  static const _verificationItems = [
+  static const _verificationItems = <_NavItem>[
     _NavItem(
       'Overview',
       Icons.dashboard_rounded,
@@ -109,43 +106,45 @@ class LguAdminShell extends StatelessWidget {
       valueListenable: LguAdminPreview.selectedRole,
       builder: (context, previewRole, _) {
         final user = Supabase.instance.client.auth.currentUser;
-        final assignedRole = user?.appMetadata['kaisa_lgu_role'];
+        final meta = user?.appMetadata;
+        // Only interpret assigned roles if the server-managed flag is set.
+        // The router and backend must independently enforce access control.
+        String? assignedRole;
 
+        if (meta?['is_super_admin'] == true) {
+          assignedRole = meta?['kaisa_lgu_role'] as String?;
+        }
         final LguAdminRole? authenticatedRole = switch (assignedRole) {
           'lgu_it_admin' => LguAdminRole.it,
           'lgu_verification_admin' => LguAdminRole.verification,
           'lgu_operations_admin' => LguAdminRole.operations,
           _ => null,
         };
-
         final role = authenticatedRole ?? previewRole;
-
-        final desktop = MediaQuery.sizeOf(context).width >= 1000;
-
         final path = GoRouterState.of(context).uri.path;
+        final desktop = MediaQuery.sizeOf(context).width >= 1000;
+        final items = switch (role) {
+          LguAdminRole.it => _itItems,
+          LguAdminRole.verification => _verificationItems,
+          LguAdminRole.operations => _operationsItems,
+        };
+        final matching = items.where((item) => item.path == path);
 
-        final items = role == LguAdminRole.operations
-            ? _operationsItems
-            : role == LguAdminRole.it
-            ? _itItems
-            : _verificationItems;
+        String title = 'Overview';
 
-        final selected = items.where((item) => item.path == path);
+        if (path == '/lgu-admin/profile') {
+          title = 'Administrator Profile';
+        } else if (path.startsWith('/lgu-admin/verification/review/')) {
+          title = 'Identity Review';
+        } else if (matching.isNotEmpty) {
+          title = matching.first.title;
+        }
 
-        final title = path.startsWith('/lgu-admin/verification/review/')
-            ? 'Identity Review'
-            : selected.isNotEmpty
-            ? selected.first.title
-            : 'Overview';
-
-        // Preview only: IT and Verification currently have
-
-        // Avoid showing Operations content under a different
-        // preview role, even if someone opens the URL directly.
-
+        // Existing role-specific content behavior, preserved.
         final Widget content;
-
-        if (role == LguAdminRole.operations) {
+        if (path == '/lgu-admin/profile') {
+          content = child;
+        } else if (role == LguAdminRole.operations) {
           content =
               path.startsWith('/lgu-admin/it/') ||
                   path.startsWith('/lgu-admin/verification/')
@@ -154,27 +153,27 @@ class LguAdminShell extends StatelessWidget {
         } else if (role == LguAdminRole.it) {
           if (path == '/lgu-admin/dashboard') {
             content = const LguItDashboardPage();
-          } else if (path == '/lgu-admin/it/accounts' ||
-              path == '/lgu-admin/it/roles' ||
-              path == '/lgu-admin/it/security-logs' ||
-              path == '/lgu-admin/it/system-health' ||
-              path == '/lgu-admin/it/backup-recovery' ||
-              path == '/lgu-admin/it/system-settings') {
+          } else if (const <String>{
+            '/lgu-admin/it/accounts',
+            '/lgu-admin/it/roles',
+            '/lgu-admin/it/security-logs',
+            '/lgu-admin/it/system-health',
+            '/lgu-admin/it/backup-recovery',
+            '/lgu-admin/it/system-settings',
+          }.contains(path)) {
             content = child;
           } else {
             content = const _PreviewUnavailable();
           }
         } else {
-          // Verification Administrator
-          if (path == '/lgu-admin/verification/dashboard' ||
-              path == '/lgu-admin/verification/applications' ||
-              path == '/lgu-admin/verification/history' ||
-              path == '/lgu-admin/verification/reports' ||
-              path.startsWith('/lgu-admin/verification/review/')) {
-            content = child;
-          } else {
-            content = const _PreviewUnavailable();
-          }
+          content =
+              path == '/lgu-admin/verification/dashboard' ||
+                  path == '/lgu-admin/verification/applications' ||
+                  path == '/lgu-admin/verification/history' ||
+                  path == '/lgu-admin/verification/reports' ||
+                  path.startsWith('/lgu-admin/verification/review/')
+              ? child
+              : const _PreviewUnavailable();
         }
 
         return Scaffold(
@@ -182,34 +181,35 @@ class LguAdminShell extends StatelessWidget {
           drawer: desktop
               ? null
               : Drawer(
-                  backgroundColor: _forest,
-                  child: _navigation(
+                  width: 292,
+                  backgroundColor: _deep,
+                  child: _sidebar(
                     context,
                     path,
                     role,
                     items,
-                    mobile: true,
                     authenticatedRole: authenticatedRole,
+                    mobile: true,
                   ),
                 ),
           body: Row(
             children: [
               if (desktop)
                 SizedBox(
-                  width: 268,
-                  child: _navigation(
+                  width: 280,
+                  child: _sidebar(
                     context,
                     path,
                     role,
                     items,
-                    mobile: false,
                     authenticatedRole: authenticatedRole,
+                    mobile: false,
                   ),
                 ),
               Expanded(
                 child: Column(
                   children: [
-                    _topBar('$title · ${role.label}', desktop),
+                    _topBar(title, role, desktop, user?.email),
                     Expanded(child: content),
                   ],
                 ),
@@ -221,42 +221,47 @@ class LguAdminShell extends StatelessWidget {
     );
   }
 
-  Widget _navigation(
+  Widget _sidebar(
     BuildContext context,
     String path,
     LguAdminRole role,
     List<_NavItem> items, {
-    required bool mobile,
     required LguAdminRole? authenticatedRole,
+    required bool mobile,
   }) {
-    return ColoredBox(
-      color: _forest,
+    final hasAssignedRole = authenticatedRole != null;
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [_forest, _deep],
+        ),
+      ),
       child: SafeArea(
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(22, 28, 18, 25),
+              padding: const EdgeInsets.fromLTRB(21, 29, 16, 25),
               child: Row(
                 children: [
                   Container(
-                    height: 51,
-                    width: 51,
-                    padding: const EdgeInsets.all(5),
+                    width: 54,
+                    height: 54,
+                    padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(15),
+                      borderRadius: BorderRadius.circular(17),
                     ),
                     child: Image.asset(
                       'assets/images/kaisa_logo.png',
                       fit: BoxFit.contain,
-                      errorBuilder: (context, error, stackTrace) => const Icon(
-                        Icons.diversity_3_rounded,
-                        color: _green,
-                        size: 30,
-                      ),
+                      errorBuilder: (_, __, ___) =>
+                          const Icon(Icons.diversity_3_rounded, color: _forest),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 13),
                   const Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -265,18 +270,19 @@ class LguAdminShell extends StatelessWidget {
                           'KAISA',
                           style: TextStyle(
                             color: Colors.white,
+                            fontSize: 25,
                             fontWeight: FontWeight.w900,
-                            fontSize: 24,
+                            letterSpacing: .6,
                           ),
                         ),
-                        SizedBox(height: 3),
+                        SizedBox(height: 2),
                         Text(
                           'LGU ADMINISTRATION',
                           style: TextStyle(
-                            color: Color(0xFFC3DDCE),
-                            letterSpacing: 1.1,
-                            fontWeight: FontWeight.w700,
+                            color: Color(0xFFA9CFBA),
                             fontSize: 9,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1.5,
                           ),
                         ),
                       ],
@@ -285,144 +291,183 @@ class LguAdminShell extends StatelessWidget {
                 ],
               ),
             ),
-
-            // Developer-only role selector.
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 14),
               child: Container(
-                padding: const EdgeInsets.all(12),
+                width: double.infinity,
+                padding: const EdgeInsets.all(13),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: .09),
-                  borderRadius: BorderRadius.circular(13),
+                  color: Colors.white.withValues(alpha: .075),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: .10),
+                  ),
+                  borderRadius: BorderRadius.circular(17),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'PREVIEW ADMIN ROLE',
-                      style: TextStyle(
-                        color: Color(0xFFC3DDCE),
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 1,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    DropdownButtonFormField<LguAdminRole>(
-                      key: ValueKey(role),
-                      initialValue: role,
-                      isExpanded: true,
-                      dropdownColor: Colors.white,
-                      style: const TextStyle(
-                        color: _forest,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                      ),
-                      decoration: InputDecoration(
-                        filled: true,
-                        fillColor: Colors.white,
-                        isDense: true,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 12,
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.verified_user_outlined,
+                          color: _yellow,
+                          size: 18,
                         ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(9),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                      items: [
-                        for (final option in LguAdminRole.values)
-                          DropdownMenuItem(
-                            value: option,
-                            child: Text(option.label),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            hasAssignedRole
+                                ? 'ASSIGNED ADMIN ROLE'
+                                : 'PREVIEW ADMIN ROLE',
+                            style: const TextStyle(
+                              color: Color(0xFFB6D4C1),
+                              fontWeight: FontWeight.w800,
+                              fontSize: 10,
+                              letterSpacing: .8,
+                            ),
                           ),
+                        ),
                       ],
-
-                      onChanged: authenticatedRole != null
-                          ? null
-                          : (value) {
-                              if (value == null) return;
-
-                              LguAdminPreview.selectedRole.value = value;
-
-                              GoRouter.of(context).go(
-                                value == LguAdminRole.verification
-                                    ? '/lgu-admin/verification/dashboard'
-                                    : '/lgu-admin/dashboard',
-                              );
-                            },
                     ),
-                    const SizedBox(height: 7),
-                    const Text(
-                      'UI preview only · Not a real permission',
-                      style: TextStyle(color: Color(0xFFC3DDCE), fontSize: 10),
+                    const SizedBox(height: 10),
+                    if (hasAssignedRole)
+                      Text(
+                        role.label,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 14,
+                        ),
+                      )
+                    else
+                      DropdownButtonFormField<LguAdminRole>(
+                        key: ValueKey(role),
+                        initialValue: role,
+                        isExpanded: true,
+                        dropdownColor: Colors.white,
+                        style: const TextStyle(
+                          color: _forest,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
+                        ),
+                        decoration: InputDecoration(
+                          filled: true,
+                          fillColor: Colors.white,
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 12,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                        items: [
+                          for (final option in LguAdminRole.values)
+                            DropdownMenuItem(
+                              value: option,
+                              child: Text(option.label),
+                            ),
+                        ],
+                        onChanged: (value) {
+                          if (value == null) return;
+                          LguAdminPreview.selectedRole.value = value;
+                          context.go(
+                            value == LguAdminRole.verification
+                                ? '/lgu-admin/verification/dashboard'
+                                : '/lgu-admin/dashboard',
+                          );
+                        },
+                      ),
+                    const SizedBox(height: 8),
+                    Text(
+                      hasAssignedRole
+                          ? 'Verified account assignment'
+                          : 'UI preview only · Not a real permission',
+                      style: const TextStyle(
+                        color: Color(0xFFA9CFBA),
+                        fontSize: 10,
+                      ),
                     ),
                   ],
                 ),
               ),
             ),
-
-            const SizedBox(height: 25),
-
+            const SizedBox(height: 30),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(25, 0, 20, 13),
+              child: Text(
+                'WORKSPACE',
+                style: TextStyle(
+                  color: Color(0xFFA9CFBA),
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.8,
+                ),
+              ),
+            ),
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 13),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
                 children: [
-                  const Padding(
-                    padding: EdgeInsets.fromLTRB(13, 0, 13, 14),
-                    child: Text(
-                      'WORKSPACE',
-                      style: TextStyle(
-                        color: Color(0xFFA8D5B9),
-                        letterSpacing: 1.6,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 10,
-                      ),
-                    ),
-                  ),
                   for (final item in items)
-                    _navigationLink(context, item, path, mobile),
+                    _sidebarLink(context, item, path, mobile),
                 ],
               ),
             ),
-
-            Container(
-              padding: const EdgeInsets.all(17),
-              decoration: const BoxDecoration(
-                border: Border(top: BorderSide(color: Color(0xFF3D7353))),
-              ),
-              child: Row(
-                children: [
-                  const CircleAvatar(
-                    backgroundColor: _gold,
-                    child: Icon(Icons.shield_outlined, color: _forest),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 10, 14, 16),
+              child: Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: .075),
+                  borderRadius: BorderRadius.circular(17),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: .08),
                   ),
-                  const SizedBox(width: 11),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          role.label,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        const SizedBox(height: 3),
-                        const Text(
-                          'Development preview',
-                          style: TextStyle(
-                            color: Color(0xFFC3DDCE),
-                            fontSize: 11,
-                          ),
-                        ),
-                      ],
+                ),
+                child: Row(
+                  children: [
+                    const CircleAvatar(
+                      radius: 19,
+                      backgroundColor: _yellow,
+                      child: Icon(
+                        Icons.shield_outlined,
+                        color: _deep,
+                        size: 21,
+                      ),
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 11),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            role.label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            hasAssignedRole
+                                ? 'LGU Administrator'
+                                : 'Development preview',
+                            style: const TextStyle(
+                              color: Color(0xFFA9CFBA),
+                              fontSize: 10,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -431,39 +476,32 @@ class LguAdminShell extends StatelessWidget {
     );
   }
 
-  Widget _navigationLink(
+  Widget _sidebarLink(
     BuildContext context,
     _NavItem item,
     String path,
     bool mobile,
   ) {
     final selected = item.path == path;
-
     return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.only(bottom: 5),
       child: Material(
-        color: selected
-            ? Colors.white.withValues(alpha: .13)
-            : Colors.transparent,
+        color: selected ? _green : Colors.transparent,
         borderRadius: BorderRadius.circular(13),
         child: InkWell(
           borderRadius: BorderRadius.circular(13),
           onTap: () {
-            if (mobile) {
-              Navigator.of(context).pop();
-            }
-            if (path != item.path) {
-              context.go(item.path);
-            }
+            if (mobile) Navigator.of(context).pop();
+            if (path != item.path) context.go(item.path);
           },
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
             child: Row(
               children: [
                 Icon(
                   item.icon,
-                  size: 21,
-                  color: selected ? _gold : const Color(0xFFD1E8D9),
+                  size: 20,
+                  color: selected ? _yellow : const Color(0xFFC4DCCD),
                 ),
                 const SizedBox(width: 13),
                 Expanded(
@@ -481,7 +519,7 @@ class LguAdminShell extends StatelessWidget {
                     width: 5,
                     height: 5,
                     decoration: const BoxDecoration(
-                      color: _gold,
+                      color: _yellow,
                       shape: BoxShape.circle,
                     ),
                   ),
@@ -493,10 +531,10 @@ class LguAdminShell extends StatelessWidget {
     );
   }
 
-  Widget _topBar(String title, bool desktop) {
+  Widget _topBar(String title, LguAdminRole role, bool desktop, String? email) {
     return Container(
-      height: 76,
-      padding: const EdgeInsets.symmetric(horizontal: 22),
+      height: 78,
+      padding: const EdgeInsets.symmetric(horizontal: 24),
       decoration: const BoxDecoration(
         color: Colors.white,
         border: Border(bottom: BorderSide(color: _stroke)),
@@ -506,115 +544,138 @@ class LguAdminShell extends StatelessWidget {
           children: [
             if (!desktop) ...[
               IconButton(
+                tooltip: 'Open navigation',
                 onPressed: () => Scaffold.of(context).openDrawer(),
                 icon: const Icon(Icons.menu_rounded, color: _forest),
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 8),
             ],
-
             Expanded(
-              child: Text(
-                title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: _ink,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w900,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: _ink,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    role.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: _muted, fontSize: 11),
+                  ),
+                ],
+              ),
+            ),
+            if (desktop) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 11,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF0F7F2),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.shield_outlined, color: _green, size: 16),
+                    SizedBox(width: 7),
+                    Text(
+                      'LGU PORTAL',
+                      style: TextStyle(
+                        color: _green,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 10,
+                        letterSpacing: 1,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ),
-
-            const Icon(Icons.shield_outlined, color: _green, size: 18),
-            const SizedBox(width: 8),
-            const Text(
-              'LGU Portal',
-              style: TextStyle(
-                color: _muted,
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-
-            const SizedBox(width: 16),
-
-            // Profile dropdown: View Profile / Log Out
+              const SizedBox(width: 18),
+            ],
             PopupMenuButton<String>(
-              tooltip: 'Administrator Account',
-              offset: const Offset(0, 45),
+              tooltip: 'Administrator account',
+              offset: const Offset(0, 48),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(15),
               ),
               onSelected: (value) async {
                 if (value == 'profile') {
                   context.go('/lgu-admin/profile');
                   return;
                 }
-
-                if (value == 'logout') {
-                  final shouldLogout = await showDialog<bool>(
-                    context: context,
-                    builder: (dialogContext) => AlertDialog(
-                      title: const Text('Log out of KAISA?'),
-                      content: const Text(
-                        'Are you sure you want to '
-                        'sign out of your Superadmin account?',
+                if (value != 'logout') return;
+                final confirm = await showDialog<bool>(
+                  context: context,
+                  builder: (dialogContext) => AlertDialog(
+                    title: const Text('Log out of KAISA?'),
+                    content: const Text(
+                      'Are you sure you want to sign out '
+                      'of your administrator account?',
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(dialogContext, false),
+                        child: const Text('Cancel'),
                       ),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(dialogContext, false),
-                          child: const Text('Cancel'),
-                        ),
-                        FilledButton(
-                          onPressed: () => Navigator.pop(dialogContext, true),
-                          child: const Text('Log Out'),
-                        ),
-                      ],
+                      FilledButton(
+                        onPressed: () => Navigator.pop(dialogContext, true),
+                        child: const Text('Log Out'),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirm != true || !context.mounted) return;
+                try {
+                  await Supabase.instance.client.auth.signOut();
+                  if (context.mounted) context.go('/login');
+                } catch (_) {
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Unable to log out. Please try again.'),
                     ),
                   );
-
-                  if (shouldLogout != true || !context.mounted) {
-                    return;
-                  }
-
-                  try {
-                    await Supabase.instance.client.auth.signOut();
-
-                    if (context.mounted) {
-                      context.go('/login');
-                    }
-                  } catch (error) {
-                    if (!context.mounted) return;
-
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'Unable to log out. '
-                          'Please try again.',
-                        ),
-                      ),
-                    );
-                  }
                 }
               },
-              itemBuilder: (context) => [
+              itemBuilder: (_) => [
+                if (email != null)
+                  PopupMenuItem<String>(
+                    enabled: false,
+                    child: Text(
+                      email,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: _muted, fontSize: 12),
+                    ),
+                  ),
+                const PopupMenuDivider(),
                 const PopupMenuItem<String>(
                   value: 'profile',
                   child: Row(
                     children: [
                       Icon(Icons.person_outline_rounded, color: _forest),
-                      SizedBox(width: 12),
+                      SizedBox(width: 10),
                       Text('View Profile'),
                     ],
                   ),
                 ),
-                const PopupMenuDivider(),
                 const PopupMenuItem<String>(
                   value: 'logout',
                   child: Row(
                     children: [
                       Icon(Icons.logout_rounded, color: Color(0xFFB42318)),
-                      SizedBox(width: 12),
+                      SizedBox(width: 10),
                       Text(
                         'Log Out',
                         style: TextStyle(color: Color(0xFFB42318)),
@@ -623,10 +684,24 @@ class LguAdminShell extends StatelessWidget {
                   ),
                 ),
               ],
-              child: const CircleAvatar(
-                radius: 19,
-                backgroundColor: Color(0xFFE6F2EA),
-                child: Icon(Icons.person_outline_rounded, color: _forest),
+              child: Container(
+                padding: const EdgeInsets.all(5),
+                decoration: BoxDecoration(
+                  border: Border.all(color: _stroke),
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircleAvatar(
+                      radius: 18,
+                      backgroundColor: Color(0xFFE7F2E9),
+                      child: Icon(Icons.person_outline_rounded, color: _forest),
+                    ),
+                    SizedBox(width: 5),
+                    Icon(Icons.keyboard_arrow_down_rounded, color: _green),
+                  ],
+                ),
               ),
             ),
           ],
@@ -640,46 +715,54 @@ class _NavItem {
   final String title;
   final IconData icon;
   final String path;
-
   const _NavItem(this.title, this.icon, this.path);
 }
 
 class _PreviewUnavailable extends StatelessWidget {
   const _PreviewUnavailable();
-
   @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.info_outline_rounded, color: _green, size: 42),
-            const SizedBox(height: 12),
-            const Text(
-              'Not part of this role preview',
-              style: TextStyle(
-                color: _ink,
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-              ),
+  Widget build(BuildContext context) => Center(
+    child: Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.info_outline_rounded, color: _green, size: 42),
+          const SizedBox(height: 12),
+          const Text(
+            'Not part of this administrator workspace',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: _ink,
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
             ),
-            const SizedBox(height: 8),
-            const Text(
-              'Choose Overview to see the modules '
-              'planned for this administrator.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: _muted),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () => context.go('/lgu-admin/dashboard'),
-              child: const Text('Go to Overview'),
-            ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Choose Overview to see your available modules.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: _muted),
+          ),
+          const SizedBox(height: 16),
+          FilledButton(
+            onPressed: () {
+              final role = Supabase
+                  .instance
+                  .client
+                  .auth
+                  .currentUser
+                  ?.appMetadata['kaisa_lgu_role'];
+              context.go(
+                role == 'lgu_verification_admin'
+                    ? '/lgu-admin/verification/dashboard'
+                    : '/lgu-admin/dashboard',
+              );
+            },
+            child: const Text('Go to Overview'),
+          ),
+        ],
       ),
-    );
-  }
+    ),
+  );
 }

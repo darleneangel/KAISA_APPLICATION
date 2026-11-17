@@ -1,15 +1,13 @@
-
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-
-const _forest = Color(0xFF14532D);
-const _green = Color(0xFF237A50);
-const _paper = Color(0xFFF8FAF8);
-const _ink = Color(0xFF173D2B);
-const _muted = Color(0xFF687B70);
-const _stroke = Color(0xFFE2EBE4);
-const _soft = Color(0xFFEAF5EE);
+const _forest = Color(0xFF00492C);
+const _green = Color(0xFF2A7F57);
+const _paper = Color(0xFFF4F4F0);
+const _ink = Color(0xFF0E3A27);
+const _muted = Color(0xFF6E7773);
+const _stroke = Color(0xFFECECE6);
+const _soft = Color(0xFFE3F1E9);
 
 class PendingApplicationsPage extends StatefulWidget {
   const PendingApplicationsPage({super.key});
@@ -19,8 +17,7 @@ class PendingApplicationsPage extends StatefulWidget {
       _PendingApplicationsPageState();
 }
 
-class _PendingApplicationsPageState
-    extends State<PendingApplicationsPage> {
+class _PendingApplicationsPageState extends State<PendingApplicationsPage> {
   String _search = '';
   String _status = 'All';
   String _priority = 'All';
@@ -78,28 +75,23 @@ class _PendingApplicationsPageState
           app.name.toLowerCase().contains(query) ||
           app.id.toLowerCase().contains(query);
 
-      final matchesStatus =
-          _status == 'All' || app.status == _status;
+      final matchesStatus = _status == 'All' || app.status == _status;
 
-      final matchesPriority =
-          _priority == 'All' || app.priority == _priority;
+      final matchesPriority = _priority == 'All' || app.priority == _priority;
 
-      return matchesSearch &&
-          matchesStatus &&
-          matchesPriority;
+      return matchesSearch && matchesStatus && matchesPriority;
     }).toList();
 
     final awaitingReview = _applications
-        .where((app) =>
-            app.status == 'Pending' ||
-            app.status == 'Under Review')
+        .where((app) => app.status == 'Pending' || app.status == 'Under Review')
         .length;
 
     final highPriority = _applications
-        .where((app) =>
-            app.priority == 'High' &&
-            (app.status == 'Pending' ||
-                app.status == 'Under Review'))
+        .where(
+          (app) =>
+              app.priority == 'High' &&
+              (app.status == 'Pending' || app.status == 'Under Review'),
+        )
         .length;
 
     return ColoredBox(
@@ -109,50 +101,34 @@ class _PendingApplicationsPageState
         children: [
           Center(
             child: ConstrainedBox(
-              constraints:
-                  const BoxConstraints(maxWidth: 1260),
+              constraints: const BoxConstraints(maxWidth: 1260),
               child: Column(
-                crossAxisAlignment:
-                    CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'KAISA / LGU ADMINISTRATION / VERIFICATION',
-                    style: TextStyle(
-                      color: _green,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                  const SizedBox(height: 9),
                   const Text(
                     'Pending Applications',
                     style: TextStyle(
+                      fontFamily: 'Poppins',
                       color: _ink,
                       fontSize: 29,
-                      fontWeight: FontWeight.w900,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                   const SizedBox(height: 7),
                   const Text(
                     'Manage the Tier 2 verification '
                     'application review queue.',
-                    style: TextStyle(
-                      color: _muted,
-                      fontSize: 13,
-                    ),
+                    style: TextStyle(color: _muted, fontSize: 13),
                   ),
                   const SizedBox(height: 20),
                   _notice(),
                   const SizedBox(height: 24),
                   LayoutBuilder(
                     builder: (context, constraints) {
-                      final columns =
-                          constraints.maxWidth >= 750 ? 3 : 1;
+                      final columns = constraints.maxWidth >= 750 ? 3 : 1;
                       const gap = 12.0;
                       final width =
-                          (constraints.maxWidth -
-                              gap * (columns - 1)) /
+                          (constraints.maxWidth - gap * (columns - 1)) /
                           columns;
 
                       return Wrap(
@@ -193,41 +169,30 @@ class _PendingApplicationsPageState
   }
 
   Widget _notice() => Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: const Color(0xFFFFF8DE),
-          borderRadius: BorderRadius.circular(13),
+    width: double.infinity,
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: const Color(0xFFFFF3CF),
+      borderRadius: BorderRadius.circular(13),
+    ),
+    child: const Row(
+      children: [
+        Icon(Icons.info_outline, color: Color(0xFF92650D)),
+        SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            'DEVELOPMENT PREVIEW — All applications, '
+            'priorities, and statuses are fictional. '
+            'No actual resident documents or '
+            'verification decisions are involved.',
+            style: TextStyle(color: Color(0xFF73550E), fontSize: 12),
+          ),
         ),
-        child: const Row(
-          children: [
-            Icon(
-              Icons.info_outline,
-              color: Color(0xFF92650D),
-            ),
-            SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                'DEVELOPMENT PREVIEW — All applications, '
-                'priorities, and statuses are fictional. '
-                'No actual resident documents or '
-                'verification decisions are involved.',
-                style: TextStyle(
-                  color: Color(0xFF73550E),
-                  fontSize: 12,
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
+      ],
+    ),
+  );
 
-  Widget _metric(
-    String label,
-    String value,
-    IconData icon,
-    double width,
-  ) =>
+  Widget _metric(String label, String value, IconData icon, double width) =>
       Container(
         width: width,
         padding: const EdgeInsets.all(19),
@@ -235,24 +200,26 @@ class _PendingApplicationsPageState
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, color: _green, size: 26),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: _soft,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(icon, color: _forest, size: 22),
+            ),
             const SizedBox(height: 16),
             Text(
               value,
               style: const TextStyle(
+                fontFamily: 'Poppins',
                 color: _forest,
                 fontSize: 29,
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.w700,
               ),
             ),
             const SizedBox(height: 5),
-            Text(
-              label,
-              style: const TextStyle(
-                color: _muted,
-                fontSize: 12,
-              ),
-            ),
+            Text(label, style: const TextStyle(color: _muted, fontSize: 12)),
           ],
         ),
       );
@@ -267,9 +234,10 @@ class _PendingApplicationsPageState
           const Text(
             'Verification Application Directory',
             style: TextStyle(
+              fontFamily: 'Poppins',
               color: _ink,
               fontSize: 18,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(height: 5),
@@ -285,12 +253,14 @@ class _PendingApplicationsPageState
               SizedBox(
                 width: 285,
                 child: TextField(
-                  onChanged: (value) =>
-                      setState(() => _search = value),
+                  onChanged: (value) => setState(() => _search = value),
                   decoration: const InputDecoration(
                     hintText: 'Search name or application ID',
                     prefixIcon: Icon(Icons.search_rounded),
-                    border: OutlineInputBorder(),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(12)),
+                      borderSide: BorderSide(color: _stroke),
+                    ),
                     isDense: true,
                   ),
                 ),
@@ -302,18 +272,15 @@ class _PendingApplicationsPageState
                   isExpanded: true,
                   decoration: const InputDecoration(
                     labelText: 'Status',
-                    border: OutlineInputBorder(),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(12)),
+                      borderSide: BorderSide(color: _stroke),
+                    ),
                     isDense: true,
                   ),
                   items: const [
-                    DropdownMenuItem(
-                      value: 'All',
-                      child: Text('All'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'Pending',
-                      child: Text('Pending'),
-                    ),
+                    DropdownMenuItem(value: 'All', child: Text('All')),
+                    DropdownMenuItem(value: 'Pending', child: Text('Pending')),
                     DropdownMenuItem(
                       value: 'Under Review',
                       child: Text('Under Review'),
@@ -340,22 +307,16 @@ class _PendingApplicationsPageState
                   initialValue: _priority,
                   decoration: const InputDecoration(
                     labelText: 'Priority',
-                    border: OutlineInputBorder(),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(12)),
+                      borderSide: BorderSide(color: _stroke),
+                    ),
                     isDense: true,
                   ),
                   items: const [
-                    DropdownMenuItem(
-                      value: 'All',
-                      child: Text('All'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'High',
-                      child: Text('High'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'Normal',
-                      child: Text('Normal'),
-                    ),
+                    DropdownMenuItem(value: 'All', child: Text('All')),
+                    DropdownMenuItem(value: 'High', child: Text('High')),
+                    DropdownMenuItem(value: 'Normal', child: Text('Normal')),
                   ],
                   onChanged: (value) {
                     if (value != null) {
@@ -370,10 +331,7 @@ class _PendingApplicationsPageState
           Text(
             'Showing ${filtered.length} of '
             '${_applications.length} demo applications',
-            style: const TextStyle(
-              color: _muted,
-              fontSize: 12,
-            ),
+            style: const TextStyle(color: _muted, fontSize: 12),
           ),
           const SizedBox(height: 10),
           if (filtered.isEmpty)
@@ -390,8 +348,7 @@ class _PendingApplicationsPageState
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: DataTable(
-                headingRowColor:
-                    WidgetStateProperty.all(_soft),
+                headingRowColor: WidgetStateProperty.all(_soft),
                 columns: const [
                   DataColumn(label: Text('APPLICATION ID')),
                   DataColumn(label: Text('APPLICANT')),
@@ -413,12 +370,11 @@ class _PendingApplicationsPageState
                         DataCell(_chip(app.status)),
                         DataCell(
                           TextButton.icon(
-                            
-onPressed: () {
-  context.go(
-    '/lgu-admin/verification/review/${app.id}',
-  );
-},
+                            onPressed: () {
+                              context.go(
+                                '/lgu-admin/verification/review/${app.id}',
+                              );
+                            },
 
                             icon: const Icon(
                               Icons.visibility_outlined,
@@ -438,22 +394,14 @@ onPressed: () {
   }
 
   Widget _chip(String label) {
-    final isWarning =
-        label == 'Pending' || label == 'High';
+    final isWarning = label == 'Pending' || label == 'High';
 
-    final color = isWarning
-        ? const Color(0xFF92650D)
-        : _forest;
+    final color = isWarning ? const Color(0xFF92650D) : _forest;
 
-    final background = isWarning
-        ? const Color(0xFFFFF4D9)
-        : _soft;
+    final background = isWarning ? const Color(0xFFFFF4D9) : _soft;
 
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 10,
-        vertical: 7,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
         color: background,
         borderRadius: BorderRadius.circular(8),
@@ -463,7 +411,7 @@ onPressed: () {
         style: TextStyle(
           color: color,
           fontSize: 11,
-          fontWeight: FontWeight.w800,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );
@@ -478,15 +426,11 @@ onPressed: () {
           width: 410,
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment:
-                CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
                 'Fictional applicant information',
-                style: TextStyle(
-                  color: _green,
-                  fontWeight: FontWeight.w800,
-                ),
+                style: TextStyle(color: _green, fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 18),
               _detail('Application ID', app.id),
@@ -500,19 +444,14 @@ onPressed: () {
                 'Identity document inspection and '
                 'review actions will be added in '
                 'the Identity Review module.',
-                style: TextStyle(
-                  color: _muted,
-                  fontSize: 12,
-                  height: 1.5,
-                ),
+                style: TextStyle(color: _muted, fontSize: 12, height: 1.5),
               ),
             ],
           ),
         ),
         actions: [
           TextButton(
-            onPressed: () =>
-                Navigator.pop(dialogContext),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Close'),
           ),
         ],
@@ -520,42 +459,40 @@ onPressed: () {
     );
   }
 
-  Widget _detail(String label, String value) =>
-      Padding(
-        padding: const EdgeInsets.only(bottom: 10),
-        child: Row(
-          crossAxisAlignment:
-              CrossAxisAlignment.start,
-          children: [
-            SizedBox(
-              width: 112,
-              child: Text(
-                label,
-                style: const TextStyle(
-                  color: _muted,
-                  fontSize: 12,
-                ),
-              ),
-            ),
-            Expanded(
-              child: Text(
-                value,
-                style: const TextStyle(
-                  color: _ink,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ],
+  Widget _detail(String label, String value) => Padding(
+    padding: const EdgeInsets.only(bottom: 10),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 112,
+          child: Text(
+            label,
+            style: const TextStyle(color: _muted, fontSize: 12),
+          ),
         ),
-      );
+        Expanded(
+          child: Text(
+            value,
+            style: const TextStyle(
+              color: _ink,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
 
   BoxDecoration _surface() => BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: _stroke),
-      );
+    color: Colors.white,
+    borderRadius: BorderRadius.circular(22),
+    border: Border.all(color: _stroke),
+    boxShadow: const [
+      BoxShadow(color: Color(0x0A00492C), blurRadius: 24, offset: Offset(0, 8)),
+    ],
+  );
 }
 
 class _Application {
