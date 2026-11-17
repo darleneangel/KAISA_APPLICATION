@@ -271,7 +271,7 @@ class _LguAdminDashboardPageState extends State<LguAdminDashboardPage> {
           icon: const Icon(Icons.apartment_rounded, size: 18),
           label: const Text('Open registry'),
           style: OutlinedButton.styleFrom(
-            foregroundColor: Colors.white,
+            foregroundColor: const Color.fromARGB(255, 0, 0, 0),
             side: const BorderSide(color: Colors.white54),
             padding: const EdgeInsets.symmetric(horizontal: 17, vertical: 15),
           ),

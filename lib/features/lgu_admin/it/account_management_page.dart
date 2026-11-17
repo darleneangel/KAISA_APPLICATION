@@ -923,7 +923,7 @@ class _AccountManagementPageState extends State<AccountManagementPage> {
                   OutlinedButton.icon(
                     onPressed: _exporting ? null : _exportCsv,
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.white,
+                      foregroundColor: const Color.fromARGB(255, 0, 0, 0),
                       side: const BorderSide(color: Color(0x77FFFFFF)),
                       padding: const EdgeInsets.symmetric(
                         horizontal: 20,

@@ -810,7 +810,7 @@ class _BackupRecoveryPageState extends State<BackupRecoveryPage> {
         OutlinedButton.icon(
           onPressed: _planRecoveryTest,
           style: OutlinedButton.styleFrom(
-            foregroundColor: Colors.white,
+            foregroundColor: const Color.fromARGB(255, 0, 0, 0),
             side: const BorderSide(color: Color(0x88FFFFFF)),
             padding: const EdgeInsets.symmetric(horizontal: 17, vertical: 17),
           ),
