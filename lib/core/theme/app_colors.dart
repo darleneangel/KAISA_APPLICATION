@@ -1,41 +1,53 @@
 import 'package:flutter/material.dart';
 
-/// KAISA palette: forest greens + sun yellow.
+/// KAISA palette: Premium emerald greens + vibrant sun yellows.
+/// Modernized for high contrast, deep dark-mode layering, and punchy accents.
 /// Legacy aliases (blue*, greenLight...) are kept so existing screens compile.
 class AppColors {
   AppColors._();
 
-  // Greens
-  static const forest = Color(0xFF115C43),
-      deepForest = Color(0xFF083C32),
-      green = Color(0xFF218957),
+  // Greens - Shifted to rich emerald and electric lime tones for a premium feel
+  static const forest =
+          Color(0xFF0A5C45), // Vibrant, clean emerald
+      deepForest =
+          Color(0xFF042B21), // Ultra-deep contrast
+      green =
+          Color(0xFF138A62), // Active, bright green
       greenDark = forest,
-      lime = Color(0xFFB9DD65),
-      limeDark = Color(0xFF83AB2E),
-      mint = Color(0xFFE8F5E9),
-      cream = Color(0xFFFFFCF5),
-      navy = Color(0xFF17382F);
+      lime =
+          Color(0xFFC5F279), // Trendy electric chartreuse
+      limeDark = Color(0xFF94C742),
+      mint =
+          Color(0xFFE6F7F1), // Crisper, cooler mint
+      cream =
+          Color(0xFFFDFBF7), // Warmer, elegant off-white
+      navy = Color(0xFF0C2B29); // Deep slate/teal
 
   // Depth tones used by the misty hero backdrop
-  static const night = Color(0xFF052A22),
-      canopy = Color(0xFF0B6B4D),
-      sage = Color(0xFF9CC5A9);
+  static const night =
+          Color(0xFF021C15), // Near-black pine
+      canopy =
+          Color(0xFF0B7555), // Rich mid-tone
+      sage = Color(0xFF87BCA2); // Soft, modern sage
 
-  // Sun yellows
-  static const yellow = Color(0xFFFFD34D),
-      yellowDark = Color(0xFFE8AD20),
-      yellowLight = Color(0xFFFFF4CC);
+  // Sun yellows - Warmed up for better contrast and glow
+  static const yellow =
+          Color(0xFFFFC837), // Punchy, golden yellow
+      yellowDark =
+          Color(0xFFE6A700), // Rich amber
+      yellowLight = Color(0xFFFFF6D6); // Soft pastel glow
 
-  // Neutrals (light mode)
-  static const background = Color(0xFFF6F8F5),
+  // Neutrals (light mode) - Cooler off-whites for a cleaner, spacious look
+  static const background = Color(0xFFF4F7F5),
       surface = Colors.white,
-      surfaceSoft = Color(0xFFEEF3EF),
-      textPrimary = Color(0xFF172E26),
-      textSecondary = Color(0xFF65776C),
-      textMuted = Color(0xFF84968B),
-      border = Color(0xFFE0E9E1);
+      surfaceSoft = Color(0xFFEBF0EC),
+      textPrimary =
+          Color(0xFF0F1F18), // Deep green-tinted black (softer than pure black)
+      textSecondary = Color(0xFF556B60),
+      textMuted = Color(0xFF899E93),
+      border = Color(0xFFD7E3DA);
 
-  // Legacy aliases
+  // Legacy aliases (Preserved)
   static const blue = forest,
       blueDark = deepForest,
       blueLight = mint,
@@ -47,9 +59,9 @@ class AppColors {
       accent = yellow,
       success = green,
       warning = yellowDark,
-      error = Color(0xFFD54848);
+      error = Color(0xFFFF4D4D); // Modern, slightly coral red
 
-  // Gradients
+  // Gradients - Adjusted for smoother, richer transitions
   static const heroGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
@@ -65,7 +77,7 @@ class AppColors {
   static const sunGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [Color(0xFFFFE787), yellow, Color(0xFFFFC21F)],
+    colors: [Color(0xFFFFDF70), yellow, Color(0xFFFFB000)],
   );
 }
 
@@ -105,7 +117,7 @@ class KaisaColors extends ThemeExtension<KaisaColors> {
     page: AppColors.background,
     sheet: Colors.white,
     card: Colors.white,
-    tile: Color(0xFFF1F6F2),
+    tile: Color(0xFFF7FAF8), // Airy, almost-white tile fill
     stroke: AppColors.border,
     ink: AppColors.textPrimary,
     inkSoft: AppColors.textSecondary,
@@ -113,21 +125,21 @@ class KaisaColors extends ThemeExtension<KaisaColors> {
     brand: AppColors.forest,
     onBrand: Colors.white,
     accentSoft: AppColors.yellowLight,
-    accentInk: Color(0xFF7A5600),
+    accentInk: Color(0xFF755200), // Deep bronze for sharp readability
   );
 
   static const dark = KaisaColors(
-    page: Color(0xFF111C19),
-    sheet: Color(0xFF16241F),
-    card: Color(0xFF1D3029),
-    tile: Color(0xFF223A31),
-    stroke: Color(0xFF3A574A),
-    ink: Color(0xFFF2F8F2),
-    inkSoft: Color(0xFFB5CBBE),
-    inkMuted: Color(0xFF8CA397),
-    brand: AppColors.lime,
-    onBrand: AppColors.deepForest,
-    accentSoft: Color(0x33FFD34D),
+    page: Color(0xFF07100D), // Ultra-deep midnight pine
+    sheet: Color(0xFF0E1A16), // Slightly elevated
+    card: Color(0xFF13241E), // Card elevation
+    tile: Color(0xFF1A2F27), // Interactive elements
+    stroke: Color(0xFF2A453A), // Subtle structural borders
+    ink: Color(0xFFF0F5F2), // Soft off-white to prevent eye strain
+    inkSoft: Color(0xFFA3BDAF), // Muted minty grey
+    inkMuted: Color(0xFF6D8579),
+    brand: AppColors.lime, // Electric neon pop in dark mode
+    onBrand: AppColors.deepForest, // Striking dark text on neon button
+    accentSoft: Color(0x26FFC837), // 15% opacity warm yellow
     accentInk: AppColors.yellow,
   );
 

@@ -2,15 +2,15 @@ import 'package:flutter/material.dart';
 
 /// One source of truth for shared resident-page styling.
 abstract final class KaisaResidentDesign {
-  static const forest = Color(0xFF14532D);
-  static const green = Color(0xFF237A50);
+  static const forest = Color(0xFF184F30);
+  static const green = Color(0xFF2E7D32);
   static const yellow = Color(0xFFFBC02D);
-  static const paper = Color(0xFFF8FAF8);
-  static const ink = Color(0xFF173D2B);
-  static const muted = Color(0xFF687B70);
-  static const border = Color(0xFFE2EBE4);
+  static const paper = Color(0xFFF7FAF7);
+  static const ink = Color(0xFF1F2937);
+  static const muted = Color(0xFF6B7280);
+  static const border = Color(0xFFE3ECE5);
   static const double desktopWidth = 1180;
-  static const double cardRadius = 20;
+  static const double cardRadius = 24;
   static const double cardPadding = 18;
   static const double iconSize = 22;
 
@@ -20,6 +20,9 @@ abstract final class KaisaResidentDesign {
     color: Colors.white,
     border: Border.all(color: border),
     borderRadius: BorderRadius.circular(cardRadius),
+    boxShadow: const [
+      BoxShadow(color: Color(0x09000000), blurRadius: 22, offset: Offset(0, 5)),
+    ],
   );
 }
 

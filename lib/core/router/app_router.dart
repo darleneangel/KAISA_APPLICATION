@@ -6,12 +6,13 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../features/lgu_admin/organizations/organization_registry_page.dart';
 
+import '../../features/lgu_admin/security/lgu_admin_session_guard.dart';
+
 import '../../features/lgu_admin/assignments/admin_assignments_page.dart';
 import '../../features/lgu_admin/events/event_monitoring_page.dart';
 import '../../features/lgu_admin/reports/lgu_reports_page.dart';
 import '../../features/lgu_admin/audit_logs/lgu_audit_logs_page.dart';
 import '../../features/lgu_admin/settings/lgu_settings_page.dart';
-
 
 import '../../features/lgu_admin/it/account_management_page.dart';
 import '../../features/lgu_admin/it/roles_permissions_page.dart';
@@ -20,13 +21,11 @@ import '../../features/lgu_admin/it/system_health_page.dart';
 import '../../features/lgu_admin/it/backup_recovery_page.dart';
 import '../../features/lgu_admin/it/system_settings_page.dart';
 
-
 import '../../features/lgu_admin/verification/verification_dashboard_page.dart';
 import '../../features/lgu_admin/verification/pending_applications_page.dart';
 import '../../features/lgu_admin/verification/identity_review_page.dart';
 import '../../features/lgu_admin/verification/review_history_page.dart';
 import '../../features/lgu_admin/verification/verification_reports_page.dart';
-
 
 import '../../features/resident/widgets/kaisa_responsive_shell.dart';
 import '../../features/lgu_admin/layout/lgu_admin_shell.dart';
@@ -65,12 +64,9 @@ import '../../features/resident/notifications/notifications_page.dart';
 import '../../features/resident/messaging/messages_page.dart';
 import '../../features/resident/my-qr/kaisa_my_qr_page.dart';
 
-
-
 import '../../features/auth/views/reset_password_page.dart';
 import '../../features/resident/messaging/messages_page.dart';
 import '../../features/auth/views/profile_setup_page.dart';
-
 
 final _authRefresh = _AuthRouterRefresh();
 
@@ -88,6 +84,32 @@ class _AuthRouterRefresh extends ChangeNotifier {
     _subscription.cancel();
     super.dispose();
   }
+}
+
+String? getLguRole(User user) {
+  final role = user.appMetadata['kaisa_lgu_role'];
+
+  if (role == 'lgu_it_admin' ||
+      role == 'lgu_verification_admin' ||
+      role == 'lgu_operations_admin') {
+    return role as String;
+  }
+
+  return null;
+}
+
+String getHomeRoute(User user) {
+  final role = getLguRole(user);
+
+  if (role == 'lgu_verification_admin') {
+    return '/lgu-admin/verification/dashboard';
+  }
+
+  if (role == 'lgu_it_admin' || role == 'lgu_operations_admin') {
+    return '/lgu-admin/dashboard';
+  }
+
+  return '/resident/home';
 }
 
 final appRouter = GoRouter(
@@ -134,8 +156,43 @@ final appRouter = GoRouter(
     }
 
     if (path == '/login' || path == '/signup' || path == '/welcome') {
-      return '/resident/home';
+      return getHomeRoute(user);
     }
+
+    // Require a recognized LGU role for every LGU route.
+    if (path.startsWith('/lgu-admin/')) {
+      final role = getLguRole(user);
+
+      if (role == null) {
+        return '/resident/home';
+      }
+
+      if (role == 'lgu_verification_admin') {
+        if (!path.startsWith('/lgu-admin/verification/')) {
+          return '/lgu-admin/verification/dashboard';
+        }
+      } else if (role == 'lgu_it_admin') {
+        if (path != '/lgu-admin/dashboard' &&
+            !path.startsWith('/lgu-admin/it/')) {
+          return '/lgu-admin/dashboard';
+        }
+      } else if (role == 'lgu_operations_admin') {
+        const operationsRoutes = {
+          '/lgu-admin/dashboard',
+          '/lgu-admin/organizations',
+          '/lgu-admin/assignments',
+          '/lgu-admin/events',
+          '/lgu-admin/reports',
+          '/lgu-admin/audit-logs',
+          '/lgu-admin/settings',
+        };
+
+        if (!operationsRoutes.contains(path)) {
+          return '/lgu-admin/dashboard';
+        }
+      }
+    }
+
     return null;
   },
   routes: [
@@ -262,159 +319,117 @@ final appRouter = GoRouter(
     // NOTE: This only requires a signed-in user; it does NOT yet verify
     // an LGU administrator role. Add a trusted server-side role guard
     // before allowing access to real administrative data.
-    
+
     // =========================================
     // LGU ADMIN WORKSPACE
     // =========================================
     ShellRoute(
       builder: (context, state, child) =>
-          LguAdminShell(child: child),
+          LguAdminSessionGuard(child: LguAdminShell(child: child)),
       routes: [
         // 1. LGU Dashboard
         GoRoute(
           path: '/lgu-admin/dashboard',
-          builder: (context, state) =>
-              const LguAdminDashboardPage(),
+          builder: (context, state) => const LguAdminDashboardPage(),
         ),
 
+        GoRoute(
+          path: '/lgu-admin/it/accounts',
+          builder: (context, state) => const AccountManagementPage(),
+        ),
 
-GoRoute(
-  path: '/lgu-admin/it/accounts',
-  builder: (context, state) =>
-      const AccountManagementPage(),
-),
+        GoRoute(
+          path: '/lgu-admin/it/roles',
+          builder: (context, state) => const RolesPermissionsPage(),
+        ),
 
+        GoRoute(
+          path: '/lgu-admin/it/security-logs',
+          builder: (context, state) => const SecurityLogsPage(),
+        ),
 
-GoRoute(
-  path: '/lgu-admin/it/roles',
-  builder: (context, state) =>
-      const RolesPermissionsPage(),
-),
+        GoRoute(
+          path: '/lgu-admin/it/backup-recovery',
+          builder: (context, state) => const BackupRecoveryPage(),
+        ),
 
-GoRoute(
-  path: '/lgu-admin/it/security-logs',
-  builder: (context, state) =>
-      const SecurityLogsPage(),
-),
+        GoRoute(
+          path: '/lgu-admin/it/system-health',
+          builder: (context, state) => const SystemHealthPage(),
+        ),
 
+        GoRoute(
+          path: '/lgu-admin/it/system-settings',
+          builder: (context, state) => const SystemSettingsPage(),
+        ),
 
-GoRoute(
-  path: '/lgu-admin/it/backup-recovery',
-  builder: (context, state) =>
-      const BackupRecoveryPage(),
-),
+        //tfor the verifiation
+        GoRoute(
+          path: '/lgu-admin/verification/dashboard',
+          builder: (context, state) => const VerificationDashboardPage(),
+        ),
 
+        GoRoute(
+          path: '/lgu-admin/verification/applications',
+          builder: (context, state) => const PendingApplicationsPage(),
+        ),
 
+        GoRoute(
+          path: '/lgu-admin/verification/review/:applicationId',
+          builder: (context, state) {
+            final applicationId = state.pathParameters['applicationId'] ?? '';
 
-GoRoute(
-  path: '/lgu-admin/it/system-health',
-  builder: (context, state) =>
-      const SystemHealthPage(),
-),
+            return IdentityReviewPage(applicationId: applicationId);
+          },
+        ),
 
+        GoRoute(
+          path: '/lgu-admin/verification/history',
+          builder: (context, state) => const ReviewHistoryPage(),
+        ),
 
-GoRoute(
-  path: '/lgu-admin/it/system-settings',
-  builder: (context, state) =>
-      const SystemSettingsPage(),
-),
-
-
-
-//tfor the verifiation
-
-
-GoRoute(
-  path: '/lgu-admin/verification/dashboard',
-  builder: (context, state) =>
-      const VerificationDashboardPage(),
-),
-
-
-GoRoute(
-  path: '/lgu-admin/verification/applications',
-  builder: (context, state) =>
-      const PendingApplicationsPage(),
-),
-
-
-GoRoute(
-  path: '/lgu-admin/verification/review/:applicationId',
-  builder: (context, state) {
-    final applicationId =
-        state.pathParameters['applicationId'] ?? '';
-
-    return IdentityReviewPage(
-      applicationId: applicationId,
-    );
-  },
-),
-
-
-GoRoute(
-  path: '/lgu-admin/verification/history',
-  builder: (context, state) =>
-      const ReviewHistoryPage(),
-),
-
-
-GoRoute(
-  path: '/lgu-admin/verification/reports',
-  builder: (context, state) =>
-      const VerificationReportsPage(),
-),
-
-
-
-
-
-
-
+        GoRoute(
+          path: '/lgu-admin/verification/reports',
+          builder: (context, state) => const VerificationReportsPage(),
+        ),
 
         // 2. Organization Registry
         GoRoute(
           path: '/lgu-admin/organizations',
-          builder: (context, state) =>
-              const OrganizationRegistryPage(),
+          builder: (context, state) => const OrganizationRegistryPage(),
         ),
 
         // 3. Admin Assignments
         GoRoute(
           path: '/lgu-admin/assignments',
-          builder: (context, state) =>
-              const AdminAssignmentsPage(),
+          builder: (context, state) => const AdminAssignmentsPage(),
         ),
 
         // 4. Event Monitoring
         GoRoute(
           path: '/lgu-admin/events',
-          builder: (context, state) =>
-              const EventMonitoringPage(),
+          builder: (context, state) => const EventMonitoringPage(),
         ),
 
         // 5. LGU Reports
         GoRoute(
           path: '/lgu-admin/reports',
-          builder: (context, state) =>
-              const LguReportsPage(),
+          builder: (context, state) => const LguReportsPage(),
         ),
 
         // 6. Audit Logs
         GoRoute(
           path: '/lgu-admin/audit-logs',
-          builder: (context, state) =>
-              const LguAuditLogsPage(),
+          builder: (context, state) => const LguAuditLogsPage(),
         ),
 
         // 7. LGU Settings
         GoRoute(
           path: '/lgu-admin/settings',
-          builder: (context, state) =>
-              const LguSettingsPage(),
+          builder: (context, state) => const LguSettingsPage(),
         ),
       ],
     ),
-
 
     // Legacy links: redirect to canonical, protected Organization Admin routes.
     // Query parameters (including organizationId) are preserved.

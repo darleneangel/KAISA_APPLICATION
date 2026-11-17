@@ -45,3 +45,12 @@ app.*.map.json
 /android/app/release
 
 /assets.zip
+
+# KAISA - Private Supabase credentials
+.env.local
+.env
+.env.*
+!.env.example
+
+# Local Flutter environment configuration
+supabase.env.json

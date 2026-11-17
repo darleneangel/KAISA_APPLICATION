@@ -1,197 +1,322 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/kaisa_figma_theme.dart';
 
-/// One white form surface for both narrow mobile and desktop browser viewports.
+/// DESIGN ONLY. The caller's `child` contains all form fields, validation,
+/// Google sign-in callbacks, Supabase requests and navigation behavior.
+/// This shell never intercepts, replaces or simulates them.
 class CompactAuthShell extends StatelessWidget {
-  final Widget child;
-  final String backRoute;
   const CompactAuthShell({
     super.key,
     required this.child,
     this.backRoute = '/welcome',
   });
+  final Widget child;
+  final String backRoute;
 
   @override
-  Widget build(BuildContext context) {
-    final width = MediaQuery.sizeOf(context).width;
-    final wide = width >= 800;
-    final base = ThemeData(
-      useMaterial3: true,
-      brightness: Brightness.light,
-      fontFamily: 'Montserrat',
-    );
-    return Theme(
-      data: base.copyWith(
-        colorScheme: ColorScheme.fromSeed(seedColor: AppColors.forest),
-        scaffoldBackgroundColor: const Color(0xFFF6F8F3),
-        textTheme: base.textTheme.apply(
-          bodyColor: const Color(0xFF203A2D),
-          displayColor: const Color(0xFF203A2D),
-        ),
-        inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          fillColor: const Color(0xFFF7FAF7),
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 17,
-          ),
-          labelStyle: const TextStyle(color: Color(0xFF5D7166)),
-          prefixIconColor: AppColors.forest,
-          suffixIconColor: AppColors.forest,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(15),
-            borderSide: const BorderSide(color: Color(0xFFD6E3DA)),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(15),
-            borderSide: const BorderSide(color: Color(0xFFD6E3DA)),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(15),
-            borderSide: const BorderSide(color: AppColors.forest, width: 2),
-          ),
-        ),
-        filledButtonTheme: FilledButtonThemeData(
-          style: FilledButton.styleFrom(
-            backgroundColor: AppColors.forest,
-            foregroundColor: Colors.white,
-            minimumSize: const Size(0, 54),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-          ),
-        ),
-        textButtonTheme: TextButtonThemeData(
-          style: TextButton.styleFrom(foregroundColor: AppColors.forest),
-        ),
-      ),
-      child: Scaffold(
-        backgroundColor: const Color(0xFFF6F8F3),
-        body: Stack(
-          children: [
-            Positioned(
-              top: -90,
-              right: -75,
-              child: _Glow(
-                size: wide ? 310 : 190,
-                color: const Color(0xFFD6ECD7),
-              ),
-            ),
-            Positioned(
-              bottom: -130,
-              left: -80,
-              child: _Glow(
-                size: wide ? 370 : 230,
-                color: const Color(0xFFFFF1B9),
-              ),
-            ),
-            SafeArea(
-              child: Center(
-                child: SingleChildScrollView(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: wide ? 32 : 16,
-                    vertical: 24,
-                  ),
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(maxWidth: wide ? 510 : 500),
-                    child: Container(
-                      padding: EdgeInsets.fromLTRB(
-                        wide ? 36 : 22,
-                        20,
-                        wide ? 36 : 22,
-                        wide ? 32 : 22,
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      final wide = constraints.maxWidth >= 900;
+      return Theme(
+        data: KaisaFigmaTheme.light,
+        child: Scaffold(
+          backgroundColor: KaisaFigmaPalette.paper,
+          body: Row(
+            children: [
+              if (wide)
+                Expanded(
+                  flex: 11,
+                  child: SizedBox.expand(child: _AuthStoryPanel()),
+                ),
+              Expanded(
+                flex: 10,
+                child: SafeArea(
+                  child: Center(
+                    child: SingleChildScrollView(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: wide ? 44 : 19,
+                        vertical: wide ? 28 : 22,
                       ),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(wide ? 30 : 25),
-                        border: Border.all(color: const Color(0xFFE5EBE5)),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(
-                              0xFF154B37,
-                            ).withValues(alpha: .09),
-                            blurRadius: 45,
-                            offset: const Offset(0, 18),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              IconButton(
-                                tooltip: 'Go back',
-                                style: IconButton.styleFrom(
-                                  backgroundColor: const Color(0xFFF0F6F0),
-                                ),
-                                onPressed: () => context.go(backRoute),
-                                icon: const Icon(
-                                  Icons.arrow_back_rounded,
-                                  color: AppColors.forest,
-                                ),
-                              ),
-                              const Spacer(),
-                              _Logo(
-                                'assets/images/LGU.png',
-                                Icons.account_balance_rounded,
-                              ),
-                              const SizedBox(width: 8),
-                              _Logo(
-                                'assets/images/kaisa_logo.png',
-                                Icons.diversity_3_rounded,
-                              ),
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 470),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (!wide) ...[
+                              const _AuthBrand(),
+                              const SizedBox(height: 28),
                             ],
-                          ),
-                          const SizedBox(height: 22),
-                          child,
-                        ],
+                            Container(
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(28),
+                                border: Border.all(
+                                  color: KaisaFigmaPalette.outline,
+                                ),
+                                boxShadow: const [
+                                  BoxShadow(
+                                    color: Color(0x11000000),
+                                    blurRadius: 35,
+                                    offset: Offset(0, 12),
+                                  ),
+                                ],
+                              ),
+                              padding: EdgeInsets.fromLTRB(
+                                wide ? 33 : 22,
+                                22,
+                                wide ? 33 : 22,
+                                29,
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      IconButton(
+                                        tooltip: 'Go back',
+                                        style: IconButton.styleFrom(
+                                          backgroundColor:
+                                              KaisaFigmaPalette.mint,
+                                        ),
+                                        onPressed: () => context.go(backRoute),
+                                        icon: const Icon(
+                                          Icons.arrow_back_rounded,
+                                          color: KaisaFigmaPalette.green,
+                                        ),
+                                      ),
+                                      const Spacer(),
+                                      const Icon(
+                                        Icons.shield_outlined,
+                                        color: KaisaFigmaPalette.green,
+                                        size: 19,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      const Text(
+                                        'SECURE ACCESS',
+                                        style: TextStyle(
+                                          color: KaisaFigmaPalette.muted,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w800,
+                                          letterSpacing: 1.2,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 22),
+                                  // Existing LoginPage/SignUpPage subtree unchanged.
+                                  child,
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 18),
+                            const Center(
+                              child: Text(
+                                'Connecting Communities  •  KAISA',
+                                style: TextStyle(
+                                  color: KaisaFigmaPalette.muted,
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
-    );
-  }
+      );
+    },
+  );
 }
 
-class _Logo extends StatelessWidget {
-  final String path;
-  final IconData fallback;
-  const _Logo(this.path, this.fallback);
+class _AuthBrand extends StatelessWidget {
+  const _AuthBrand();
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      Container(
+        width: 48,
+        height: 48,
+        decoration: BoxDecoration(
+          gradient: KaisaFigmaPalette.action,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: const Icon(
+          Icons.diversity_3_rounded,
+          color: KaisaFigmaPalette.yellow,
+          size: 27,
+        ),
+      ),
+      const SizedBox(width: 13),
+      const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'KAISA',
+            style: TextStyle(
+              fontSize: 23,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 1.5,
+              color: KaisaFigmaPalette.forest,
+            ),
+          ),
+          Text(
+            'TOGETHER, WE MAKE AN IMPACT',
+            style: TextStyle(
+              fontSize: 9,
+              fontWeight: FontWeight.w800,
+              letterSpacing: .7,
+              color: KaisaFigmaPalette.green,
+            ),
+          ),
+        ],
+      ),
+    ],
+  );
+}
+
+class _AuthStoryPanel extends StatelessWidget {
+  const _AuthStoryPanel();
   @override
   Widget build(BuildContext context) => Container(
-    height: 42,
-    width: 42,
-    padding: const EdgeInsets.all(5),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(13),
-      border: Border.all(color: const Color(0xFFE0E8E1)),
-    ),
-    child: Image.asset(
-      path,
-      fit: BoxFit.contain,
-      errorBuilder: (_, __, ___) => Icon(fallback, color: AppColors.forest),
+    decoration: const BoxDecoration(gradient: KaisaFigmaPalette.hero),
+    child: Stack(
+      children: [
+        Positioned(top: -130, right: -130, child: _Orb(size: 380)),
+        Positioned(bottom: -160, left: -160, child: _Orb(size: 440)),
+        Center(
+          child: Padding(
+            padding: const EdgeInsets.all(58),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 520),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 60,
+                        height: 60,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: .15),
+                          borderRadius: BorderRadius.circular(21),
+                        ),
+                        child: const Icon(
+                          Icons.diversity_3_rounded,
+                          size: 35,
+                          color: KaisaFigmaPalette.yellow,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      const Text(
+                        'KAISA',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 33,
+                          letterSpacing: 3,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 60),
+                  const Text(
+                    'Stronger communities\nstart with us.',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 44,
+                      height: 1.13,
+                      letterSpacing: -1.2,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Text(
+                    'Discover local opportunities, join organizations, '
+                    'and participate in meaningful community programs.',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: .82),
+                      fontSize: 16,
+                      height: 1.7,
+                    ),
+                  ),
+                  const SizedBox(height: 42),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: const [
+                      _Feature(
+                        icon: Icons.calendar_month_rounded,
+                        label: 'Community events',
+                      ),
+                      _Feature(
+                        icon: Icons.groups_rounded,
+                        label: 'Organizations',
+                      ),
+                      _Feature(
+                        icon: Icons.qr_code_2_rounded,
+                        label: 'Verified attendance',
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
     ),
   );
 }
 
-class _Glow extends StatelessWidget {
+class _Orb extends StatelessWidget {
+  const _Orb({required this.size});
   final double size;
-  final Color color;
-  const _Glow({required this.size, required this.color});
   @override
   Widget build(BuildContext context) => IgnorePointer(
     child: Container(
       width: size,
       height: size,
-      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: .05),
+        shape: BoxShape.circle,
+      ),
+    ),
+  );
+}
+
+class _Feature extends StatelessWidget {
+  const _Feature({required this.icon, required this.label});
+  final IconData icon;
+  final String label;
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
+    decoration: BoxDecoration(
+      color: Colors.white.withValues(alpha: .12),
+      borderRadius: BorderRadius.circular(14),
+      border: Border.all(color: Colors.white.withValues(alpha: .18)),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, color: KaisaFigmaPalette.yellow, size: 17),
+        const SizedBox(width: 7),
+        Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ],
     ),
   );
 }
