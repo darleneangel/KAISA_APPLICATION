@@ -28,7 +28,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
   bool _confirmHidden = true;
   String? _error;
 
-  static const _forest = Color(0xFF175C42);
+  static const _forest = Color(0xFF00492C);
   static const _ink = Color(0xFF18392C);
   static const _muted = Color(0xFF667970);
 
@@ -218,13 +218,15 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
     suffixIcon: suffix,
     filled: true,
     fillColor: Colors.white,
-    border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+    isDense: true,
+    contentPadding: const EdgeInsets.symmetric(horizontal: 13, vertical: 14),
+    border: OutlineInputBorder(borderRadius: BorderRadius.circular(9)),
     enabledBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(9),
       borderSide: const BorderSide(color: Color(0xFFDCE7DF)),
     ),
     focusedBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(9),
       borderSide: const BorderSide(color: _forest, width: 2),
     ),
   );
@@ -235,7 +237,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
       text,
       style: const TextStyle(
         color: _ink,
-        fontSize: 14,
+        fontSize: 13,
         fontWeight: FontWeight.w700,
       ),
     ),
@@ -243,336 +245,377 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    backgroundColor: const Color(0xFFFAFCFA),
+    backgroundColor: const Color(0xFFF9F9FF),
     body: SafeArea(
       child: LayoutBuilder(
         builder: (context, constraints) => SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 18, 24, 36),
+          padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
           child: ConstrainedBox(
-            constraints: BoxConstraints(minHeight: constraints.maxHeight - 54),
+            constraints: BoxConstraints(
+              minHeight: constraints.maxHeight > 46
+                  ? constraints.maxHeight - 46
+                  : 0.0,
+            ),
             child: Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 440),
-                child: Form(
-                  key: _form,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: TextButton.icon(
-                          onPressed: _busy
-                              ? null
-                              : () => _leave(
-                                  _otpVerified ? '/login' : '/forgot-password',
-                                ),
-                          style: TextButton.styleFrom(
-                            foregroundColor: _ink,
-                            padding: EdgeInsets.zero,
-                          ),
-                          icon: const Icon(Icons.arrow_back_rounded, size: 19),
-                          label: const Text('Back'),
-                        ),
-                      ),
-                      const SizedBox(height: 30),
-                      Center(
-                        child: Container(
-                          width: 76,
-                          height: 76,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFEAF5ED),
-                            borderRadius: BorderRadius.circular(23),
-                          ),
-                          child: const Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              Icon(
-                                Icons.shield_outlined,
-                                size: 39,
-                                color: _forest,
-                              ),
-                              Positioned(
-                                right: 12,
-                                top: 12,
-                                child: CircleAvatar(
-                                  radius: 7,
-                                  backgroundColor: Color(0xFFFFD65A),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 23),
-                      Text(
-                        _otpVerified
-                            ? 'Create a new password'
-                            : 'Verify your identity',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: _ink,
-                          fontSize: 30,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -0.8,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        _otpVerified
-                            ? 'Your recovery code is verified. Choose a strong new password for your KAISA account.'
-                            : 'Enter the six-digit code sent to your registered email to continue.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: _muted,
-                          fontSize: 14,
-                          height: 1.6,
-                        ),
-                      ),
-                      const SizedBox(height: 30),
-                      if (!_otpVerified) ...[
-                        _label('Account email'),
-                        TextFormField(
-                          controller: _email,
-                          enabled: !_busy,
-                          keyboardType: TextInputType.emailAddress,
-                          autofillHints: const [AutofillHints.email],
-                          decoration: _fieldDecoration(
-                            'you@example.com',
-                            Icons.alternate_email_rounded,
-                          ),
-                          validator: (s) =>
-                              !RegExp(
-                                r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
-                              ).hasMatch((s ?? '').trim())
-                              ? 'Enter a valid email address'
-                              : null,
-                        ),
-                        const SizedBox(height: 17),
-                        _label('Six-digit recovery code'),
-                        TextFormField(
-                          controller: _code,
-                          enabled: !_busy,
-                          keyboardType: TextInputType.number,
-                          inputFormatters: [
-                            FilteringTextInputFormatter.digitsOnly,
-                            LengthLimitingTextInputFormatter(6),
-                          ],
-                          decoration: _fieldDecoration(
-                            'Enter the code from Gmail',
-                            Icons.password_rounded,
-                          ),
-                          validator: (s) =>
-                              !RegExp(r'^\d{6}$').hasMatch((s ?? '').trim())
-                              ? 'Enter the complete six-digit code'
-                              : null,
-                        ),
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: TextButton(
-                            onPressed: (_resending || _busy) ? null : _resend,
-                            child: Text(
-                              _resending ? 'Sending...' : 'Resend code',
-                            ),
-                          ),
-                        ),
-                      ] else ...[
-                        Container(
-                          padding: const EdgeInsets.all(13),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFEAF5ED),
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: const Row(
-                            children: [
-                              Icon(Icons.verified_rounded, color: _forest),
-                              SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  'Email successfully verified',
-                                  style: TextStyle(
-                                    color: _ink,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 22),
-                        _label('New password'),
-                        TextFormField(
-                          controller: _password,
-                          enabled: !_busy,
-                          obscureText: _hidden,
-                          onChanged: (_) => setState(() {}),
-                          decoration: _fieldDecoration(
-                            'Create a strong password',
-                            Icons.lock_outline_rounded,
-                            suffix: IconButton(
-                              tooltip: _hidden
-                                  ? 'Show password'
-                                  : 'Hide password',
-                              onPressed: () =>
-                                  setState(() => _hidden = !_hidden),
-                              icon: Icon(
-                                _hidden
-                                    ? Icons.visibility_outlined
-                                    : Icons.visibility_off_outlined,
-                              ),
-                            ),
-                          ),
-                          validator: (s) => KaisaPasswordPolicy.error(s ?? ''),
-                        ),
-                        const SizedBox(height: 12),
-                        KaisaPasswordStrengthIndicator(
-                          password: _password.text,
-                        ),
-                        const SizedBox(height: 18),
-                        _label('Confirm new password'),
-                        TextFormField(
-                          controller: _confirm,
-                          enabled: !_busy,
-                          obscureText: _confirmHidden,
-                          decoration: _fieldDecoration(
-                            'Re-enter your new password',
-                            Icons.verified_user_outlined,
-                            suffix: IconButton(
-                              tooltip: _confirmHidden
-                                  ? 'Show confirmation'
-                                  : 'Hide confirmation',
-                              onPressed: () => setState(
-                                () => _confirmHidden = !_confirmHidden,
-                              ),
-                              icon: Icon(
-                                _confirmHidden
-                                    ? Icons.visibility_outlined
-                                    : Icons.visibility_off_outlined,
-                              ),
-                            ),
-                          ),
-                          validator: (s) => s != _password.text
-                              ? 'Passwords do not match'
-                              : null,
-                        ),
-                      ],
-                      if (_error != null) ...[
-                        const SizedBox(height: 18),
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFFF1EC),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Icon(
-                                Icons.error_outline_rounded,
-                                color: Color(0xFFB34735),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  _error!,
-                                  style: const TextStyle(
-                                    color: Color(0xFF913B2D),
-                                    height: 1.4,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                      const SizedBox(height: 24),
-                      SizedBox(
-                        height: 54,
-                        child: FilledButton.icon(
-                          onPressed:
-                              _busy ||
-                                  (_otpVerified &&
-                                      !KaisaPasswordPolicy.isStrong(
-                                        _password.text,
-                                      ))
-                              ? null
-                              : (_otpVerified ? _update : _verifyCode),
-                          style: FilledButton.styleFrom(
-                            backgroundColor: _forest,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(15),
-                            ),
-                          ),
-                          icon: _busy
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : const Icon(Icons.lock_reset_rounded),
-                          label: Text(
-                            _busy
-                                ? (_otpVerified
-                                      ? 'Updating...'
-                                      : 'Verifying...')
-                                : (_otpVerified
-                                      ? 'Update password'
-                                      : 'Verify recovery code'),
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 13),
-                      Center(
-                        child: TextButton(
-                          onPressed: _busy ? null : () => _leave('/login'),
-                          child: const Text(
-                            'Back to login',
-                            style: TextStyle(fontWeight: FontWeight.w700),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 22),
-                      const Row(
-                        children: [
-                          Expanded(child: Divider(color: Color(0xFFE6ECE8))),
-                          Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 12),
-                            child: Text(
-                              'ACCOUNT SECURITY',
-                              style: TextStyle(
-                                color: Color(0xFF91A29A),
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 1.2,
-                              ),
-                            ),
-                          ),
-                          Expanded(child: Divider(color: Color(0xFFE6ECE8))),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        _otpVerified
-                            ? 'Choose a password you have not used before. Never share it.'
-                            : 'Only a valid emailed recovery code can authorize a password reset. Never share your code.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: _muted,
-                          fontSize: 12,
-                          height: 1.5,
-                        ),
+                constraints: const BoxConstraints(maxWidth: 412),
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(24, 22, 24, 23),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFFE2E9E5)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF113C2C).withValues(alpha: 0.07),
+                        blurRadius: 25,
+                        offset: const Offset(0, 12),
                       ),
                     ],
                   ),
-                ),
+                  child: Form(
+                    key: _form,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Row(
+                          children: [
+                            TextButton.icon(
+                              onPressed: _busy
+                                  ? null
+                                  : () => _leave(
+                                      _otpVerified
+                                          ? '/login'
+                                          : '/forgot-password',
+                                    ),
+                              style: TextButton.styleFrom(
+                                foregroundColor: _forest,
+                                padding: EdgeInsets.zero,
+                              ),
+                              icon: const Icon(
+                                Icons.arrow_back_rounded,
+                                size: 18,
+                              ),
+                              label: const Text(
+                                'Back',
+                                style: TextStyle(fontSize: 13),
+                              ),
+                            ),
+                            const Spacer(),
+                            ClipOval(
+                              child: SizedBox(
+                                width: 32,
+                                height: 32,
+                                child: Image.asset(
+                                  'assets/images/kaisa_logo.png',
+                                  fit: BoxFit.contain,
+                                  errorBuilder: (_, _, _) => const Icon(
+                                    Icons.diversity_3_rounded,
+                                    color: _forest,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            const Text(
+                              'KAISA',
+                              style: TextStyle(
+                                color: _forest,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 15,
+                                letterSpacing: 1,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 22),
+                        Center(
+                          child: Container(
+                            width: 58,
+                            height: 58,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFEAF5ED),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.shield_outlined,
+                              size: 29,
+                              color: _forest,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        Text(
+                          _otpVerified
+                              ? 'Create a new password'
+                              : 'Verify your identity',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: _ink,
+                            fontSize: 25,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.8,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          _otpVerified
+                              ? 'Your recovery code is verified. Choose a strong new password for your KAISA account.'
+                              : 'Enter the six-digit code sent to your registered email to continue.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: _muted,
+                            fontSize: 14,
+                            height: 1.6,
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        if (!_otpVerified) ...[
+                          _label('Account email'),
+                          TextFormField(
+                            controller: _email,
+                            enabled: !_busy,
+                            keyboardType: TextInputType.emailAddress,
+                            autofillHints: const [AutofillHints.email],
+                            decoration: _fieldDecoration(
+                              'you@example.com',
+                              Icons.alternate_email_rounded,
+                            ),
+                            validator: (s) =>
+                                !RegExp(
+                                  r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
+                                ).hasMatch((s ?? '').trim())
+                                ? 'Enter a valid email address'
+                                : null,
+                          ),
+                          const SizedBox(height: 17),
+                          _label('Six-digit recovery code'),
+                          TextFormField(
+                            controller: _code,
+                            enabled: !_busy,
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                              LengthLimitingTextInputFormatter(6),
+                            ],
+                            decoration: _fieldDecoration(
+                              'Enter the code from Gmail',
+                              Icons.password_rounded,
+                            ),
+                            validator: (s) =>
+                                !RegExp(r'^\d{6}$').hasMatch((s ?? '').trim())
+                                ? 'Enter the complete six-digit code'
+                                : null,
+                          ),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: TextButton(
+                              onPressed: (_resending || _busy) ? null : _resend,
+                              child: Text(
+                                _resending ? 'Sending...' : 'Resend code',
+                              ),
+                            ),
+                          ),
+                        ] else ...[
+                          Container(
+                            padding: const EdgeInsets.all(13),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEAF5ED),
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: const Row(
+                              children: [
+                                Icon(Icons.verified_rounded, color: _forest),
+                                SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    'Email successfully verified',
+                                    style: TextStyle(
+                                      color: _ink,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 22),
+                          _label('New password'),
+                          TextFormField(
+                            controller: _password,
+                            enabled: !_busy,
+                            obscureText: _hidden,
+                            onChanged: (_) => setState(() {}),
+                            decoration: _fieldDecoration(
+                              'Create a strong password',
+                              Icons.lock_outline_rounded,
+                              suffix: IconButton(
+                                tooltip: _hidden
+                                    ? 'Show password'
+                                    : 'Hide password',
+                                onPressed: () =>
+                                    setState(() => _hidden = !_hidden),
+                                icon: Icon(
+                                  _hidden
+                                      ? Icons.visibility_outlined
+                                      : Icons.visibility_off_outlined,
+                                ),
+                              ),
+                            ),
+                            validator: (s) =>
+                                KaisaPasswordPolicy.error(s ?? ''),
+                          ),
+                          const SizedBox(height: 12),
+                          KaisaPasswordStrengthIndicator(
+                            password: _password.text,
+                          ),
+                          const SizedBox(height: 18),
+                          _label('Confirm new password'),
+                          TextFormField(
+                            controller: _confirm,
+                            enabled: !_busy,
+                            obscureText: _confirmHidden,
+                            decoration: _fieldDecoration(
+                              'Re-enter your new password',
+                              Icons.verified_user_outlined,
+                              suffix: IconButton(
+                                tooltip: _confirmHidden
+                                    ? 'Show confirmation'
+                                    : 'Hide confirmation',
+                                onPressed: () => setState(
+                                  () => _confirmHidden = !_confirmHidden,
+                                ),
+                                icon: Icon(
+                                  _confirmHidden
+                                      ? Icons.visibility_outlined
+                                      : Icons.visibility_off_outlined,
+                                ),
+                              ),
+                            ),
+                            validator: (s) => s != _password.text
+                                ? 'Passwords do not match'
+                                : null,
+                          ),
+                        ],
+                        if (_error != null) ...[
+                          const SizedBox(height: 18),
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFF1EC),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Icon(
+                                  Icons.error_outline_rounded,
+                                  color: Color(0xFFB34735),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    _error!,
+                                    style: const TextStyle(
+                                      color: Color(0xFF913B2D),
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 24),
+                        SizedBox(
+                          height: 48,
+                          child: FilledButton.icon(
+                            onPressed:
+                                _busy ||
+                                    (_otpVerified &&
+                                        !KaisaPasswordPolicy.isStrong(
+                                          _password.text,
+                                        ))
+                                ? null
+                                : (_otpVerified ? _update : _verifyCode),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: _forest,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(9),
+                              ),
+                            ),
+                            icon: _busy
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : const Icon(Icons.lock_reset_rounded),
+                            label: Text(
+                              _busy
+                                  ? (_otpVerified
+                                        ? 'Updating...'
+                                        : 'Verifying...')
+                                  : (_otpVerified
+                                        ? 'Update password'
+                                        : 'Verify recovery code'),
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 13),
+                        Center(
+                          child: TextButton(
+                            onPressed: _busy ? null : () => _leave('/login'),
+                            child: const Text(
+                              'Back to login',
+                              style: TextStyle(fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 22),
+                        const Row(
+                          children: [
+                            Expanded(child: Divider(color: Color(0xFFE6ECE8))),
+                            Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 12),
+                              child: Text(
+                                'ACCOUNT SECURITY',
+                                style: TextStyle(
+                                  color: Color(0xFF91A29A),
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 1.2,
+                                ),
+                              ),
+                            ),
+                            Expanded(child: Divider(color: Color(0xFFE6ECE8))),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          _otpVerified
+                              ? 'Choose a password you have not used before. Never share it.'
+                              : 'Only a valid emailed recovery code can authorize a password reset. Never share your code.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: _muted,
+                            fontSize: 12,
+                            height: 1.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ), // Form
+                ), // White card
               ),
             ),
           ),

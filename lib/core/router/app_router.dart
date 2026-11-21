@@ -348,7 +348,6 @@ final appRouter = GoRouter(
           builder: (context, state) => const SecurityLogsPage(),
         ),
 
-       
         GoRoute(
           path: '/lgu-admin/it/system-health',
           builder: (context, state) => const SystemHealthPage(),
