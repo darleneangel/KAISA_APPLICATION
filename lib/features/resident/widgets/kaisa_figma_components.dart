@@ -249,7 +249,7 @@ class KaisaFigmaEventCard extends StatelessWidget {
                   Image.network(
                     imageUrl!,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => const _ImageFallback(),
+                    errorBuilder: (_, _, _) => const _ImageFallback(),
                   )
                 else
                   const _ImageFallback(),
@@ -327,7 +327,7 @@ class KaisaFigmaEventCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  if (trailing != null) trailing!,
+                  ?trailing,
                 ],
               ),
               const SizedBox(height: 8),
@@ -401,7 +401,7 @@ class KaisaFigmaOrganizationCard extends StatelessWidget {
                 : Image.network(
                     logoUrl!,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => const Icon(
+                    errorBuilder: (_, _, _) => const Icon(
                       Icons.apartment_rounded,
                       color: KaisaFigmaPalette.green,
                       size: 29,

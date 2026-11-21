@@ -235,11 +235,13 @@ class _RolesPermissionsPageState extends State<RolesPermissionsPage> {
         return false;
       }
       if (_access == 'Assigned to selected role' &&
-          !p.owners.contains(_selected))
+          !p.owners.contains(_selected)) {
         return false;
+      }
       if (_access == 'Not assigned to selected role' &&
-          p.owners.contains(_selected))
+          p.owners.contains(_selected)) {
         return false;
+      }
       if (_access == 'Sensitive only' && !p.sensitive) return false;
       return query.isEmpty ||
           p.id.toLowerCase().contains(query) ||

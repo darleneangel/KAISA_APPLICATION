@@ -47,10 +47,11 @@ class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
           .eq('user_id', db.auth.currentUser!.id)
           .order('submitted_at', ascending: false)
           .limit(1);
-      if (mounted)
+      if (mounted) {
         setState(
           () => status = rows.isEmpty ? null : rows.first['status'] as String,
         );
+      }
     } catch (_) {
       /* Display application without blocking on status error. */
     }
@@ -66,23 +67,27 @@ class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
       if (f == null) return;
       final bytes = await f.readAsBytes();
       final contentType = f.mimeType ?? 'image/jpeg';
-      if (!['image/jpeg', 'image/png', 'image/webp'].contains(contentType))
+      if (!['image/jpeg', 'image/png', 'image/webp'].contains(contentType)) {
         throw Exception('Use a JPG, PNG, or WEBP image.');
-      if (bytes.lengthInBytes > 5 * 1024 * 1024)
+      }
+      if (bytes.lengthInBytes > 5 * 1024 * 1024) {
         throw Exception('ID photo must be under 5 MB.');
-      if (mounted)
+      }
+      if (mounted) {
         setState(() {
           image = bytes;
           mime = contentType;
         });
+      }
     } catch (e) {
       _notice('$e');
     }
   }
 
   void _notice(String s) {
-    if (mounted)
+    if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s)));
+    }
   }
 
   Future<void> _camera() async {
@@ -94,11 +99,12 @@ class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
       if (bytes.lengthInBytes > 5 * 1024 * 1024) {
         throw Exception('Image exceeds 5 MB; use a smaller image.');
       }
-      if (mounted)
+      if (mounted) {
         setState(() {
           image = bytes;
           mime = 'image/jpeg';
         });
+      }
     } catch (e) {
       _notice('$e');
     }

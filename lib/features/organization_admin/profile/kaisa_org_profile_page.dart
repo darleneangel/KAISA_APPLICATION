@@ -70,8 +70,9 @@ class _KaisaOrgProfilePageState extends State<KaisaOrgProfilePage> {
       if (!mounted || lastId != id) return;
       setState(() => fill(Map<String, dynamic>.from(result as Map)));
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         setState(() => error = 'Could not load organization profile: $e');
+      }
     } finally {
       if (mounted) setState(() => loading = false);
     }

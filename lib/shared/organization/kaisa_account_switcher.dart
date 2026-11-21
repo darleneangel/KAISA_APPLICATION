@@ -75,21 +75,23 @@ class KaisaAccountSwitcher extends StatelessWidget {
                         child: Center(child: CircularProgressIndicator()),
                       );
                     }
-                    if (snapshot.hasError)
+                    if (snapshot.hasError) {
                       return Padding(
                         padding: const EdgeInsets.all(12),
                         child: Text(
                           'Could not load organizations: ${snapshot.error}',
                         ),
                       );
+                    }
                     final orgs = snapshot.data ?? [];
-                    if (orgs.isEmpty)
+                    if (orgs.isEmpty) {
                       return const Padding(
                         padding: EdgeInsets.all(18),
                         child: Text(
                           'No organization management access assigned yet.',
                         ),
                       );
+                    }
                     return Flexible(
                       fit: FlexFit.loose,
                       child: ListView.builder(

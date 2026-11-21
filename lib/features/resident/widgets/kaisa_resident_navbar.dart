@@ -94,7 +94,7 @@ class KaisaResidentNavbar extends StatelessWidget {
                   'assets/images/kaisa_logo.png',
                   width: 35,
                   height: 35,
-                  errorBuilder: (_, __, ___) =>
+                  errorBuilder: (_, _, _) =>
                       const Icon(Icons.diversity_3, color: Colors.white),
                 ),
               ),

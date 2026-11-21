@@ -22,15 +22,16 @@ class _MyOrganizationsPageState extends State<MyOrganizationsPage> {
   }
 
   Future<void> _load() async {
-    if (mounted)
+    if (mounted) {
       setState(() {
         loading = true;
         error = null;
       });
+    }
     try {
       final items = await KaisaOrganizationsRepository.instance
           .getOrganizations();
-      if (mounted)
+      if (mounted) {
         setState(
           () => organizations = items
               .where(
@@ -41,6 +42,7 @@ class _MyOrganizationsPageState extends State<MyOrganizationsPage> {
               )
               .toList(),
         );
+      }
     } catch (e) {
       debugPrint('KAISA memberships: $e');
       if (mounted) setState(() => error = 'Unable to load your memberships.');

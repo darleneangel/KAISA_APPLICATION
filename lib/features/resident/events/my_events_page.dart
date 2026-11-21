@@ -29,17 +29,19 @@ class _MyEventsPageState extends State<MyEventsPage> {
     });
     try {
       final all = await KaisaEventsRepository.instance.listEvents();
-      if (mounted)
+      if (mounted) {
         setState(
           () =>
               _events = all.where((e) => e.registrationStatus != null).toList(),
         );
+      }
     } catch (e) {
       debugPrint('KAISA my events: $e');
-      if (mounted)
+      if (mounted) {
         setState(
           () => _error = 'Unable to load your registrations. Please try again.',
         );
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }

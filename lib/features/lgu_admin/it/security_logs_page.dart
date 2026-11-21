@@ -259,24 +259,28 @@ class _SecurityLogsPageState extends State<SecurityLogsPage> {
           '${e.id} ${e.title} ${e.actor} ${e.source} ${e.description}'
               .toLowerCase();
       if (q.isNotEmpty && !haystack.contains(q)) return false;
-      if (_severityFilter != 'All' && e.severity.label != _severityFilter)
+      if (_severityFilter != 'All' && e.severity.label != _severityFilter) {
         return false;
+      }
       if (_stateFilter != 'All' && e.state.label != _stateFilter) return false;
       if (_typeFilter != 'All' && e.type.label != _typeFilter) return false;
       if (_showOnlyOpen &&
           (e.state == _CaseState.resolved ||
-              e.state == _CaseState.falsePositive))
+              e.state == _CaseState.falsePositive)) {
         return false;
+      }
       if (_periodFilter == 'Nov 17, 2026' &&
           !(e.timestamp.year == 2026 &&
               e.timestamp.month == 11 &&
-              e.timestamp.day == 17))
+              e.timestamp.day == 17)) {
         return false;
+      }
       if (_periodFilter == 'Nov 16, 2026' &&
           !(e.timestamp.year == 2026 &&
               e.timestamp.month == 11 &&
-              e.timestamp.day == 16))
+              e.timestamp.day == 16)) {
         return false;
+      }
       return true;
     }).toList();
     result.sort((a, b) => b.timestamp.compareTo(a.timestamp));

@@ -876,11 +876,12 @@ class _VerificationWorkspaceState extends State<VerificationWorkspace> {
                       ),
                     ],
                   );
-                  if (c.maxWidth < 700)
+                  if (c.maxWidth < 700) {
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [details, const Divider(height: 30), evidence],
                     );
+                  }
                   return Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [

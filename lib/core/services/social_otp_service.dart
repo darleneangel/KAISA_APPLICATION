@@ -54,8 +54,9 @@ class SocialOtpService {
   ) async {
     final result = await _db.functions.invoke(name, body: body);
     final raw = result.data;
-    if (raw is! Map)
+    if (raw is! Map) {
       throw Exception('OTP server returned an unexpected response.');
+    }
     final data = Map<String, dynamic>.from(raw);
     if (data['error'] != null) throw Exception(data['error'].toString());
     return data;

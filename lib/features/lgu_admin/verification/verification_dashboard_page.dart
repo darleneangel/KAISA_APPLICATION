@@ -404,7 +404,7 @@ class _VerificationDashboardPageState extends State<VerificationDashboardPage> {
           ),
         ],
       ),
-      if (action != null) action,
+      ?action,
     ],
   );
 
@@ -1480,7 +1480,7 @@ class _VerificationDashboardPageState extends State<VerificationDashboardPage> {
                     const SizedBox(height: 12),
                     LayoutBuilder(
                       builder: (context, inner) {
-                        if (inner.maxWidth < 860)
+                        if (inner.maxWidth < 860) {
                           return Column(
                             children: [
                               _trendChart(),
@@ -1490,6 +1490,7 @@ class _VerificationDashboardPageState extends State<VerificationDashboardPage> {
                               _platformChart(),
                             ],
                           );
+                        }
                         final left = (inner.maxWidth - 12) * .61;
                         final right = (inner.maxWidth - 12) - left;
                         return Column(

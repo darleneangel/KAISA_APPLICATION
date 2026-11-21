@@ -9,7 +9,6 @@ import 'features/lgu_admin/organizations/organization_registry_page.dart';
 import 'features/lgu_admin/assignments/admin_assignments_page.dart';
 
 import 'features/lgu_admin/events/event_monitoring_page.dart';
-import 'features/lgu_admin/events/event_monitoring_page.dart';
 
 import 'features/lgu_admin/reports/lgu_reports_page.dart';
 import 'features/lgu_admin/audit_logs/lgu_audit_logs_page.dart';

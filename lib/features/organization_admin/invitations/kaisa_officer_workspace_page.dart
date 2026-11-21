@@ -12,7 +12,7 @@ class KaisaOfficerWorkspacePage extends StatelessWidget {
   ) => FutureBuilder<List<KaisaManagedOrganization>>(
     future: KaisaOrganizationAccess.instance.managedOrganizations(),
     builder: (context, s) {
-      if (!s.hasData)
+      if (!s.hasData) {
         return Scaffold(
           body: Center(
             child: s.hasError
@@ -20,10 +20,11 @@ class KaisaOfficerWorkspacePage extends StatelessWidget {
                 : const CircularProgressIndicator(),
           ),
         );
+      }
       final matches = s.data!
           .where((o) => o.id == organizationId && o.role == 'Officer')
           .toList();
-      if (matches.isEmpty)
+      if (matches.isEmpty) {
         return Scaffold(
           body: Center(
             child: TextButton(
@@ -32,6 +33,7 @@ class KaisaOfficerWorkspacePage extends StatelessWidget {
             ),
           ),
         );
+      }
       final org = matches.first;
       return Scaffold(
         backgroundColor: const Color(0xFFF8FAF8),

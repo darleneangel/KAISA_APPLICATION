@@ -72,11 +72,12 @@ class _ResidentHomePageState extends State<ResidentHomePage> {
   Future<void> _loadProfile() async {
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _loading = false;
           _loadError = 'Please sign in again.';
         });
+      }
       return;
     }
     try {

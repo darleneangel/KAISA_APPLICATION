@@ -47,17 +47,19 @@ class _KaisaInviteStaffPageState extends State<KaisaInviteStaffPage> {
           widget.organizationId,
           value,
         );
-        if (mounted && id == generation)
+        if (mounted && id == generation) {
           setState(() {
             matches = results;
             searching = false;
           });
+        }
       } catch (e) {
-        if (mounted && id == generation)
+        if (mounted && id == generation) {
           setState(() {
             error = '$e';
             searching = false;
           });
+        }
       }
     });
   }

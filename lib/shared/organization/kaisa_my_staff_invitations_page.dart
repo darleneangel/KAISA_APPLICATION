@@ -43,10 +43,11 @@ class _KaisaMyStaffInvitationsPageState
       );
       refresh();
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Could not respond: $e')));
+      }
     } finally {
       if (mounted) setState(() => working = false);
     }
@@ -88,20 +89,23 @@ class _KaisaMyStaffInvitationsPageState
               FutureBuilder<List<Map<String, dynamic>>>(
                 future: future,
                 builder: (context, snapshot) {
-                  if (!snapshot.hasData && !snapshot.hasError)
+                  if (!snapshot.hasData && !snapshot.hasError) {
                     return const Center(child: CircularProgressIndicator());
-                  if (snapshot.hasError)
+                  }
+                  if (snapshot.hasError) {
                     return Text(
                       'Unable to load invitations: ${snapshot.error}',
                     );
+                  }
                   final invitations = snapshot.data!;
-                  if (invitations.isEmpty)
+                  if (invitations.isEmpty) {
                     return const Card(
                       child: Padding(
                         padding: EdgeInsets.all(24),
                         child: Text('No invitations right now.'),
                       ),
                     );
+                  }
                   return Column(
                     children: [
                       for (final i in invitations)

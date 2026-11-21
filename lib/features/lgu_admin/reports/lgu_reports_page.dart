@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:file_saver/file_saver.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -100,13 +99,15 @@ class _LguReportsPageState extends State<LguReportsPage> {
     final query = _search.text.trim().toLowerCase();
     final result = eventRepository.events.where((event) {
       if (_status != 'All' && event.status.label != _status) return false;
-      if (_organization != 'All' && event.organizationId != _organization)
+      if (_organization != 'All' && event.organizationId != _organization) {
         return false;
+      }
       if (_range != null) {
         final day = DateUtils.dateOnly(event.startsAt);
         if (day.isBefore(DateUtils.dateOnly(_range!.start)) ||
-            day.isAfter(DateUtils.dateOnly(_range!.end)))
+            day.isAfter(DateUtils.dateOnly(_range!.end))) {
           return false;
+        }
       }
       return query.isEmpty ||
           event.title.toLowerCase().contains(query) ||
@@ -239,10 +240,11 @@ class _LguReportsPageState extends State<LguReportsPage> {
       fileExtension: extension,
       mimeType: mimeType,
     );
-    if (mounted)
+    if (mounted) {
       _snack(
         '$extension.toUpperCase() export requested. Check your downloads.',
       );
+    }
   }
 
   Future<void> _exportCsv({
@@ -570,8 +572,9 @@ class _LguReportsPageState extends State<LguReportsPage> {
         MimeType.csv,
       );
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         _snack('Could not export the selected CSV template.', error: true);
+      }
     } finally {
       if (mounted) setState(() => _exporting = false);
     }
@@ -977,11 +980,12 @@ class _LguReportsPageState extends State<LguReportsPage> {
     } on FormatException catch (e) {
       if (mounted) _snack(e.message, error: true);
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         _snack(
           'Could not open CSV. Check its encoding and structure.',
           error: true,
         );
+      }
     } finally {
       if (mounted) setState(() => _importing = false);
     }
@@ -1263,10 +1267,11 @@ class _LguReportsPageState extends State<LguReportsPage> {
         ].map(_csvCell).join(','),
     ];
     await Clipboard.setData(ClipboardData(text: lines.join('\r\n')));
-    if (mounted)
+    if (mounted) {
       _snack(
         'Copied ${organizationRepository.organizations.length} organization records as CSV.',
       );
+    }
   }
 
   Widget _organizationRecords() {
@@ -1804,8 +1809,9 @@ class _LguReportsPageState extends State<LguReportsPage> {
       ...organizations.map((org) => org.id),
       ...eventRepository.events.map((event) => event.organizationId),
     }.toList()..sort((a, b) => _orgName(a).compareTo(_orgName(b)));
-    if (_organization != 'All' && !orgIds.contains(_organization))
+    if (_organization != 'All' && !orgIds.contains(_organization)) {
       _organization = 'All';
+    }
     final search = TextField(
       controller: _search,
       onChanged: (_) => setState(() {}),
@@ -2189,8 +2195,9 @@ class _LguReportsPageState extends State<LguReportsPage> {
 
   Widget _organizationBars(List<MapEntry<String, int>> entries) {
     final top = entries.where((e) => e.value > 0).take(5).toList();
-    if (top.isEmpty)
+    if (top.isEmpty) {
       return _empty('No recorded attendance for completed events.');
+    }
     final max = top.first.value;
     return Column(
       children: [

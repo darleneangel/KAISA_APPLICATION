@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 import 'dart:async';
 import '../widgets/kaisa_account_refresh.dart';
 import 'package:flutter/material.dart';
@@ -79,11 +78,12 @@ class _FeedPageState extends State<FeedPage> {
   }
 
   Future<void> _load() async {
-    if (mounted)
+    if (mounted) {
       setState(() {
         loading = true;
         error = null;
       });
+    }
     try {
       final results = await Future.wait<dynamic>([
         db.rpc('kaisa_feed_stream'),
@@ -97,11 +97,12 @@ class _FeedPageState extends State<FeedPage> {
         tier2 = results[1] == true;
       });
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         setState(
           () => error =
               'Unable to load community posts. Check your connection or migration. ($e)',
         );
+      }
     } finally {
       if (mounted) setState(() => loading = false);
     }
@@ -110,12 +111,13 @@ class _FeedPageState extends State<FeedPage> {
   Future<void> _loadStories() async {
     try {
       final result = await db.rpc('kaisa_active_stories');
-      if (mounted)
+      if (mounted) {
         setState(
           () => stories = (result as List)
               .map((e) => Map<String, dynamic>.from(e as Map))
               .toList(),
         );
+      }
     } catch (e) {
       if (mounted) _snack('Stories could not load: $e');
     }
@@ -936,10 +938,11 @@ class _PostCard extends StatelessWidget {
         ),
       );
     } catch (e) {
-      if (context.mounted)
+      if (context.mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Could not load likes: $e')));
+      }
     }
   }
 
@@ -1059,7 +1062,7 @@ class _PostCard extends StatelessWidget {
                               storage.getPublicUrl(names[i]),
                               height: 260,
                               fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => const SizedBox(
+                              errorBuilder: (_, _, _) => const SizedBox(
                                 height: 260,
                                 child: Center(
                                   child: Icon(Icons.broken_image_outlined),
@@ -1177,19 +1180,23 @@ class _CreatePostSheetState extends State<_CreatePostSheet> {
       if (picked == null) return;
       final bytes = await picked.readAsBytes();
       final mime = picked.mimeType ?? 'image/jpeg';
-      if (!['image/jpeg', 'image/png', 'image/webp'].contains(mime))
+      if (!['image/jpeg', 'image/png', 'image/webp'].contains(mime)) {
         throw Exception('Please use JPG, PNG or WEBP.');
-      if (bytes.lengthInBytes > 204800)
+      }
+      if (bytes.lengthInBytes > 204800) {
         throw Exception('Image is over 200 KB. Reduce its size and retry.');
-      if (mounted)
+      }
+      if (mounted) {
         setState(
           () => images.add((bytes: bytes, name: picked.name, mime: mime)),
         );
+      }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('$e')));
+      }
     }
   }
 
@@ -1250,10 +1257,11 @@ class _CreatePostSheetState extends State<_CreatePostSheet> {
           await db.from('kaisa_feed_posts').delete().eq('id', postId);
         } catch (_) {}
       }
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Could not publish: $e')));
+      }
     } finally {
       if (mounted) setState(() => busy = false);
     }
@@ -1443,17 +1451,19 @@ class _CommentsSheetState extends State<_CommentsSheet> {
         'kaisa_feed_comments_for',
         params: {'p_post_id': widget.postId},
       );
-      if (mounted)
+      if (mounted) {
         setState(
           () => comments = (data as List)
               .map((e) => Map<String, dynamic>.from(e as Map))
               .toList(),
         );
+      }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Unable to load comments: $e')));
+      }
     }
   }
 
@@ -1471,10 +1481,11 @@ class _CommentsSheetState extends State<_CommentsSheet> {
       message.clear();
       await _load();
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Could not comment: $e')));
+      }
     } finally {
       if (mounted) setState(() => busy = false);
     }
@@ -1595,11 +1606,12 @@ class _CreateStoryDialogState extends State<_CreateStoryDialog> {
         }
         return;
       }
-      if (mounted)
+      if (mounted) {
         setState(() {
           photo = file;
           bytes = value;
         });
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1626,10 +1638,11 @@ class _CreateStoryDialogState extends State<_CreateStoryDialog> {
         photo = null; // Camera's takePicture() returns JPEG bytes.
       });
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Unable to capture photo: $e')));
+      }
     }
   }
 
@@ -1646,8 +1659,9 @@ class _CreateStoryDialogState extends State<_CreateStoryDialog> {
             : (photo?.mimeType?.toLowerCase() == 'image/webp')
             ? 'image/webp'
             : 'image/jpeg';
-        if (!['image/jpeg', 'image/png', 'image/webp'].contains(mime))
+        if (!['image/jpeg', 'image/png', 'image/webp'].contains(mime)) {
           throw Exception('Use JPG, PNG or WEBP');
+        }
         final ext = mime == 'image/png'
             ? 'png'
             : mime == 'image/webp'
@@ -1675,10 +1689,11 @@ class _CreateStoryDialogState extends State<_CreateStoryDialog> {
           await db.storage.from('kaisa-stories').remove([path]);
         } catch (_) {}
       }
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Could not publish story: $e')));
+      }
     } finally {
       if (mounted) setState(() => saving = false);
     }
@@ -1784,8 +1799,9 @@ class _StoryCameraScreenState extends State<_StoryCameraScreen>
     await old?.dispose();
     try {
       final devices = await availableCameras();
-      if (devices.isEmpty)
+      if (devices.isEmpty) {
         throw StateError('No camera was detected on this device.');
+      }
       _cameras = devices;
       _cameraIndex =
           selectedIndex ??
@@ -1805,11 +1821,12 @@ class _StoryCameraScreenState extends State<_StoryCameraScreen>
       }
       setState(() => _controller = next);
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         setState(
           () => _error =
               'Camera unavailable: $e\n\nCheck browser/device camera permissions and close other apps using the camera.',
         );
+      }
     }
   }
 
@@ -1826,8 +1843,9 @@ class _StoryCameraScreenState extends State<_StoryCameraScreen>
 
   Future<void> _capture() async {
     final controller = _controller;
-    if (_capturing || controller == null || !controller.value.isInitialized)
+    if (_capturing || controller == null || !controller.value.isInitialized) {
       return;
+    }
     setState(() => _capturing = true);
     try {
       final picture = await controller.takePicture();

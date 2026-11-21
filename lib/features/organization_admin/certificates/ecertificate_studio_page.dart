@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -63,6 +61,8 @@ class _LogoLayer {
   double width; // fraction of page width
 }
 
+
+
 class _CertificateStudioPageState extends State<ECertificateStudioPage> {
   static const _forest = Color(0xFF176B43);
   static const _gold = Color(0xFFE4B746);
@@ -71,7 +71,10 @@ class _CertificateStudioPageState extends State<ECertificateStudioPage> {
   // All layers are placed relative to the A4 landscape page.
   static const _pageWidth = 841.89;
   static const _pageHeight = 595.28;
-  static const _layerWidthFraction = .78;
+  double _layerWidth(_TextLayer e) => e.id.startsWith('signer_') ? .34 : .78;
+
+  static const double _layerWidthFraction = 0.78;
+  
 
   late final List<_TextLayer> _layers = [
     _TextLayer(
@@ -79,7 +82,7 @@ class _CertificateStudioPageState extends State<ECertificateStudioPage> {
       'Organization',
       TextEditingController(text: 'KAISA Community Organization'),
       x: .5,
-      y: .14,
+      y: .16,
       size: 20,
       bold: true,
     ),
@@ -89,7 +92,7 @@ class _CertificateStudioPageState extends State<ECertificateStudioPage> {
       TextEditingController(text: 'CERTIFICATE OF PARTICIPATION'),
       x: .5,
       y: .27,
-      size: 32,
+      size: 30,
       bold: true,
     ),
     _TextLayer(
@@ -97,7 +100,7 @@ class _CertificateStudioPageState extends State<ECertificateStudioPage> {
       'Presented to',
       TextEditingController(text: 'This certificate is presented to'),
       x: .5,
-      y: .39,
+      y: .38,
       size: 15,
       color: const Color(0xFF34473D),
     ),
@@ -106,7 +109,7 @@ class _CertificateStudioPageState extends State<ECertificateStudioPage> {
       'Recipient name',
       TextEditingController(text: '{recipient}'),
       x: .5,
-      y: .47,
+      y: .46,
       size: 37,
       bold: true,
     ),
@@ -114,11 +117,11 @@ class _CertificateStudioPageState extends State<ECertificateStudioPage> {
       'description',
       'Description',
       TextEditingController(
-        text: 'For actively participating in the community activity',
+        text: 'In grateful recognition of your valuable participation, dedication, and meaningful contribution to the success of this community initiative. Your commitment to service and collaboration is sincerely appreciated.',
       ),
       x: .5,
-      y: .60,
-      size: 16,
+      y: .59,
+      size: 14,
       color: const Color(0xFF34473D),
     ),
     _TextLayer(
@@ -126,29 +129,66 @@ class _CertificateStudioPageState extends State<ECertificateStudioPage> {
       'Event',
       TextEditingController(text: 'Community Volunteer Program'),
       x: .5,
-      y: .68,
-      size: 20,
+      y: .72,
+      size: 17,
       bold: true,
     ),
     _TextLayer(
       'date',
       'Date',
-      TextEditingController(text: 'October 29, 2026'),
+      TextEditingController(text: 'November 20, 2026'),
       x: .5,
-      y: .76,
+      y: .79,
       size: 14,
     ),
-    _TextLayer(
-      'signer',
-      'Signatory',
-      TextEditingController(text: 'Organization Representative'),
-      x: .5,
-      y: .87,
-      size: 15,
-    ),
+   _TextLayer(
+  'signer_left',
+  'Left signatory name',
+  TextEditingController(text: 'Darlene Raven'),
+  x: 0.27,
+  y: 0.855,
+  size: 15,
+  bold: true,
+),
+_TextLayer(
+  'signer_left_position',
+  'Left signatory position',
+  TextEditingController(text: 'Organization Representative'),
+  x: 0.27,
+  y: 0.895,
+  size: 11,
+),
+_TextLayer(
+  'signer_right',
+  'Right signatory name',
+  TextEditingController(text: 'Darlene Raven'),
+  x: 0.73,
+  y: 0.855,
+  size: 15,
+  bold: true,
+),
+_TextLayer(
+  'signer_right_position',
+  'Right signatory position',
+  TextEditingController(text: 'Authorized LGU Representative'),
+  x: 0.73,
+  y: 0.895,
+  size: 11,
+),
   ];
 
   final List<_LogoLayer> _logos = [];
+  Uint8List? _kaisaLogoBytes;
+  bool _showKaisaLogo = true;
+  bool _showKaisaBorder = true;
+  double _kaisaLogoX = .065, _kaisaLogoY = .07, _kaisaLogoWidth = .105;
+  String? _editingId;
+  final FocusNode _editorFocus = FocusNode();
+  final List<Map<String, dynamic>> _undoStack = [];
+  final List<Map<String, dynamic>> _redoStack = [];
+  final Map<String, String> _lastTextValues = {};
+  bool _restoring = false;
+
   int _nextLayerId = 1;
   int _nextLogoId = 1;
   int _design = 0; // Simple, Classic, Modern
@@ -176,7 +216,13 @@ class _CertificateStudioPageState extends State<ECertificateStudioPage> {
   // Font files are loaded only in memory, never uploaded to Supabase.
   final Map<String, Uint8List> _namedFontBytes = {};
   final Map<String, String> _namedFontFamilies = {};
-  String _selectedId = 'recipient';
+    String _selectedId = 'recipient';
+  String? _selectedImageId;
+  bool _layersExpanded = false;
+  bool _templateExpanded = false;
+  bool _formatExpanded = false;
+  Map<String, dynamic>? _copiedObject;
+  int _pasteCount = 0;
   int _recipientIndex = 0;
   bool _exporting = false;
   String? _message;
@@ -208,11 +254,143 @@ class _CertificateStudioPageState extends State<ECertificateStudioPage> {
       layer.text.addListener(_refresh);
     }
     _names.addListener(_onNamesChange);
+    for (final layer in _layers) { _lastTextValues[layer.id] = layer.text.text; }
+    _loadKaisaLogo();
     _loadOrganizations();
   }
 
+  Future<void> _loadKaisaLogo() async {
+    try {
+      final data = await rootBundle.load('assets/images/kaisa_logo.png');
+      if (mounted) setState(() => _kaisaLogoBytes = data.buffer.asUint8List());
+    } catch (_) {
+      if (mounted) {
+        setState(() => _message =
+          'KAISA logo asset missing. Add kaisa_logo.png to assets/images/.');
+      }
+    }
+  }
+
+  Map<String, dynamic> _snapshot() => {
+    'design': _design, 'background': _background,
+    'backgroundName': _backgroundName, 'selectedId': _selectedId,
+    'selectedImageId': _selectedImageId,
+    'showLogo': _showKaisaLogo, 'showBorder': _showKaisaBorder,
+    'logoX': _kaisaLogoX, 'logoY': _kaisaLogoY,
+    'logoWidth': _kaisaLogoWidth,
+    'layers': _layers.map((e) => {
+      'id': e.id, 'label': e.label, 'text': e.text.text,
+      'x': e.x, 'y': e.y, 'size': e.size, 'font': e.font,
+      'color': e.color, 'bold': e.bold, 'visible': e.visible,
+      'align': e.align,
+    }).toList(),
+    'logos': _logos.map((e) => {
+      'id': e.id, 'name': e.name, 'bytes': e.bytes,
+      'visible': e.visible, 'x': e.x, 'y': e.y, 'width': e.width,
+    }).toList(),
+  };
+
+  void _checkpoint() {
+    if (_restoring) return;
+    _undoStack.add(_snapshot());
+    if (_undoStack.length > 80) _undoStack.removeAt(0);
+    _redoStack.clear();
+  }
+
+  void _restore(Map<String, dynamic> data) {
+    _restoring = true;
+    for (final layer in _layers) {
+      layer.text.removeListener(_refresh);
+      layer.text.dispose();
+    }
+    _layers.clear();
+    for (final item in (data['layers'] as List)) {
+      final v = Map<String, dynamic>.from(item as Map);
+      final layer = _TextLayer(
+        v['id'] as String, v['label'] as String,
+        TextEditingController(text: v['text'] as String),
+        x: v['x'] as double, y: v['y'] as double,
+        size: v['size'] as double, color: v['color'] as Color,
+        bold: v['bold'] as bool,
+      );
+      layer.font = v['font'] as String;
+      layer.visible = v['visible'] as bool;
+      layer.align = v['align'] as TextAlign;
+      layer.text.addListener(_refresh);
+      _layers.add(layer);
+    }
+    _logos.clear();
+    for (final item in (data['logos'] as List)) {
+      final v = Map<String, dynamic>.from(item as Map);
+      final logo = _LogoLayer(
+        id: v['id'] as String, name: v['name'] as String,
+        bytes: v['bytes'] as Uint8List, x: v['x'] as double,
+      );
+      logo.y = v['y'] as double;
+      logo.width = v['width'] as double;
+      logo.visible = v['visible'] as bool;
+      _logos.add(logo);
+    }
+    _design = data['design'] as int;
+    _background = data['background'] as Uint8List?;
+    _backgroundName = data['backgroundName'] as String?;
+    _showKaisaLogo = data['showLogo'] as bool;
+    _showKaisaBorder = data['showBorder'] as bool;
+    _kaisaLogoX = data['logoX'] as double;
+    _kaisaLogoY = data['logoY'] as double;
+    _kaisaLogoWidth = data['logoWidth'] as double;
+    final selected = data['selectedId'] as String;
+        _selectedId = _layers.any((e) => e.id == selected)
+        ? selected : _layers.first.id;
+    final imageId = data['selectedImageId'] as String?;
+    _selectedImageId = imageId != null &&
+        (imageId == 'kaisa_default' || _logos.any((e) => e.id == imageId))
+        ? imageId : null;
+    _lastTextValues..clear()..addEntries(
+      _layers.map((e) => MapEntry(e.id, e.text.text)));
+    _editingId = null;
+    _restoring = false;
+    setState(() {});
+  }
+
+  void _undo() {
+    if (_undoStack.isEmpty) return;
+    final previous = _undoStack.removeLast();
+    _redoStack.add(_snapshot());
+    _restore(previous);
+  }
+
+  void _redo() {
+    if (_redoStack.isEmpty) return;
+    final next = _redoStack.removeLast();
+    _undoStack.add(_snapshot());
+    _restore(next);
+  }
+
   void _refresh() {
+    if (_restoring) return;
+    for (final layer in _layers) {
+      final old = _lastTextValues[layer.id];
+      if (old != null && old != layer.text.text) {
+        final previous = _snapshot();
+        final items = previous['layers'] as List;
+        final entry = items.cast<Map<String, dynamic>>()
+            .firstWhere((e) => e['id'] == layer.id);
+        entry['text'] = old;
+        _undoStack.add(previous);
+        if (_undoStack.length > 80) _undoStack.removeAt(0);
+        _redoStack.clear();
+      }
+      _lastTextValues[layer.id] = layer.text.text;
+    }
     if (mounted) setState(() {});
+  }
+
+  String _longDate(DateTime date) {
+    const months = ['January', 'February', 'March', 'April', 'May',
+      'June', 'July', 'August', 'September', 'October',
+      'November', 'December'];
+    return '${months[date.month - 1]} ${date.day}, ${date.year}';
   }
 
   void _onNamesChange() {
@@ -335,7 +513,7 @@ class _CertificateStudioPageState extends State<ECertificateStudioPage> {
         if (start != null) {
           final date = start.toLocal();
           _layers.firstWhere((l) => l.id == 'date').text.text =
-              '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+              _longDate(date);
         }
         _updateSelectedNames();
       });
@@ -520,6 +698,7 @@ class _CertificateStudioPageState extends State<ECertificateStudioPage> {
       layer.text.removeListener(_refresh);
       layer.text.dispose();
     }
+    _editorFocus.dispose();
     super.dispose();
   }
 
@@ -556,6 +735,7 @@ class _CertificateStudioPageState extends State<ECertificateStudioPage> {
         setState(() => _message = 'The selected file is not a valid PNG/JPEG.');
         return;
       }
+      _checkpoint();
       setState(() {
         _background = bytes;
         _backgroundName = file.name;
@@ -607,6 +787,7 @@ class _CertificateStudioPageState extends State<ECertificateStudioPage> {
         ..addFont(Future.value(ByteData.sublistView(bytes)));
       await loader.load();
       if (!mounted) return;
+      _checkpoint();
       setState(() {
         _customFontBytes = bytes;
         _customFontName = file.name;
@@ -681,6 +862,7 @@ class _CertificateStudioPageState extends State<ECertificateStudioPage> {
       final ok = await _loadNamedFont(fontName);
       if (!ok || !mounted) return;
     }
+    _checkpoint();
     setState(() {
       _selected.font = fontName;
       if (fontName == 'Great Vibes') _selected.bold = false;
@@ -698,6 +880,7 @@ class _CertificateStudioPageState extends State<ECertificateStudioPage> {
       final ok = await _loadNamedFont('TeX Gyre Termes', boldFace: true);
       if (!ok || !mounted) return;
     }
+    _checkpoint();
     if (mounted) setState(() => layer.bold = !layer.bold);
   }
 
@@ -765,7 +948,198 @@ class _CertificateStudioPageState extends State<ECertificateStudioPage> {
     return bold ? pw.Font.helveticaBold() : pw.Font.helvetica();
   }
 
+    // Object clipboard is separate from native clipboard inside editable text fields.
+  // TextField / EditableText keeps its own Ctrl+C / Ctrl+V behavior.
+  bool get _editingTextField {
+    final context = FocusManager.instance.primaryFocus?.context;
+    return context != null && context.findAncestorStateOfType<EditableTextState>() != null;
+  }
+
+  void _selectTextLayer(String id) {
+    setState(() {
+      _selectedId = id;
+      _selectedImageId = null;
+    });
+  }
+
+  void _selectImageLayer(String id) {
+    setState(() {
+      _selectedImageId = id;
+      _editingId = null;
+      _layersExpanded = true;
+    });
+  }
+
+  void _copySelectedObject() {
+    if (_editingTextField) return;
+    if (_selectedImageId == 'kaisa_default') {
+      if (_kaisaLogoBytes == null) return;
+      _copiedObject = {
+        'type': 'image', 'name': 'KAISA logo', 'bytes': _kaisaLogoBytes!,
+        'x': _kaisaLogoX, 'y': _kaisaLogoY, 'width': _kaisaLogoWidth,
+      };
+    } else if (_selectedImageId != null) {
+      final matches = _logos.where((e) => e.id == _selectedImageId);
+      if (matches.isEmpty) return;
+      final logo = matches.first;
+      _copiedObject = {
+        'type': 'image', 'name': logo.name, 'bytes': logo.bytes,
+        'x': logo.x, 'y': logo.y, 'width': logo.width,
+      };
+    } else {
+      final matches = _layers.where((e) => e.id == _selectedId);
+      if (matches.isEmpty) return;
+      final layer = matches.first;
+      _copiedObject = {
+        'type': 'text', 'label': layer.label, 'text': layer.text.text,
+        'x': layer.x, 'y': layer.y, 'size': layer.size,
+        'font': layer.font, 'color': layer.color, 'bold': layer.bold,
+        'align': layer.align,
+      };
+    }
+    _pasteCount = 0;
+  }
+
+  void _pasteCopiedObject() {
+    if (_editingTextField || _copiedObject == null) return;
+    _checkpoint();
+    final copied = _copiedObject!;
+    _pasteCount++;
+    final offset = .025 * ((_pasteCount - 1) % 5 + 1);
+    if (copied['type'] == 'image') {
+      final width = copied['width'] as double;
+      final logo = _LogoLayer(
+        id: 'logo_${_nextLogoId++}',
+        name: '${copied['name']} (copy)',
+        bytes: copied['bytes'] as Uint8List,
+        x: ((copied['x'] as double) + offset).clamp(0.0, 1.0 - width),
+      );
+      logo.y = ((copied['y'] as double) + offset).clamp(0.0, .95);
+      logo.width = width;
+      setState(() {
+        _logos.add(logo);
+        _selectedImageId = logo.id;
+        _layersExpanded = true;
+      });
+    } else {
+      final id = 'extra_${_nextLayerId++}';
+      final layer = _TextLayer(
+        id, '${copied['label']} (copy)',
+        TextEditingController(text: copied['text'] as String),
+        x: ((copied['x'] as double) + offset).clamp(.17, .83),
+        y: ((copied['y'] as double) + offset).clamp(0.0, .96),
+        size: copied['size'] as double,
+        color: copied['color'] as Color,
+        bold: copied['bold'] as bool,
+      );
+      layer.font = copied['font'] as String;
+      layer.align = copied['align'] as TextAlign;
+      layer.text.addListener(_refresh);
+      _lastTextValues[id] = layer.text.text;
+      setState(() {
+        _layers.add(layer);
+        _selectedId = id;
+        _selectedImageId = null;
+        _layersExpanded = true;
+      });
+    }
+  }
+
+  void _removeSelectedObject() {
+    if (_selectedImageId == 'kaisa_default') {
+      _checkpoint();
+      setState(() { _showKaisaLogo = false; _selectedImageId = null; });
+    } else if (_selectedImageId != null) {
+      _checkpoint();
+      setState(() {
+        _logos.removeWhere((e) => e.id == _selectedImageId);
+        _selectedImageId = null;
+      });
+    } else {
+      _removeSelectedLayer();
+    }
+  }
+
+  Widget _layerNavigator() => Card(
+    margin: EdgeInsets.zero,
+    clipBehavior: Clip.antiAlias,
+    child: ExpansionTile(
+      key: const PageStorageKey('certificate_layers'),
+      initiallyExpanded: _layersExpanded,
+      onExpansionChanged: (expanded) => _layersExpanded = expanded,
+      leading: const Icon(Icons.layers_outlined),
+      title: const Text('Layers', style: TextStyle(fontWeight: FontWeight.w800)),
+      subtitle: Text('${_layers.length} text · ${_logos.length + (_showKaisaLogo ? 1 : 0)} images'),
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          child: Row(children: [
+            Expanded(child: OutlinedButton.icon(
+              onPressed: _addTextLayer,
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('Add text'),
+            )),
+            const SizedBox(width: 8),
+            Expanded(child: OutlinedButton.icon(
+              onPressed: _addLogo,
+              icon: const Icon(Icons.add_photo_alternate_outlined, size: 18),
+              label: const Text('Add image'),
+            )),
+          ]),
+        ),
+        if (_showKaisaLogo)
+          ListTile(
+            dense: true,
+            leading: const Icon(Icons.image_outlined),
+            title: const Text('KAISA logo'),
+            selected: _selectedImageId == 'kaisa_default',
+            onTap: () => _selectImageLayer('kaisa_default'),
+          ),
+        for (final logo in _logos)
+          ListTile(
+            dense: true,
+            leading: Icon(logo.visible ? Icons.image_outlined : Icons.hide_image_outlined),
+            title: Text(logo.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+            selected: _selectedImageId == logo.id,
+            onTap: () => _selectImageLayer(logo.id),
+            trailing: IconButton(
+              tooltip: logo.visible ? 'Hide image' : 'Show image',
+              icon: Icon(logo.visible ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+              onPressed: () { _checkpoint(); setState(() => logo.visible = !logo.visible); },
+            ),
+          ),
+        for (final layer in _layers)
+          ListTile(
+            dense: true,
+            leading: Icon(layer.visible ? Icons.text_fields : Icons.visibility_off_outlined),
+            title: Text(layer.label, maxLines: 1, overflow: TextOverflow.ellipsis),
+            selected: _selectedImageId == null && _selectedId == layer.id,
+            onTap: () => _selectTextLayer(layer.id),
+            trailing: IconButton(
+              tooltip: layer.visible ? 'Hide text' : 'Show text',
+              icon: Icon(layer.visible ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+              onPressed: () { _checkpoint(); setState(() => layer.visible = !layer.visible); },
+            ),
+          ),
+        Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(children: [
+            Expanded(child: OutlinedButton.icon(
+              onPressed: _removeSelectedObject,
+              icon: const Icon(Icons.delete_outline),
+              label: const Text('Remove selected'),
+            )),
+            const SizedBox(width: 8),
+            IconButton(tooltip: 'Copy selected (Ctrl+C)', onPressed: _copySelectedObject, icon: const Icon(Icons.copy_outlined)),
+            IconButton(tooltip: 'Paste object (Ctrl+V)', onPressed: _copiedObject == null ? null : _pasteCopiedObject, icon: const Icon(Icons.content_paste_outlined)),
+          ]),
+        ),
+      ],
+    ),
+  );
+
   void _addTextLayer() {
+    _checkpoint();
     final id = 'extra_${_nextLayerId++}';
     final layer = _TextLayer(
       id,
@@ -776,18 +1150,23 @@ class _CertificateStudioPageState extends State<ECertificateStudioPage> {
       size: 18,
     );
     layer.text.addListener(_refresh);
+    _lastTextValues[id] = layer.text.text;
     setState(() {
       _layers.add(layer);
-      _selectedId = id;
+            _selectedId = id;
+      _selectedImageId = null;
+      _layersExpanded = true;
     });
   }
 
   void _removeSelectedLayer() {
     final index = _layers.indexWhere((layer) => layer.id == _selectedId);
     if (index < 0 || _layers.length <= 1) return;
+    _checkpoint();
     final layer = _layers.removeAt(index);
     layer.text.removeListener(_refresh);
     layer.text.dispose();
+    _lastTextValues.remove(layer.id);
     setState(() => _selectedId = _layers.first.id);
   }
 
@@ -810,15 +1189,19 @@ class _CertificateStudioPageState extends State<ECertificateStudioPage> {
         return;
       }
       if (mounted) {
+        _checkpoint();
         setState(
-          () => _logos.add(
-            _LogoLayer(
-              id: 'logo_${_nextLogoId++}',
+                    () {
+            final id = 'logo_${_nextLogoId++}';
+            _logos.add(_LogoLayer(
+              id: id,
               name: file.name,
               bytes: bytes,
-              x: .12 + (_logos.length % 3) * .2,
-            ),
-          ),
+                            x: .12 + (_logos.length % 3) * .2,
+            ));
+            _selectedImageId = id;
+            _layersExpanded = true;
+          },
         );
       }
     } catch (e) {
@@ -848,6 +1231,7 @@ class _CertificateStudioPageState extends State<ECertificateStudioPage> {
           ),
           FilledButton(
             onPressed: () {
+              _checkpoint();
               setState(() => _selected.color = draft);
               Navigator.pop(dialogContext);
             },
@@ -859,6 +1243,7 @@ class _CertificateStudioPageState extends State<ECertificateStudioPage> {
   }
 
   void _applyDesign(int design) {
+    _checkpoint();
     setState(() {
       _design = design;
       _background = null;
@@ -867,6 +1252,7 @@ class _CertificateStudioPageState extends State<ECertificateStudioPage> {
   }
 
   pw.Widget _pdfDecoration() {
+    if (!_showKaisaBorder) return pw.Container(color: PdfColors.white);
     if (_design == 1) {
       return pw.Container(
         decoration: pw.BoxDecoration(
@@ -916,42 +1302,37 @@ class _CertificateStudioPageState extends State<ECertificateStudioPage> {
           margin: pw.EdgeInsets.zero,
           build: (context) => pw.Stack(
             children: [
-              // Certificate background
+              // Background image or built-in template, then optional KAISA frame.
               if (bg != null)
                 pw.Positioned.fill(child: pw.Image(bg, fit: pw.BoxFit.fill))
-              else ...[
+              else
                 pw.Positioned.fill(child: _pdfDecoration()),
-
+              if (_showKaisaBorder) ...[
                 pw.Positioned(
-                  left: 22,
-                  right: 22,
-                  top: 22,
-                  bottom: 22,
-                  child: pw.Container(
-                    decoration: pw.BoxDecoration(
-                      border: pw.Border.all(
-                        color: PdfColor.fromHex('#176B43'),
-                        width: 4,
-                      ),
-                    ),
-                  ),
+                  left: 22, right: 22, top: 22, bottom: 22,
+                  child: pw.Container(decoration: pw.BoxDecoration(
+                    border: pw.Border.all(
+                      color: PdfColor.fromHex('#176B43'), width: 4),
+                  )),
                 ),
-
                 pw.Positioned(
-                  left: 31,
-                  right: 31,
-                  top: 31,
-                  bottom: 31,
-                  child: pw.Container(
-                    decoration: pw.BoxDecoration(
-                      border: pw.Border.all(
-                        color: PdfColor.fromHex('#E4B746'),
-                        width: 1.5,
-                      ),
-                    ),
-                  ),
+                  left: 31, right: 31, top: 31, bottom: 31,
+                  child: pw.Container(decoration: pw.BoxDecoration(
+                    border: pw.Border.all(
+                      color: PdfColor.fromHex('#E4B746'), width: 1.5),
+                  )),
                 ),
               ],
+              if (_showKaisaLogo && _kaisaLogoBytes != null)
+                pw.Positioned(
+                  left: _kaisaLogoX * _pageWidth,
+                  top: _kaisaLogoY * _pageHeight,
+                  child: pw.SizedBox(
+                    width: _kaisaLogoWidth * _pageWidth,
+                    child: pw.Image(pw.MemoryImage(_kaisaLogoBytes!),
+                      fit: pw.BoxFit.contain),
+                  ),
+                ),
 
               // Uploadable logos are embedded once into the PDF document.
               for (final logo in _logos.where((item) => item.visible))
@@ -966,21 +1347,20 @@ class _CertificateStudioPageState extends State<ECertificateStudioPage> {
                     ),
                   ),
                 ),
-
-              // Editable certificate text layers
+// Editable certificate text layers
               for (final layer in _layers.where((e) => e.visible))
                 pw.Positioned(
                   left:
                       layer.x * _pageWidth -
-                      _pageWidth * _layerWidthFraction / 2,
+                      _pageWidth * _layerWidth(layer) / 2,
                   top: layer.y * _pageHeight,
 
                   // Width is now inside SizedBox
                   child: pw.SizedBox(
-                    width: _pageWidth * _layerWidthFraction,
+                    width: _pageWidth * _layerWidth(layer),
                     child: pw.Text(
                       _displayText(layer, name),
-                      maxLines: 3,
+                      maxLines: layer.id == 'description' ? 5 : 3,
                       textAlign: switch (layer.align) {
                         TextAlign.left => pw.TextAlign.left,
                         TextAlign.right => pw.TextAlign.right,
@@ -1042,6 +1422,10 @@ class _CertificateStudioPageState extends State<ECertificateStudioPage> {
     }
   }
 
+  void _editOnCanvas(_TextLayer layer) {
+        setState(() { _selectedId = layer.id; _selectedImageId = null; _editingId = layer.id; });
+  }
+
   Widget _certificateCanvas() => LayoutBuilder(
     builder: (context, constraints) {
       final w = constraints.maxWidth;
@@ -1052,36 +1436,48 @@ class _CertificateStudioPageState extends State<ECertificateStudioPage> {
         child: ClipRect(
           child: Stack(
             children: [
-              Positioned.fill(
-                child: Container(
-                  decoration: _background == null
-                      ? BoxDecoration(
-                          color: Colors.white,
-                          border: Border.all(color: _forest, width: 4 * scale),
-                        )
-                      : BoxDecoration(
-                          color: Colors.white,
-                          image: DecorationImage(
-                            image: MemoryImage(_background!),
-                            fit: BoxFit.fill,
-                          ),
-                        ),
-                  child: _background == null
-                      ? Padding(
-                          padding: EdgeInsets.all(10 * scale),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              border: Border.all(
-                                color: _gold,
-                                width: 2 * scale,
-                              ),
-                            ),
-                          ),
-                        )
-                      : null,
-                ),
-              ),
-              // Uploaded image layers sit above the template, below text.
+                             Positioned.fill(
+                 child: Container(
+                   decoration: BoxDecoration(
+                     color: Colors.white,
+                     image: _background == null ? null : DecorationImage(
+                       image: MemoryImage(_background!), fit: BoxFit.fill),
+                   ),
+                   child: _showKaisaBorder ? Stack(children: [
+                     Positioned.fill(child: Container(
+                       margin: EdgeInsets.all(22 * scale),
+                       decoration: BoxDecoration(border: Border.all(
+                         color: _forest, width: 4 * scale)),
+                     )),
+                     Positioned.fill(child: Container(
+                       margin: EdgeInsets.all(31 * scale),
+                       decoration: BoxDecoration(border: Border.all(
+                         color: _gold, width: 1.5 * scale)),
+                     )),
+                   ]) : null,
+                 ),
+               ),
+               if (_showKaisaLogo && _kaisaLogoBytes != null)
+                 Positioned(
+                   left: _kaisaLogoX * w, top: _kaisaLogoY * h,
+                   width: _kaisaLogoWidth * w,
+                   child: GestureDetector(
+                                           onTap: () => _selectImageLayer('kaisa_default'),
+                      onPanStart: (_) { _checkpoint(); _selectImageLayer('kaisa_default'); },
+                      onPanUpdate: (details) => setState(() {
+                        _kaisaLogoX = (_kaisaLogoX + details.delta.dx / w)
+                           .clamp(0.0, 1 - _kaisaLogoWidth);
+                       _kaisaLogoY = (_kaisaLogoY + details.delta.dy / h)
+                           .clamp(0.0, .95);
+                     }),
+                                           child: Container(
+                        decoration: BoxDecoration(border: _selectedImageId == 'kaisa_default'
+                          ? Border.all(color: _forest, width: 2) : null),
+                        child: Image.memory(_kaisaLogoBytes!, fit: BoxFit.contain),
+                      ),
+                   ),
+                 ),
+// Uploaded image layers sit above the template, below text.
               for (final logo in _logos.where((item) => item.visible))
                 Positioned(
                   left: logo.x * w,
@@ -1089,50 +1485,71 @@ class _CertificateStudioPageState extends State<ECertificateStudioPage> {
                   width: logo.width * w,
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
-                    onPanUpdate: (details) => setState(() {
-                      logo.x = (logo.x + details.delta.dx / w).clamp(
+                                         onTap: () => _selectImageLayer(logo.id),
+                     onPanStart: (_) { _checkpoint(); _selectImageLayer(logo.id); },
+                     onPanUpdate: (details) => setState(() {
+                       logo.x = (logo.x + details.delta.dx / w).clamp(
                         0.0,
                         1.0 - logo.width,
                       );
                       logo.y = (logo.y + details.delta.dy / h).clamp(0.0, 0.95);
                     }),
-                    child: Image.memory(
-                      logo.bytes,
-                      fit: BoxFit.contain,
-                      gaplessPlayback: true,
-                    ),
+                                         child: Container(
+                       decoration: BoxDecoration(border: _selectedImageId == logo.id
+                         ? Border.all(color: _forest, width: 2) : null),
+                       child: Image.memory(
+                         logo.bytes,
+                         fit: BoxFit.contain,
+                         gaplessPlayback: true,
+                       ),
+                     ),
                   ),
                 ),
-              for (final layer in _layers.where((item) => item.visible))
+                for (final layer in _layers.where((item) => item.visible))
                 Positioned(
-                  left: (layer.x - _layerWidthFraction / 2) * w,
+                  left: (layer.x - _layerWidth(layer) / 2) * w,
                   top: layer.y * h,
-                  width: _layerWidthFraction * w,
+                  width: _layerWidth(layer) * w,
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
-                    onTap: () => setState(() => _selectedId = layer.id),
-                    onPanStart: (_) => setState(() => _selectedId = layer.id),
+                    onTap: () => _selectTextLayer(layer.id),
+                    onPanStart: (_) { _checkpoint(); _selectTextLayer(layer.id); },
+                    onDoubleTap: () => _editOnCanvas(layer),
                     onPanUpdate: (details) => setState(() {
                       layer.x = (layer.x + details.delta.dx / w).clamp(
-                        _layerWidthFraction / 2,
-                        1 - _layerWidthFraction / 2,
+                        _layerWidth(layer) / 2,
+                        1 - _layerWidth(layer) / 2,
                       );
                       layer.y = (layer.y + details.delta.dy / h).clamp(0, .96);
                     }),
                     child: Container(
                       padding: EdgeInsets.symmetric(vertical: 3 * scale),
                       decoration: BoxDecoration(
-                        color: layer.id == _selectedId
+                        color: _selectedImageId == null && layer.id == _selectedId
+
                             ? const Color(0x14176B43)
                             : Colors.transparent,
-                        border: layer.id == _selectedId
+                        border: _selectedImageId == null && layer.id == _selectedId
+
                             ? Border.all(color: _forest, width: 1.4)
                             : null,
                       ),
-                      child: Text(
+                      child: _editingId == layer.id
+                          ? TextField(
+                              controller: layer.text, autofocus: true,
+                              minLines: 1, maxLines: layer.id == 'description' ? 5 : 3,
+                              textAlign: layer.align,
+                              style: _previewStyle(layer, scale),
+                              decoration: const InputDecoration(
+                                isDense: true, border: OutlineInputBorder(),
+                                contentPadding: EdgeInsets.all(4)),
+                              onSubmitted: (_) => setState(() => _editingId = null),
+                              onTapOutside: (_) => setState(() => _editingId = null),
+                            )
+                          : Text(
                         _displayText(layer, _sampleName),
                         textAlign: layer.align,
-                        maxLines: 3,
+                        maxLines: layer.id == 'description' ? 5 : 3,
                         overflow: TextOverflow.ellipsis,
                         style: _previewStyle(layer, scale),
                       ),
@@ -1162,11 +1579,22 @@ class _CertificateStudioPageState extends State<ECertificateStudioPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text(
-          'Template',
-          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
-        ),
-        const SizedBox(height: 10),
+        Card(
+          margin: EdgeInsets.zero,
+          clipBehavior: Clip.antiAlias,
+          child: ExpansionTile(
+            key: const PageStorageKey('certificate_template'),
+            initiallyExpanded: _templateExpanded,
+            onExpansionChanged: (value) => _templateExpanded = value,
+            leading: const Icon(Icons.dashboard_customize_outlined),
+            title: const Text('Template', style: TextStyle(fontWeight: FontWeight.w800)),
+            subtitle: const Text('Design, border, logo and background'),
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 4, 14, 14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
         const Text('Starter designs (or upload your own background)'),
         const SizedBox(height: 8),
         Wrap(
@@ -1185,85 +1613,28 @@ class _CertificateStudioPageState extends State<ECertificateStudioPage> {
               ),
           ],
         ),
-        const SizedBox(height: 9),
-        OutlinedButton.icon(
-          onPressed: _addLogo,
-          icon: const Icon(Icons.add_photo_alternate_outlined),
-          label: const Text('Add logo/image layer'),
-        ),
-        if (_logos.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          for (final logo in _logos)
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'Image: ${logo.name}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    IconButton(
-                      tooltip: logo.visible ? 'Hide image' : 'Show image',
-                      icon: Icon(
-                        logo.visible
-                            ? Icons.visibility_outlined
-                            : Icons.visibility_off_outlined,
-                      ),
-                      onPressed: () =>
-                          setState(() => logo.visible = !logo.visible),
-                    ),
-                    IconButton(
-                      tooltip: 'Remove image',
-                      icon: const Icon(Icons.delete_outline),
-                      onPressed: () => setState(() => _logos.remove(logo)),
-                    ),
-                  ],
-                ),
-                Row(
-                  children: [
-                    const Text('X'),
-                    Expanded(
-                      child: Slider(
-                        value: logo.x.clamp(0.0, 1.0 - logo.width),
-                        min: 0,
-                        max: 1.0 - logo.width,
-                        onChanged: (v) => setState(() => logo.x = v),
-                      ),
-                    ),
-                    const Text('Y'),
-                    Expanded(
-                      child: Slider(
-                        value: logo.y.clamp(0.0, 0.95),
-                        min: 0,
-                        max: 0.95,
-                        onChanged: (v) => setState(() => logo.y = v),
-                      ),
-                    ),
-                  ],
-                ),
-                Row(
-                  children: [
-                    const Text('Size'),
-                    Expanded(
-                      child: Slider(
-                        value: logo.width,
-                        min: .05,
-                        max: .4,
-                        onChanged: (value) => setState(() {
-                          logo.width = value;
-                          logo.x = logo.x.clamp(0, 1 - value);
-                        }),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-        ],
+                 const SizedBox(height: 10),
+         SwitchListTile.adaptive(
+           title: const Text('Show default KAISA logo'),
+           value: _showKaisaLogo,
+           onChanged: (value) { _checkpoint(); setState(() => _showKaisaLogo = value); },
+         ),
+         SwitchListTile.adaptive(
+           title: const Text('Show KAISA green-and-gold border'),
+           value: _showKaisaBorder,
+           onChanged: (value) { _checkpoint(); setState(() => _showKaisaBorder = value); },
+         ),
+         if (_showKaisaLogo) ...[
+           const Text('KAISA logo size'),
+           Slider(
+             value: _kaisaLogoWidth, min: .05, max: .22,
+             onChangeStart: (_) => _checkpoint(),
+             onChanged: (v) => setState(() {
+               _kaisaLogoWidth = v;
+               _kaisaLogoX = _kaisaLogoX.clamp(0, 1 - v);
+             }),
+           ),
+         ],
         const SizedBox(height: 8),
         OutlinedButton.icon(
           onPressed: _pickBackground,
@@ -1277,59 +1648,51 @@ class _CertificateStudioPageState extends State<ECertificateStudioPage> {
         ),
         if (_background != null)
           TextButton(
-            onPressed: () => setState(() {
+            onPressed: () { _checkpoint(); setState(() {
               _background = null;
               _backgroundName = null;
-            }),
+            }); },
             child: const Text('Use simple built-in border'),
           ),
-        const SizedBox(height: 20),
-        const Text(
-          'Text layers',
-          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
-        ),
-        const SizedBox(height: 9),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            OutlinedButton.icon(
-              onPressed: _addTextLayer,
-              icon: const Icon(Icons.add),
-              label: const Text('Add text'),
-            ),
-            OutlinedButton.icon(
-              onPressed: _layers.length <= 1 ? null : _removeSelectedLayer,
-              icon: const Icon(Icons.delete_outline),
-              label: const Text('Remove selected'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        SwitchListTile.adaptive(
-          dense: true,
-          title: const Text('Show selected text layer'),
-          value: e.visible,
-          onChanged: (v) => setState(() => e.visible = v),
-        ),
-        Wrap(
-          spacing: 6,
-          runSpacing: 5,
-          children: [
-            for (final layer in _layers)
-              ChoiceChip(
-                label: Text(layer.label),
-                selected: _selectedId == layer.id,
-                onSelected: (_) => setState(() => _selectedId = layer.id),
+                                   ],
+                ),
               ),
-          ],
+            ],
+          ),
         ),
+        const SizedBox(height: 10),
+         _layerNavigator(),
+         const SizedBox(height: 12),
+         if (_selectedImageId != null) ...[
+           Text('Selected image', style: Theme.of(context).textTheme.titleMedium),
+           const SizedBox(height: 8),
+           const Text('Drag the image on the canvas to move it. Use Layers to hide or remove it.'),
+           const SizedBox(height: 10),
+           const Text('Image size'),
+           Slider(
+             value: _selectedImageId == 'kaisa_default'
+                 ? _kaisaLogoWidth
+                 : _logos.firstWhere((logo) => logo.id == _selectedImageId).width,
+             min: .05, max: .4,
+             onChangeStart: (_) => _checkpoint(),
+             onChanged: (v) => setState(() {
+               if (_selectedImageId == 'kaisa_default') {
+                 _kaisaLogoWidth = v;
+                 _kaisaLogoX = _kaisaLogoX.clamp(0.0, 1.0 - v);
+               } else {
+                 final logo = _logos.firstWhere((logo) => logo.id == _selectedImageId);
+                 logo.width = v;
+                 logo.x = logo.x.clamp(0.0, 1.0 - v);
+               }
+             }),
+           ),
+         ] else ...[
         const SizedBox(height: 16),
         TextFormField(
           key: ValueKey('label_${e.id}'),
           initialValue: e.label,
           decoration: const InputDecoration(labelText: 'Layer name'),
-          onChanged: (value) => setState(() => e.label = value),
+          onChanged: (value) { _checkpoint(); setState(() => e.label = value); },
         ),
         const SizedBox(height: 10),
         TextField(
@@ -1345,36 +1708,57 @@ class _CertificateStudioPageState extends State<ECertificateStudioPage> {
           ),
         ),
         const SizedBox(height: 14),
-        Row(
-          children: [
-            Expanded(
-              child: DropdownButtonFormField<String>(
-                key: ValueKey('font_${e.id}_${e.font}'),
-                initialValue: e.font,
-                decoration: const InputDecoration(labelText: 'Font'),
-                items: availableFonts
-                    .map(
-                      (f) => DropdownMenuItem(
-                        value: f,
-                        child: Text(f == 'Custom' ? 'Uploaded font' : f),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (f) {
-                  if (f != null) _selectFont(f);
-                },
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: _pickFont,
-                icon: const Icon(Icons.font_download_outlined),
-                label: const Text('Upload .ttf'),
-              ),
-            ),
-          ],
-        ),
+        Card(
+          margin: EdgeInsets.zero,
+          clipBehavior: Clip.antiAlias,
+          child: ExpansionTile(
+            key: const PageStorageKey('certificate_format'),
+            initiallyExpanded: _formatExpanded,
+            onExpansionChanged: (value) => _formatExpanded = value,
+            leading: const Icon(Icons.tune_outlined),
+            title: const Text('Text formatting & position',
+              style: TextStyle(fontWeight: FontWeight.w800)),
+            subtitle: Text('${e.font} · ${e.size.toStringAsFixed(0)} pt'),
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 18, 12, 14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+        Column(
+  crossAxisAlignment: CrossAxisAlignment.stretch,
+  children: [
+    DropdownButtonFormField<String>(
+      key: ValueKey('font_${e.id}_${e.font}'),
+      initialValue: e.font,
+      isExpanded: true,
+      decoration: const InputDecoration(
+        labelText: 'Font',
+        border: OutlineInputBorder(),
+      ),
+      items: availableFonts.map((f) {
+        return DropdownMenuItem<String>(
+          value: f,
+          child: Text(
+            f == 'Custom' ? 'Uploaded font' : f,
+            overflow: TextOverflow.ellipsis,
+          ),
+        );
+      }).toList(),
+      onChanged: (f) {
+        if (f != null) _selectFont(f);
+      },
+    ),
+
+    const SizedBox(height: 10),
+
+    OutlinedButton.icon(
+      onPressed: _pickFont,
+      icon: const Icon(Icons.font_download_outlined),
+      label: const Text('Upload .ttf'),
+    ),
+  ],
+),
         if (e.font == 'Great Vibes' || e.font == 'TeX Gyre Termes')
           const Text(
             'The file dialog is expected: choose an extracted .ttf (not a ZIP or .otf). This font is loaded only for the current preview session.',
@@ -1410,7 +1794,8 @@ class _CertificateStudioPageState extends State<ECertificateStudioPage> {
           min: 9,
           max: 64,
           divisions: 55,
-          onChanged: (v) => setState(() => e.size = v),
+          onChangeStart: (_) => _checkpoint(),
+           onChanged: (v) => setState(() => e.size = v),
         ),
         const SizedBox(height: 4),
         const Text('Alignment'),
@@ -1430,7 +1815,7 @@ class _CertificateStudioPageState extends State<ECertificateStudioPage> {
             ),
           ],
           selected: {e.align},
-          onSelectionChanged: (value) => setState(() => e.align = value.first),
+          onSelectionChanged: (value) { _checkpoint(); setState(() => e.align = value.first); },
         ),
         const SizedBox(height: 15),
         const Text('Text color'),
@@ -1447,7 +1832,7 @@ class _CertificateStudioPageState extends State<ECertificateStudioPage> {
               const Color(0xFF1C5496),
             ])
               InkWell(
-                onTap: () => setState(() => e.color = c),
+                onTap: () { _checkpoint(); setState(() => e.color = c); },
                 child: Container(
                   width: 30,
                   height: 30,
@@ -1479,9 +1864,10 @@ class _CertificateStudioPageState extends State<ECertificateStudioPage> {
             const Text('Horizontal'),
             Expanded(
               child: Slider(
-                value: e.x,
-                min: _layerWidthFraction / 2,
-                max: 1 - _layerWidthFraction / 2,
+                value: e.x.clamp(0.0, 1.0).toDouble(),
+                min: 0.0,
+                max: 1.0,
+                onChangeStart: (_) => _checkpoint(),
                 onChanged: (v) => setState(() => e.x = v),
               ),
             ),
@@ -1495,14 +1881,21 @@ class _CertificateStudioPageState extends State<ECertificateStudioPage> {
                 value: e.y,
                 min: 0,
                 max: .96,
-                onChanged: (v) => setState(() => e.y = v),
+                onChangeStart: (_) => _checkpoint(),
+                 onChanged: (v) => setState(() => e.y = v),
               ),
             ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        const Divider(),
-        const SizedBox(height: 12),
+                    ],
+                ), // Row (Vertical slider)
+              ], // Column children
+            ), // Column
+          ), // Padding
+        ], // ExpansionTile children
+        ), // ExpansionTile
+        ), // Card
+         const SizedBox(height: 8),
+         const Divider(),
+         const SizedBox(height: 12),
         const Text(
           'Recipients · one name per line',
           style: TextStyle(fontWeight: FontWeight.w800),
@@ -1522,6 +1915,7 @@ class _CertificateStudioPageState extends State<ECertificateStudioPage> {
           '${_recipients.length} unique recipient(s)',
           style: const TextStyle(color: _forest, fontWeight: FontWeight.w700),
         ),
+         ],
       ],
     );
   }
@@ -1537,7 +1931,17 @@ class _CertificateStudioPageState extends State<ECertificateStudioPage> {
               style: TextStyle(fontWeight: FontWeight.w900, fontSize: 20),
             ),
           ),
-          if (_recipients.length > 1) ...[
+                     IconButton(
+             tooltip: 'Undo (Ctrl+Z)',
+             onPressed: _undoStack.isEmpty ? null : _undo,
+             icon: const Icon(Icons.undo),
+           ),
+           IconButton(
+             tooltip: 'Redo (Ctrl+Y / Ctrl+Shift+Z)',
+             onPressed: _redoStack.isEmpty ? null : _redo,
+             icon: const Icon(Icons.redo),
+           ),
+if (_recipients.length > 1) ...[
             IconButton(
               onPressed: _recipientIndex <= 0
                   ? null
@@ -1556,7 +1960,7 @@ class _CertificateStudioPageState extends State<ECertificateStudioPage> {
       ),
       const SizedBox(height: 6),
       const Text(
-        'Click a text layer to select it, then drag to move. Sizes are based on landscape A4 PDF.',
+        'Click to select, double-click to edit text on the canvas, or drag to move. Ctrl+C: copy layer; Ctrl+V: paste layer; Ctrl+Z: undo; Ctrl+Y: redo.',
         style: TextStyle(color: Color(0xFF5E7869), fontSize: 12),
       ),
       const SizedBox(height: 12),
@@ -1593,45 +1997,40 @@ class _CertificateStudioPageState extends State<ECertificateStudioPage> {
   @override
   Widget build(BuildContext context) {
     final desktop = MediaQuery.sizeOf(context).width >= 1000;
-    return Scaffold(
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.keyZ, control: true): _undo,
+        const SingleActivator(LogicalKeyboardKey.keyY, control: true): _redo,
+                 const SingleActivator(LogicalKeyboardKey.keyZ, control: true, shift: true): _redo,
+         const SingleActivator(LogicalKeyboardKey.keyC, control: true): _copySelectedObject,
+         const SingleActivator(LogicalKeyboardKey.keyV, control: true): _pasteCopiedObject,
+      },
+      child: Focus(
+      focusNode: _editorFocus,
+      autofocus: true,
+      child: Scaffold(
       // No app bar: the Organization Admin shell owns the shared header.
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1450),
+          constraints: const BoxConstraints(maxWidth: 1700),
           child: ListView(
             padding: const EdgeInsets.all(18),
             children: [
-              Container(
-                padding: const EdgeInsets.all(22),
-                decoration: BoxDecoration(
-                  color: _forest,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Column(
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'KAISA · ORGANIZATION TOOLS · VERIFIED ATTENDANCE',
-                      style: TextStyle(
-                        color: _gold,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 12,
-                      ),
-                    ),
-                    SizedBox(height: 7),
-                    Text(
-                      'Make it yours.',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 30,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
+                    Text('KAISA · ORGANIZATION TOOLS · VERIFIED ATTENDANCE',
+                      style: TextStyle(color: _forest, fontSize: 12,
+                        fontWeight: FontWeight.w800)),
                     SizedBox(height: 6),
-                    Text(
-                      'Upload a design, drag text, choose fonts, and print certificates for every attendee.',
-                      style: TextStyle(color: Colors.white70),
-                    ),
+                    Text('Make it yours.',
+                      style: TextStyle(color: Color(0xFF173F2E), fontSize: 29,
+                        fontWeight: FontWeight.w900)),
+                    SizedBox(height: 4),
+                    Text('Upload a design, drag text, choose fonts, and print certificates for every attendee.',
+                      style: TextStyle(color: Color(0xFF5E7869))),
                   ],
                 ),
               ),
@@ -1681,6 +2080,8 @@ class _CertificateStudioPageState extends State<ECertificateStudioPage> {
             ],
           ),
         ),
+      ),
+      ),
       ),
     );
   }

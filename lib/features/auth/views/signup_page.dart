@@ -70,12 +70,13 @@ class _SignUpPageState extends State<SignUpPage> {
         context.go('/verification');
       }
     } on AuthException catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(e.message)));
+      }
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
@@ -83,6 +84,7 @@ class _SignUpPageState extends State<SignUpPage> {
             ),
           ),
         );
+      }
     } finally {
       if (mounted) setState(() => _emailBusy = false);
     }

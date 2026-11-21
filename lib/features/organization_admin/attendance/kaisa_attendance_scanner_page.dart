@@ -65,8 +65,9 @@ class _KaisaAttendanceScannerPageState
         _eventId ??= _roster?['event_id']?.toString();
       });
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         setState(() => _message = 'Could not read secure offline cache: $e');
+      }
     }
     if (_pending.isNotEmpty) _sync();
   }
@@ -87,8 +88,9 @@ class _KaisaAttendanceScannerPageState
       if (!mounted) return;
       setState(() {
         _events = items;
-        if (_eventId == null && items.isNotEmpty)
+        if (_eventId == null && items.isNotEmpty) {
           _eventId = '${items.first['event_id']}';
+        }
         _offline = false;
       });
     } catch (_) {
@@ -115,11 +117,12 @@ class _KaisaAttendanceScannerPageState
         _offline = false;
       });
       await _persist();
-      if (mounted)
+      if (mounted) {
         setState(
           () => _message =
               'Offline roster saved securely. You can now scan without internet.',
         );
+      }
     } catch (e) {
       if (mounted) setState(() => _message = 'Roster download failed: $e');
     } finally {

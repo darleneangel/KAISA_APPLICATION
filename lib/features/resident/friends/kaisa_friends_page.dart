@@ -31,13 +31,14 @@ class _KaisaFriendsPageState extends State<KaisaFriendsPage> {
         db.rpc('kaisa_my_friendships'),
         db.rpc('kaisa_is_tier2'),
       ]);
-      if (mounted)
+      if (mounted) {
         setState(() {
           items = (results[0] as List)
               .map((e) => Map<String, dynamic>.from(e as Map))
               .toList();
           tier2 = results[1] == true;
         });
+      }
     } catch (e) {
       if (mounted) setState(() => error = '$e');
     } finally {
@@ -53,10 +54,11 @@ class _KaisaFriendsPageState extends State<KaisaFriendsPage> {
       );
       await _load();
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('$e')));
+      }
     }
   }
 

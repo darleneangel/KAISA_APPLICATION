@@ -29,11 +29,12 @@ class _MessagingPageState extends State<MessagingPage> {
   }
 
   Future<void> _load() async {
-    if (mounted)
+    if (mounted) {
       setState(() {
         _loading = true;
         _error = null;
       });
+    }
     try {
       final rows = await Supabase.instance.client.rpc('kaisa_message_inbox');
       if (!mounted) return;

@@ -30,9 +30,10 @@ class _KaisaOrgAdminGateState extends State<KaisaOrgAdminGate> {
   Widget build(BuildContext context) => FutureBuilder<bool>(
     future: allowed,
     builder: (context, s) {
-      if (s.connectionState != ConnectionState.done)
+      if (s.connectionState != ConnectionState.done) {
         return const Scaffold(body: Center(child: CircularProgressIndicator()));
-      if (s.hasError)
+      }
+      if (s.hasError) {
         return Scaffold(
           body: Center(
             child: Padding(
@@ -53,7 +54,8 @@ class _KaisaOrgAdminGateState extends State<KaisaOrgAdminGate> {
             ),
           ),
         );
-      if (s.data != true)
+      }
+      if (s.data != true) {
         return Scaffold(
           body: Center(
             child: Column(
@@ -68,6 +70,7 @@ class _KaisaOrgAdminGateState extends State<KaisaOrgAdminGate> {
             ),
           ),
         );
+      }
       return widget.child;
     },
   );

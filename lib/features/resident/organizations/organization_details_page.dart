@@ -33,11 +33,12 @@ class _OrganizationDetailsPageState extends State<OrganizationDetailsPage> {
   }
 
   Future<void> _load() async {
-    if (mounted)
+    if (mounted) {
       setState(() {
         loading = true;
         error = null;
       });
+    }
     try {
       if (widget.organizationId == null || widget.organizationId!.isEmpty) {
         throw StateError('Missing organization ID. Check app_router.dart.');
@@ -56,12 +57,13 @@ class _OrganizationDetailsPageState extends State<OrganizationDetailsPage> {
       });
     } catch (e) {
       debugPrint('KAISA organization detail: $e');
-      if (mounted)
+      if (mounted) {
         setState(
           () => error = e is StateError
               ? e.message
               : 'Unable to load organization details.',
         );
+      }
     } finally {
       if (mounted) setState(() => loading = false);
     }

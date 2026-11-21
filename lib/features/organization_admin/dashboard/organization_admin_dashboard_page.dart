@@ -398,7 +398,7 @@ class _KaisaOrgAdminDashboardPageState
         icon: Icons.pending_actions,
       ),
       (
-        label: 'Events with attendance setup',
+        label: ' Attendance ',
         value: number('events'),
         icon: Icons.event_outlined,
       ),
@@ -636,7 +636,7 @@ class _KaisaOrgAdminDashboardPageState
                                       PieChartSectionData(
                                         value: awaiting.toDouble(),
                                         color: gold,
-                                        title: 'Awaiting',
+                                        title: 'Pending',
                                         radius: 67,
                                         titleStyle: const TextStyle(
                                           color: Colors.black,
@@ -779,8 +779,9 @@ class _KaisaOrgAdminDashboardPageState
       final date = _eventDate(event, 'starts_at');
       if (date == null ||
           date.year != calendarMonth.year ||
-          date.month != calendarMonth.month)
+          date.month != calendarMonth.month) {
         continue;
+      }
       byDay.putIfAbsent(date.day, () => []).add(event);
     }
     final now = DateTime.now();
@@ -982,7 +983,7 @@ class _KaisaOrgAdminDashboardPageState
         path: '/organization-admin/reports',
         queryParameters: {
           'organizationId': orgId!,
-          if (eventId != null) 'eventId': eventId,
+          'eventId': ?eventId,
         },
       ).toString(),
     );

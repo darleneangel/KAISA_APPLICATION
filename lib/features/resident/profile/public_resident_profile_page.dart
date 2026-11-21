@@ -39,14 +39,16 @@ class _PublicResidentProfilePageState extends State<PublicResidentProfilePage> {
         repo.publicProfile(widget.userId),
         repo.posts(widget.userId),
       ]);
-      if (mounted)
+      if (mounted) {
         setState(() {
           profile = results[0] as Map<String, dynamic>?;
           posts = results[1] as List<Map<String, dynamic>>;
         });
+      }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         setState(() => error = 'Could not load this public profile: $e');
+      }
     } finally {
       if (mounted) setState(() => busy = false);
     }
@@ -60,14 +62,15 @@ class _PublicResidentProfilePageState extends State<PublicResidentProfilePage> {
         db.rpc('kaisa_my_friendships'),
       ]);
       final matches = (results[1] as List).where(
-        (v) => v['other_id'] == '${widget.userId}',
+        (v) => v['other_id'] == widget.userId,
       );
-      if (mounted)
+      if (mounted) {
         setState(() {
           tier2 = results[0] == true;
           friendState = matches.isEmpty ? 'none' : '${matches.first['status']}';
           incoming = matches.isNotEmpty && matches.first['incoming'] == true;
         });
+      }
     } catch (_) {
       /* Existing profile still works without friendships. */
     }
@@ -81,10 +84,11 @@ class _PublicResidentProfilePageState extends State<PublicResidentProfilePage> {
       );
       await _loadFriend();
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Friend request failed: $e')));
+      }
     }
   }
 

@@ -28,7 +28,7 @@ class AboutKaisaPage extends StatelessWidget {
                       'assets/images/kaisa_logo.png',
                       width: 70,
                       height: 70,
-                      errorBuilder: (_, __, ___) => const Icon(
+                      errorBuilder: (_, _, _) => const Icon(
                         Icons.groups,
                         color: Colors.white,
                         size: 50,

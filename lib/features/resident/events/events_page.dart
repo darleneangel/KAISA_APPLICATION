@@ -40,11 +40,12 @@ class _EventsPageState extends State<EventsPage> {
       if (mounted) setState(() => _events = result);
     } catch (e) {
       debugPrint('KAISA events load: $e');
-      if (mounted)
+      if (mounted) {
         setState(
           () => _error =
               'Could not load events from Supabase. Check your connection or Events migration.',
         );
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }

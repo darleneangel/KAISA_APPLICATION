@@ -63,11 +63,12 @@ class _ResidentChatPageState extends State<ResidentChatPage> {
         final profile = await KaisaProfileRepository.instance.publicProfile(
           widget.recipientId,
         );
-        if (mounted)
+        if (mounted) {
           setState(() {
             _name = profile?['display_name']?.toString() ?? 'KAISA Resident';
             _avatarPath = profile?['avatar_path']?.toString();
           });
+        }
       }
       final result = await _db
           .from('kaisa_direct_messages')
@@ -106,8 +107,9 @@ class _ResidentChatPageState extends State<ResidentChatPage> {
         _busy ||
         body.isEmpty ||
         body.length > 1000 ||
-        uid == widget.recipientId)
+        uid == widget.recipientId) {
       return;
+    }
     setState(() => _busy = true);
     try {
       await _db.from('kaisa_direct_messages').insert({
@@ -118,10 +120,11 @@ class _ResidentChatPageState extends State<ResidentChatPage> {
       _input.clear();
       await _load();
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Message not sent: $e')));
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }

@@ -72,7 +72,7 @@ class _KaisaMyQrPageState extends State<KaisaMyQrPage> {
     try {
       final data = await _client.rpc('kaisa_events_catalog');
       final rows = (data as List).cast<Map<String, dynamic>>();
-      if (mounted)
+      if (mounted) {
         setState(
           () => _events = rows
               .where(
@@ -85,6 +85,7 @@ class _KaisaMyQrPageState extends State<KaisaMyQrPage> {
               )
               .toList(),
         );
+      }
     } catch (_) {
       /* offline passes still available when network is absent */
     }
@@ -104,11 +105,12 @@ class _KaisaMyQrPageState extends State<KaisaMyQrPage> {
         _onlineExpiry = DateTime.parse('${result['expires_at']}').toLocal();
       });
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         setState(
           () => _error =
               'Online QR unavailable. If you saved an event pass, switch to Offline Pass.',
         );
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -129,8 +131,9 @@ class _KaisaMyQrPageState extends State<KaisaMyQrPage> {
       await _storage.write(key: _passKey, value: jsonEncode(pass));
       if (mounted) setState(() => _offlinePass = pass);
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         setState(() => _error = 'Could not prepare offline pass: $e');
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }

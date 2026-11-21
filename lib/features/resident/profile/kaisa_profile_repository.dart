@@ -46,8 +46,9 @@ class KaisaProfileRepository {
   }
 
   Future<String> uploadAvatar(Uint8List bytes, String mime) async {
-    if (bytes.lengthInBytes > 2 * 1024 * 1024)
+    if (bytes.lengthInBytes > 2 * 1024 * 1024) {
       throw StateError('Maximum profile photo size is 2 MB.');
+    }
     if (!['image/jpeg', 'image/png', 'image/webp'].contains(mime)) {
       throw StateError('Only JPG, PNG or WEBP photos are supported.');
     }

@@ -1,7 +1,5 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import '../../../shared/repositories/verification_workflow_repository.dart';
-import '../../../shared/repositories/verification_case_repository.dart';
 
 const _forest = Color(0xFF00492C);
 const _gold = Color(0xFFFBBA16);
@@ -343,11 +341,12 @@ class _DailyTrend extends StatelessWidget {
   final Map<DateTime, int> counts;
   @override
   Widget build(BuildContext context) {
-    if (days.isEmpty)
+    if (days.isEmpty) {
       return const SizedBox(
         height: 155,
         child: Center(child: Text('No submissions in this selection')),
       );
+    }
     final start = days.first, end = days.last;
     final count = end.difference(start).inDays + 1;
     final values = [
@@ -409,8 +408,9 @@ class _TrendPainter extends CustomPainter {
       bottom - (bottom - top) * values[i] / maxVal,
     );
     final path = Path()..moveTo(point(0).dx, point(0).dy);
-    for (var i = 1; i < values.length; i++)
+    for (var i = 1; i < values.length; i++) {
       path.lineTo(point(i).dx, point(i).dy);
+    }
     canvas.drawPath(
       path,
       Paint()
@@ -421,8 +421,9 @@ class _TrendPainter extends CustomPainter {
         ..strokeCap = StrokeCap.round,
     );
     final dot = Paint()..color = _gold;
-    for (var i = 0; i < values.length; i++)
+    for (var i = 0; i < values.length; i++) {
       canvas.drawCircle(point(i), 3.2, dot);
+    }
   }
 
   @override

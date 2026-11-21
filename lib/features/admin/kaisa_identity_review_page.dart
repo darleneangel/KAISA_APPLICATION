@@ -35,18 +35,20 @@ class _KaisaIdentityReviewPageState extends State<KaisaIdentityReviewPage> {
           )
           .eq('status', 'pending')
           .order('submitted_at', ascending: true);
-      if (mounted)
+      if (mounted) {
         setState(() {
           authorized = true;
           queue = (data as List)
               .map((e) => Map<String, dynamic>.from(e))
               .toList();
         });
+      }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Review queue unavailable: $e')));
+      }
     } finally {
       if (mounted) setState(() => busy = false);
     }
@@ -100,10 +102,11 @@ class _KaisaIdentityReviewPageState extends State<KaisaIdentityReviewPage> {
       );
       await _load();
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Review failed: $e')));
+      }
     } finally {
       note.dispose();
     }
@@ -127,10 +130,11 @@ class _KaisaIdentityReviewPageState extends State<KaisaIdentityReviewPage> {
         ),
       );
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Private ID image unavailable: $e')),
         );
+      }
     }
   }
 

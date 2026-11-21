@@ -38,18 +38,20 @@ class _RequestOrganizationPageState extends State<RequestOrganizationPage> {
   }
 
   Future<void> _loadTier() async {
-    if (mounted)
+    if (mounted) {
       setState(() {
         loading = true;
         error = null;
       });
+    }
     try {
       final approved = await KaisaOrganizationsRepository.instance.isTier2();
       if (mounted) setState(() => tier2 = approved);
     } catch (e) {
       debugPrint('KAISA proposal tier check: $e');
-      if (mounted)
+      if (mounted) {
         setState(() => error = 'Unable to verify your current account tier.');
+      }
     } finally {
       if (mounted) setState(() => loading = false);
     }
@@ -113,10 +115,11 @@ class _RequestOrganizationPageState extends State<RequestOrganizationPage> {
       if (mounted) context.go('/resident/organizations');
     } catch (e) {
       debugPrint('KAISA proposal submission: $e');
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Request could not be submitted: $e')),
         );
+      }
     } finally {
       if (mounted) setState(() => sending = false);
     }

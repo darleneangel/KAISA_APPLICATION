@@ -113,18 +113,20 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
       debugPrint(
         'KAISA recovery verification failed: ${e.message} (${e.statusCode})',
       );
-      if (mounted)
+      if (mounted) {
         setState(
           () => _error = e.message.toLowerCase().contains('expired')
               ? 'This code has expired. Request a fresh recovery code.'
               : 'The recovery code could not be verified. Check the email and code.',
         );
+      }
     } catch (e) {
       debugPrint('KAISA recovery verification error: ${e.runtimeType}');
-      if (mounted)
+      if (mounted) {
         setState(
           () => _error = 'Unable to verify the code right now. Try again.',
         );
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -152,14 +154,16 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
       debugPrint(
         'KAISA password update failed: ${e.message} (${e.statusCode})',
       );
-      if (mounted)
+      if (mounted) {
         setState(() => _error = 'Unable to update password: ${e.message}');
+      }
     } catch (e) {
       debugPrint('KAISA password update error: ${e.runtimeType}');
-      if (mounted)
+      if (mounted) {
         setState(
           () => _error = 'Unable to change password right now. Try again.',
         );
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }

@@ -177,7 +177,7 @@ class _Logo extends StatelessWidget {
     child: Image.asset(
       path,
       fit: BoxFit.contain,
-      errorBuilder: (_, __, ___) => Icon(fallback, color: AppColors.forest),
+      errorBuilder: (_, _, _) => Icon(fallback, color: AppColors.forest),
     ),
   );
 }

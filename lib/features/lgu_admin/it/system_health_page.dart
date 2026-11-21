@@ -76,10 +76,7 @@ class _Incident {
     this.service,
     this.title,
     this.impact,
-    this.createdAt, {
-    this.state = 'Open',
-    this.note = '',
-  });
+    this.createdAt) : note = '', state = 'Open';
 }
 
 class SystemHealthPage extends StatefulWidget {

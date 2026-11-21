@@ -159,8 +159,9 @@ class VerificationCaseRepository extends ChangeNotifier {
         c.archived ||
         !c.needsAction ||
         !const ['Approved', 'Rejected', 'Resubmission'].contains(status) ||
-        reason.trim().length < 10)
+        reason.trim().length < 10) {
       return false;
+    }
     c.status = status;
     _events.add(
       VerificationCaseEvent(
@@ -177,8 +178,9 @@ class VerificationCaseRepository extends ChangeNotifier {
   bool archive(String id, String reason) {
     final c = find(id);
     // Pending cases may not be archived to conceal or bypass review.
-    if (c == null || c.archived || c.needsAction || reason.trim().length < 10)
+    if (c == null || c.archived || c.needsAction || reason.trim().length < 10) {
       return false;
+    }
     c.archivedAt = DateTime.now();
     c.archiveReason = reason.trim();
     _events.add(

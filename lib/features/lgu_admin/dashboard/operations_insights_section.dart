@@ -584,7 +584,7 @@ class _OperationsInsightsSectionState extends State<OperationsInsightsSection> {
         Text(
           _hoveredTrendIndex == null || _hoveredTrendIndex! >= values.length
               ? 'Hover or tap a data point to inspect the simulated value.'
-              : '${labels[_hoveredTrendIndex!]} · ${_trendMetric}: '
+              : '${labels[_hoveredTrendIndex!]} · $_trendMetric: '
                     '${values[_hoveredTrendIndex!].round()} (demo)',
           style: const TextStyle(
             fontSize: 11,
@@ -711,8 +711,9 @@ class _OperationsInsightsSectionState extends State<OperationsInsightsSection> {
               final x = event.localPosition.dx - 89;
               final y = event.localPosition.dy - 89;
               if (math.sqrt(x * x + y * y) > 86) {
-                if (_hoveredPieIndex != null)
+                if (_hoveredPieIndex != null) {
                   setState(() => _hoveredPieIndex = null);
+                }
                 return;
               }
               final angle =

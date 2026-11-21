@@ -334,13 +334,14 @@ class _FeatureSlide extends StatelessWidget {
                   accent: feature.accent,
                   small: small,
                 );
-                if (desktop)
+                if (desktop) {
                   return Row(
                     children: [
                       Expanded(flex: 6, child: content),
                       Expanded(flex: 5, child: visual),
                     ],
                   );
+                }
                 return Column(
                   children: [
                     Expanded(flex: small ? 3 : 5, child: visual),

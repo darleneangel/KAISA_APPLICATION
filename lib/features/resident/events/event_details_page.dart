@@ -65,21 +65,23 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
       if (_event == null) _error = 'This event is no longer available.';
     } catch (e) {
       debugPrint('KAISA event detail load: $e');
-      if (mounted)
+      if (mounted) {
         setState(
           () => _error =
               'Unable to load the event. Check the database migration and route event ID.',
         );
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
 
   void _notice(String value) {
-    if (mounted)
+    if (mounted) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(value)));
+    }
   }
 
   Future<void> _changeRegistration() async {
@@ -105,8 +107,9 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
           ],
         ),
       );
-      if (go == true && mounted)
+      if (go == true && mounted) {
         context.push('/resident/identity-verification');
+      }
       return;
     }
     final cancel = event.isRegistered;

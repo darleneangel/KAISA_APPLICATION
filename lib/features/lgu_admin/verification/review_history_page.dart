@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:file_saver/file_saver.dart';
 import '../../../shared/repositories/verification_case_repository.dart';
 
@@ -1434,7 +1433,7 @@ class _ReviewHistoryPageState extends State<ReviewHistoryPage> {
                     const SizedBox(height: 20),
                     LayoutBuilder(
                       builder: (context, bounds) {
-                        if (bounds.maxWidth < 980)
+                        if (bounds.maxWidth < 980) {
                           return Column(
                             children: [
                               _analytics(),
@@ -1442,6 +1441,7 @@ class _ReviewHistoryPageState extends State<ReviewHistoryPage> {
                               _workflow(),
                             ],
                           );
+                        }
                         return Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [

@@ -652,7 +652,7 @@ class _PendingApplicationsPageState extends State<PendingApplicationsPage> {
   String _csvCell(String original) {
     // Quote fields and neutralize potential spreadsheet formula execution.
     final sanitized = RegExp(r'^\s*[=+@\-]').hasMatch(original)
-        ? "'${original}"
+        ? "'$original"
         : original;
     final escaped = sanitized.replaceAll('"', '""');
     return '"$escaped"';
@@ -827,10 +827,11 @@ class _PendingApplicationsPageState extends State<PendingApplicationsPage> {
       ),
     );
     if (!mounted || confirmed != true) return;
-    if (_repo.restore(app.id))
+    if (_repo.restore(app.id)) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Application restored.')));
+    }
   }
 
   Widget _detailRow(String label, String value) => Padding(

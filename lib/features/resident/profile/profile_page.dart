@@ -53,21 +53,23 @@ class _ProfilePageState extends State<ProfilePage> {
         certificates = result[5] as List<Map<String, dynamic>>;
       });
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         setState(
           () => error =
               'Unable to load profile. Check the SQL migration and your connection. ($e)',
         );
+      }
     } finally {
       if (mounted) setState(() => loading = false);
     }
   }
 
   void _toast(String message) {
-    if (mounted)
+    if (mounted) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(message)));
+    }
   }
 
   Future<void> _editProfile() async {
@@ -115,13 +117,15 @@ class _ProfilePageState extends State<ProfilePage> {
                               bytes,
                               file.mimeType ?? 'image/jpeg',
                             );
-                            if (dialogContext.mounted)
+                            if (dialogContext.mounted) {
                               setDialogState(() => newPath = path);
+                            }
                           } catch (e) {
                             _toast('Could not upload photo: $e');
                           } finally {
-                            if (dialogContext.mounted)
+                            if (dialogContext.mounted) {
                               setDialogState(() => photoBusy = false);
+                            }
                           }
                         },
                   icon: photoBusy

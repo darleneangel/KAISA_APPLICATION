@@ -99,12 +99,14 @@ class _LguAuditLogsPageState extends State<LguAuditLogsPage> {
       if (_datePreset == 'Today' && day != today) return false;
       if (_datePreset == 'Last 7 days' &&
           (day.isBefore(today.subtract(const Duration(days: 6))) ||
-              day.isAfter(today)))
+              day.isAfter(today))) {
         return false;
+      }
       if (_datePreset == 'Last 30 days' &&
           (day.isBefore(today.subtract(const Duration(days: 29))) ||
-              day.isAfter(today)))
+              day.isAfter(today))) {
         return false;
+      }
       if (query.isEmpty) return true;
       return [
         log.id,

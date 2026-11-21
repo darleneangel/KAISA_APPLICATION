@@ -26,18 +26,20 @@ class _NotificationsPageState extends State<NotificationsPage> {
   Future<void> _load() async {
     try {
       final fetched = await repo.list();
-      if (mounted)
+      if (mounted) {
         setState(() {
           items = fetched;
           loading = false;
           error = null;
         });
+      }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           error = 'Notifications could not load. Please retry. ($e)';
           loading = false;
         });
+      }
     }
   }
 
@@ -46,12 +48,13 @@ class _NotificationsPageState extends State<NotificationsPage> {
       if (!item.isRead) await repo.markRead(item.id);
       await _load();
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Could not mark this notification as read.'),
           ),
         );
+      }
     }
     if (!mounted) return;
     final path = item.targetPath;
@@ -66,12 +69,13 @@ class _NotificationsPageState extends State<NotificationsPage> {
       await repo.markAllRead();
       await _load();
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Unable to mark notifications as read.'),
           ),
         );
+      }
     } finally {
       if (mounted) setState(() => busy = false);
     }

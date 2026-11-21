@@ -351,7 +351,7 @@ class _LogoPill extends StatelessWidget {
         child: Image.asset(
           asset,
           fit: BoxFit.contain,
-          errorBuilder: (_, __, ___) =>
+          errorBuilder: (_, _, _) =>
               Icon(fallbackIcon, color: AppColors.forest, size: 24),
         ),
       ),
