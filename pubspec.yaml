@@ -95,6 +95,14 @@ flutter:
         - asset: assets/fonts/Montserrat-Italic.ttf
           style: italic
 
+    - family: GreatVibes
+      fonts:
+        - asset: assets/fonts/GreatVibes-Regular.ttf
+
+    - family: TimesNewRoman
+      fonts:
+        - asset: assets/fonts/times.ttf
+
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

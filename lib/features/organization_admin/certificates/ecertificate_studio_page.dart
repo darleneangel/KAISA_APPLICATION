@@ -178,6 +178,40 @@ _TextLayer(
   ];
 
   final List<_LogoLayer> _logos = [];
+  // Bottom-to-top stacking order. The list is also used by the PDF renderer.
+  late final List<String> _zOrder = [
+    'kaisa_default',
+    ..._layers.map((layer) => layer.id),
+  ];
+
+  void _reorderLayer(int oldIndex, int newIndex) {
+    final displayOrder = _zOrder.reversed.toList();
+    if (newIndex > oldIndex) newIndex--;
+    if (newIndex == oldIndex) return;
+    _checkpoint();
+    setState(() {
+      final moved = displayOrder.removeAt(oldIndex);
+      displayOrder.insert(newIndex, moved);
+      _zOrder
+        ..clear()
+        ..addAll(displayOrder.reversed);
+    });
+  }
+
+  _TextLayer? _textFor(String id) {
+    for (final layer in _layers) {
+      if (layer.id == id) return layer;
+    }
+    return null;
+  }
+
+  _LogoLayer? _imageFor(String id) {
+    for (final logo in _logos) {
+      if (logo.id == id) return logo;
+    }
+    return null;
+  }
+
   Uint8List? _kaisaLogoBytes;
   bool _showKaisaLogo = true;
   bool _showKaisaBorder = true;
@@ -272,6 +306,7 @@ _TextLayer(
   }
 
   Map<String, dynamic> _snapshot() => {
+    'zOrder': List<String>.from(_zOrder),
     'design': _design, 'background': _background,
     'backgroundName': _backgroundName, 'selectedId': _selectedId,
     'selectedImageId': _selectedImageId,
@@ -331,6 +366,7 @@ _TextLayer(
       logo.visible = v['visible'] as bool;
       _logos.add(logo);
     }
+    _zOrder..clear()..addAll((data['zOrder'] as List?)?.cast<String>() ?? ['kaisa_default', ..._layers.map((e) => e.id), ..._logos.map((e) => e.id)]);
     _design = data['design'] as int;
     _background = data['background'] as Uint8List?;
     _backgroundName = data['backgroundName'] as String?;
@@ -338,7 +374,10 @@ _TextLayer(
     _showKaisaBorder = data['showBorder'] as bool;
     _kaisaLogoX = data['logoX'] as double;
     _kaisaLogoY = data['logoY'] as double;
-    _kaisaLogoWidth = data['logoWidth'] as double;
+    _kaisaLogoWidth = (data['logoWidth'] as num)
+    .toDouble()
+    .clamp(0.05, 0.40)
+    .toDouble();
     final selected = data['selectedId'] as String;
         _selectedId = _layers.any((e) => e.id == selected)
         ? selected : _layers.first.id;
@@ -857,23 +896,64 @@ _TextLayer(
     }
   }
 
-  Future<void> _selectFont(String fontName) async {
-    if (fontName == 'Great Vibes' || fontName == 'TeX Gyre Termes') {
-      final ok = await _loadNamedFont(fontName);
-      if (!ok || !mounted) return;
+  static const Map<String, String> _bundledFonts = {
+    'Great Vibes': 'assets/fonts/GreatVibes-Regular.ttf',
+    'Times New Roman': 'assets/fonts/times.ttf',
+    'Montserrat Black': 'assets/fonts/Montserrat-Black.ttf',
+    'Montserrat Thin': 'assets/fonts/Montserrat-Thin.ttf',
+    'Montserrat Thin Italic': 'assets/fonts/Montserrat-ThinItalic.ttf',
+  };
+
+  static const Map<String, String> _bundledFamilies = {
+    'Great Vibes': 'GreatVibes',
+    'Times New Roman': 'TimesNewRoman',
+    'Montserrat Black': 'MontserratBlack',
+    'Montserrat Thin': 'MontserratThin',
+    'Montserrat Thin Italic': 'MontserratThinItalic',
+  };
+
+  
+
+  Future<bool> _loadBundledFont(String name) async {
+    if (_namedFontBytes.containsKey(name)) return true;
+    final path = _bundledFonts[name];
+    if (path == null) return false;
+    try {
+      final data = await rootBundle.load(path);
+      final bytes = data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+      if (!mounted) return false;
+      setState(() {
+        _namedFontBytes[name] = bytes;
+        _namedFontFamilies[name] = _bundledFamilies[name]!;
+        _message = null;
+      });
+      return true;
+    } catch (error) {
+      if (mounted) setState(() => _message = 'Missing bundled font $path: $error');
+      return false;
     }
-    _checkpoint();
-    setState(() {
-      _selected.font = fontName;
-      if (fontName == 'Great Vibes') _selected.bold = false;
-      if (fontName == 'TeX Gyre Termes') _selected.bold = false;
-    });
   }
+
+  Future<void> _selectFont(String fontName) async {
+  if (_bundledFonts.containsKey(fontName)) {
+    final loaded = await _loadBundledFont(fontName);
+
+    if (!loaded || !mounted) return;
+  }
+
+  _checkpoint();
+
+  setState(() {
+    _selected.font = fontName;
+    _selected.bold = false;
+    _message = null;
+  });
+}
 
   Future<void> _toggleSelectedBold() async {
     final layer = _selected;
-    if (layer.font == 'Great Vibes') {
-      setState(() => _message = 'Great Vibes has no native bold face.');
+    if (_bundledFonts.containsKey(layer.font)) {
+      setState(() => _message = 'This bundled font uses its own fixed weight.');
       return;
     }
     if (layer.font == 'TeX Gyre Termes' && !layer.bold) {
@@ -885,68 +965,70 @@ _TextLayer(
   }
 
   TextStyle _previewStyle(_TextLayer e, double scale) {
-    final isTermesBold =
-        e.font == 'TeX Gyre Termes' &&
-        e.bold &&
-        _namedFontFamilies.containsKey('TeX Gyre Termes:bold');
-    final family = switch (e.font) {
-      'Great Vibes' => _namedFontFamilies['Great Vibes'],
-      'TeX Gyre Termes' =>
-        _namedFontFamilies[isTermesBold
-            ? 'TeX Gyre Termes:bold'
-            : 'TeX Gyre Termes'],
-      'Serif' || 'Serif Italic' => 'serif',
-      'Mono' || 'Mono Bold' => 'monospace',
-      'Custom' => _customFontFamily,
-      _ => null,
-    };
-    return TextStyle(
-      fontFamily: family,
-      fontSize: e.size * scale,
-      // Bold font files already carry their own weight.
-      fontWeight: e.font == 'Great Vibes' || e.font == 'TeX Gyre Termes'
-          ? FontWeight.normal
-          : (e.bold || e.font == 'Sans Bold' || e.font == 'Mono Bold')
-          ? FontWeight.bold
-          : FontWeight.normal,
-      fontStyle: e.font == 'Serif Italic' ? FontStyle.italic : FontStyle.normal,
-      color: e.color,
-      height: 1.1,
-    );
-  }
+  final String? family = switch (e.font) {
+    'Great Vibes' => 'GreatVibes',
+    'Times New Roman' => 'TimesNewRoman',
+    'Serif' || 'Serif Italic' => 'serif',
+    'Mono' || 'Mono Bold' => 'monospace',
+    'Custom' => _customFontFamily,
+    _ => null,
+  };
+
+  return TextStyle(
+    fontFamily: family,
+    fontSize: e.size * scale,
+    fontWeight: e.bold ||
+            e.font == 'Sans Bold' ||
+            e.font == 'Mono Bold'
+        ? FontWeight.bold
+        : FontWeight.normal,
+    fontStyle: e.font == 'Serif Italic'
+        ? FontStyle.italic
+        : FontStyle.normal,
+    color: e.color,
+    height: 1.1,
+  );
+}
 
   PdfColor _pdfColor(Color color) =>
       PdfColor(color.r, color.g, color.b, color.a);
 
-  pw.Font _pdfFont(
-    _TextLayer e, {
-    required bool bold,
-    pw.Font? custom,
-    required Map<String, pw.Font> named,
-  }) {
-    if (e.font == 'Great Vibes') {
-      return named['Great Vibes'] ?? pw.Font.timesItalic();
-    }
-    if (e.font == 'TeX Gyre Termes') {
-      return named[bold ? 'TeX Gyre Termes:bold' : 'TeX Gyre Termes'] ??
-          named['TeX Gyre Termes'] ??
-          pw.Font.times();
-    }
-    if (e.font == 'Custom' && custom != null) return custom;
-    if (e.font == 'Serif' || e.font == 'Serif Italic') {
-      if (e.font == 'Serif Italic') {
-        return bold ? pw.Font.timesBoldItalic() : pw.Font.timesItalic();
-      }
-      return bold ? pw.Font.timesBold() : pw.Font.times();
-    }
-    if (e.font == 'Mono' || e.font == 'Mono Bold') {
-      return (bold || e.font == 'Mono Bold')
-          ? pw.Font.courierBold()
-          : pw.Font.courier();
-    }
-    if (e.font == 'Sans Bold') return pw.Font.helveticaBold();
-    return bold ? pw.Font.helveticaBold() : pw.Font.helvetica();
+ pw.Font _pdfFont(
+  _TextLayer e, {
+  required bool bold,
+  pw.Font? custom,
+  required Map<String, pw.Font> named,
+}) {
+  if (_bundledFonts.containsKey(e.font)) {
+    return named[e.font] ?? pw.Font.helvetica();
   }
+
+  if (e.font == 'Custom' && custom != null) {
+    return custom;
+  }
+
+  if (e.font == 'Serif' || e.font == 'Serif Italic') {
+    if (e.font == 'Serif Italic') {
+      return bold
+          ? pw.Font.timesBoldItalic()
+          : pw.Font.timesItalic();
+    }
+
+    return bold ? pw.Font.timesBold() : pw.Font.times();
+  }
+
+  if (e.font == 'Mono' || e.font == 'Mono Bold') {
+    return bold || e.font == 'Mono Bold'
+        ? pw.Font.courierBold()
+        : pw.Font.courier();
+  }
+
+  if (e.font == 'Sans Bold') {
+    return pw.Font.helveticaBold();
+  }
+
+  return bold ? pw.Font.helveticaBold() : pw.Font.helvetica();
+}
 
     // Object clipboard is separate from native clipboard inside editable text fields.
   // TextField / EditableText keeps its own Ctrl+C / Ctrl+V behavior.
@@ -1018,6 +1100,7 @@ _TextLayer(
       logo.width = width;
       setState(() {
         _logos.add(logo);
+        _zOrder.add(logo.id);
         _selectedImageId = logo.id;
         _layersExpanded = true;
       });
@@ -1038,6 +1121,7 @@ _TextLayer(
       _lastTextValues[id] = layer.text.text;
       setState(() {
         _layers.add(layer);
+        _zOrder.add(layer.id);
         _selectedId = id;
         _selectedImageId = null;
         _layersExpanded = true;
@@ -1053,6 +1137,7 @@ _TextLayer(
       _checkpoint();
       setState(() {
         _logos.removeWhere((e) => e.id == _selectedImageId);
+        _zOrder.remove(_selectedImageId);
         _selectedImageId = null;
       });
     } else {
@@ -1060,83 +1145,175 @@ _TextLayer(
     }
   }
 
-  Widget _layerNavigator() => Card(
+  Widget _layerNavigator() {
+  return Card(
     margin: EdgeInsets.zero,
     clipBehavior: Clip.antiAlias,
     child: ExpansionTile(
-      key: const PageStorageKey('certificate_layers'),
+      
       initiallyExpanded: _layersExpanded,
-      onExpansionChanged: (expanded) => _layersExpanded = expanded,
+      onExpansionChanged: (expanded) {
+        setState(() {
+          _layersExpanded = expanded;
+        });
+      },
       leading: const Icon(Icons.layers_outlined),
-      title: const Text('Layers', style: TextStyle(fontWeight: FontWeight.w800)),
-      subtitle: Text('${_layers.length} text · ${_logos.length + (_showKaisaLogo ? 1 : 0)} images'),
+      title: const Text(
+        'Layers',
+        style: TextStyle(fontWeight: FontWeight.w800),
+      ),
+      subtitle: Text(
+        '${_layers.length} text · '
+        '${_logos.length + (_showKaisaLogo ? 1 : 0)} images',
+      ),
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-          child: Row(children: [
-            Expanded(child: OutlinedButton.icon(
-              onPressed: _addTextLayer,
-              icon: const Icon(Icons.add, size: 18),
-              label: const Text('Add text'),
-            )),
-            const SizedBox(width: 8),
-            Expanded(child: OutlinedButton.icon(
-              onPressed: _addLogo,
-              icon: const Icon(Icons.add_photo_alternate_outlined, size: 18),
-              label: const Text('Add image'),
-            )),
-          ]),
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _addTextLayer,
+                  icon: const Icon(Icons.add),
+                  label: const Text('Add text'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _addLogo,
+                  icon: const Icon(Icons.add_photo_alternate_outlined),
+                  label: const Text('Add image'),
+                ),
+              ),
+            ],
+          ),
         ),
-        if (_showKaisaLogo)
-          ListTile(
-            dense: true,
-            leading: const Icon(Icons.image_outlined),
-            title: const Text('KAISA logo'),
-            selected: _selectedImageId == 'kaisa_default',
-            onTap: () => _selectImageLayer('kaisa_default'),
+
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 12),
+          child: Text(
+            'Drag the handle to change stacking order '
+            '(top = in front).',
           ),
-        for (final logo in _logos)
-          ListTile(
-            dense: true,
-            leading: Icon(logo.visible ? Icons.image_outlined : Icons.hide_image_outlined),
-            title: Text(logo.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-            selected: _selectedImageId == logo.id,
-            onTap: () => _selectImageLayer(logo.id),
-            trailing: IconButton(
-              tooltip: logo.visible ? 'Hide image' : 'Show image',
-              icon: Icon(logo.visible ? Icons.visibility_outlined : Icons.visibility_off_outlined),
-              onPressed: () { _checkpoint(); setState(() => logo.visible = !logo.visible); },
-            ),
+        ),
+
+        const SizedBox(height: 8),
+
+        // Custom drag/drop avoids the ReorderableListView runtime type error.
+        SizedBox(
+          height: (_zOrder.length * 56.0).clamp(56.0, 320.0).toDouble(),
+          child: ListView.builder(
+            itemCount: _zOrder.length,
+            itemBuilder: (context, index) {
+              final id = _zOrder[_zOrder.length - 1 - index];
+              final textLayer = _textFor(id);
+              final imageLayer = _imageFor(id);
+              final isText = textLayer != null;
+              final label = textLayer?.label ??
+                  (imageLayer?.name ?? 'KAISA Logo');
+              final selected = isText
+                  ? _selectedImageId == null && _selectedId == id
+                  : _selectedImageId == id;
+
+              void selectLayer() {
+                if (isText) {
+                  _selectTextLayer(id);
+                } else {
+                  _selectImageLayer(id);
+                }
+              }
+
+              return DragTarget<String>(
+                onWillAcceptWithDetails: (details) => details.data != id,
+                onAcceptWithDetails: (details) {
+                  final oldIndex = _zOrder.reversed.toList().indexOf(details.data);
+                  if (oldIndex < 0 || oldIndex == index) return;
+                  // _reorderLayer expects Flutter's insertion index semantics.
+                  _reorderLayer(oldIndex, oldIndex < index ? index + 1 : index);
+                },
+                builder: (context, candidates, rejected) {
+                  return Container(
+                    key: ValueKey(id),
+                    decoration: BoxDecoration(
+                      color: candidates.isNotEmpty
+                          ? _forest.withValues(alpha: 0.10)
+                          : null,
+                      border: candidates.isNotEmpty
+                          ? Border.all(color: _forest)
+                          : null,
+                    ),
+                    child: ListTile(
+                      dense: true,
+                      selected: selected,
+                      onTap: selectLayer,
+                      leading: Draggable<String>(
+                        data: id,
+                        feedback: Material(
+                          elevation: 4,
+                          borderRadius: BorderRadius.circular(8),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 10),
+                            child: Row(mainAxisSize: MainAxisSize.min, children: [
+                              const Icon(Icons.drag_indicator),
+                              const SizedBox(width: 8),
+                              Text(label),
+                            ]),
+                          ),
+                        ),
+                        childWhenDragging: const Icon(
+                          Icons.drag_indicator, color: Colors.grey),
+                        child: const MouseRegion(
+                          cursor: SystemMouseCursors.grab,
+                          child: Icon(Icons.drag_indicator),
+                        ),
+                      ),
+                      title: Text(label,
+                          maxLines: 1, overflow: TextOverflow.ellipsis),
+                      trailing: Icon(isText
+                          ? Icons.text_fields : Icons.image_outlined),
+                    ),
+                  );
+                },
+              );
+            },
           ),
-        for (final layer in _layers)
-          ListTile(
-            dense: true,
-            leading: Icon(layer.visible ? Icons.text_fields : Icons.visibility_off_outlined),
-            title: Text(layer.label, maxLines: 1, overflow: TextOverflow.ellipsis),
-            selected: _selectedImageId == null && _selectedId == layer.id,
-            onTap: () => _selectTextLayer(layer.id),
-            trailing: IconButton(
-              tooltip: layer.visible ? 'Hide text' : 'Show text',
-              icon: Icon(layer.visible ? Icons.visibility_outlined : Icons.visibility_off_outlined),
-              onPressed: () { _checkpoint(); setState(() => layer.visible = !layer.visible); },
-            ),
-          ),
+        ),
+
+        const Divider(),
+
         Padding(
           padding: const EdgeInsets.all(12),
-          child: Row(children: [
-            Expanded(child: OutlinedButton.icon(
-              onPressed: _removeSelectedObject,
-              icon: const Icon(Icons.delete_outline),
-              label: const Text('Remove selected'),
-            )),
-            const SizedBox(width: 8),
-            IconButton(tooltip: 'Copy selected (Ctrl+C)', onPressed: _copySelectedObject, icon: const Icon(Icons.copy_outlined)),
-            IconButton(tooltip: 'Paste object (Ctrl+V)', onPressed: _copiedObject == null ? null : _pasteCopiedObject, icon: const Icon(Icons.content_paste_outlined)),
-          ]),
+          child: Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _removeSelectedObject,
+                  icon: const Icon(Icons.delete_outline),
+                  label: const Text('Remove selected'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton(
+                tooltip: 'Copy selected',
+                onPressed: _copySelectedObject,
+                icon: const Icon(Icons.copy_outlined),
+              ),
+              IconButton(
+                tooltip: 'Paste object',
+                onPressed: _copiedObject == null
+                    ? null
+                    : _pasteCopiedObject,
+                icon: const Icon(Icons.content_paste_outlined),
+              ),
+            ],
+          ),
         ),
       ],
     ),
   );
+}
 
   void _addTextLayer() {
     _checkpoint();
@@ -1153,6 +1330,7 @@ _TextLayer(
     _lastTextValues[id] = layer.text.text;
     setState(() {
       _layers.add(layer);
+      _zOrder.add(id);
             _selectedId = id;
       _selectedImageId = null;
       _layersExpanded = true;
@@ -1164,6 +1342,7 @@ _TextLayer(
     if (index < 0 || _layers.length <= 1) return;
     _checkpoint();
     final layer = _layers.removeAt(index);
+    _zOrder.remove(layer.id);
     layer.text.removeListener(_refresh);
     layer.text.dispose();
     _lastTextValues.remove(layer.id);
@@ -1193,6 +1372,7 @@ _TextLayer(
         setState(
                     () {
             final id = 'logo_${_nextLogoId++}';
+            _zOrder.add(id);
             _logos.add(_LogoLayer(
               id: id,
               name: file.name,
@@ -1283,6 +1463,14 @@ _TextLayer(
       throw StateError('Maximum 200 recipients per batch.');
     }
 
+    for (final fontName in _layers.map((layer) => layer.font).toSet()) {
+      if (_bundledFonts.containsKey(fontName)) {
+        if (!await _loadBundledFont(fontName)) {
+          throw StateError('Unable to load bundled font: $fontName');
+        }
+      }
+    }
+
     final document = pw.Document(compress: true);
 
     final bg = _background == null ? null : pw.MemoryImage(_background!);
@@ -1323,63 +1511,49 @@ _TextLayer(
                   )),
                 ),
               ],
-              if (_showKaisaLogo && _kaisaLogoBytes != null)
-                pw.Positioned(
-                  left: _kaisaLogoX * _pageWidth,
-                  top: _kaisaLogoY * _pageHeight,
-                  child: pw.SizedBox(
-                    width: _kaisaLogoWidth * _pageWidth,
-                    child: pw.Image(pw.MemoryImage(_kaisaLogoBytes!),
-                      fit: pw.BoxFit.contain),
-                  ),
-                ),
-
-              // Uploadable logos are embedded once into the PDF document.
-              for (final logo in _logos.where((item) => item.visible))
-                pw.Positioned(
-                  left: logo.x * _pageWidth,
-                  top: logo.y * _pageHeight,
-                  child: pw.SizedBox(
-                    width: logo.width * _pageWidth,
-                    child: pw.Image(
-                      pw.MemoryImage(logo.bytes),
-                      fit: pw.BoxFit.contain,
+              for (final id in _zOrder) ...[
+                if (id == 'kaisa_default' && _showKaisaLogo && _kaisaLogoBytes != null)
+                  pw.Positioned(
+                    left: _kaisaLogoX * _pageWidth,
+                    top: _kaisaLogoY * _pageHeight,
+                    child: pw.SizedBox(
+                      width: _kaisaLogoWidth * _pageWidth,
+                      child: pw.Image(pw.MemoryImage(_kaisaLogoBytes!), fit: pw.BoxFit.contain),
                     ),
                   ),
-                ),
-// Editable certificate text layers
-              for (final layer in _layers.where((e) => e.visible))
-                pw.Positioned(
-                  left:
-                      layer.x * _pageWidth -
-                      _pageWidth * _layerWidth(layer) / 2,
-                  top: layer.y * _pageHeight,
-
-                  // Width is now inside SizedBox
-                  child: pw.SizedBox(
-                    width: _pageWidth * _layerWidth(layer),
-                    child: pw.Text(
-                      _displayText(layer, name),
-                      maxLines: layer.id == 'description' ? 5 : 3,
-                      textAlign: switch (layer.align) {
-                        TextAlign.left => pw.TextAlign.left,
-                        TextAlign.right => pw.TextAlign.right,
-                        _ => pw.TextAlign.center,
-                      },
-                      style: pw.TextStyle(
-                        font: _pdfFont(
-                          layer,
-                          bold: layer.bold,
-                          custom: customFont,
-                          named: namedPdfFonts,
+                if (_imageFor(id) case final logo? when logo.visible)
+                  pw.Positioned(
+                    left: logo.x * _pageWidth,
+                    top: logo.y * _pageHeight,
+                    child: pw.SizedBox(
+                      width: logo.width * _pageWidth,
+                      child: pw.Image(pw.MemoryImage(logo.bytes), fit: pw.BoxFit.contain),
+                    ),
+                  ),
+                if (_textFor(id) case final layer? when layer.visible)
+                  pw.Positioned(
+                    left: layer.x * _pageWidth - _pageWidth * _layerWidth(layer) / 2,
+                    top: layer.y * _pageHeight,
+                    child: pw.SizedBox(
+                      width: _pageWidth * _layerWidth(layer),
+                      child: pw.Text(
+                        _displayText(layer, name),
+                        maxLines: layer.id == 'description' ? 5 : 3,
+                        textAlign: switch (layer.align) {
+                          TextAlign.left => pw.TextAlign.left,
+                          TextAlign.right => pw.TextAlign.right,
+                          _ => pw.TextAlign.center,
+                        },
+                        style: pw.TextStyle(
+                          font: _pdfFont(layer, bold: layer.bold, custom: customFont, named: namedPdfFonts),
+                          fontSize: layer.size,
+                          color: _pdfColor(layer.color),
+                          lineSpacing: 0,
                         ),
-                        fontSize: layer.size,
-                        color: _pdfColor(layer.color),
-                        lineSpacing: 0,
                       ),
                     ),
                   ),
-                ),
+              ],
             ],
           ),
         ),
@@ -1457,7 +1631,8 @@ _TextLayer(
                    ]) : null,
                  ),
                ),
-               if (_showKaisaLogo && _kaisaLogoBytes != null)
+              for (final id in _zOrder) ...[
+               if (id == 'kaisa_default' && _showKaisaLogo && _kaisaLogoBytes != null)
                  Positioned(
                    left: _kaisaLogoX * w, top: _kaisaLogoY * h,
                    width: _kaisaLogoWidth * w,
@@ -1478,8 +1653,8 @@ _TextLayer(
                    ),
                  ),
 // Uploaded image layers sit above the template, below text.
-              for (final logo in _logos.where((item) => item.visible))
-                Positioned(
+              if (_imageFor(id) case final logo? when logo.visible)
+  Positioned(
                   left: logo.x * w,
                   top: logo.y * h,
                   width: logo.width * w,
@@ -1505,8 +1680,8 @@ _TextLayer(
                      ),
                   ),
                 ),
-                for (final layer in _layers.where((item) => item.visible))
-                Positioned(
+                if (_textFor(id) case final layer? when layer.visible)
+  Positioned(
                   left: (layer.x - _layerWidth(layer) / 2) * w,
                   top: layer.y * h,
                   width: _layerWidth(layer) * w,
@@ -1525,15 +1700,14 @@ _TextLayer(
                     child: Container(
                       padding: EdgeInsets.symmetric(vertical: 3 * scale),
                       decoration: BoxDecoration(
-                        color: _selectedImageId == null && layer.id == _selectedId
-
-                            ? const Color(0x14176B43)
-                            : Colors.transparent,
-                        border: _selectedImageId == null && layer.id == _selectedId
-
-                            ? Border.all(color: _forest, width: 1.4)
-                            : null,
-                      ),
+  color: Colors.transparent,
+  border: _selectedImageId == null && layer.id == _selectedId
+      ? Border.all(
+          color: _forest.withValues(alpha: 0.65),
+          width: 1,
+        )
+      : null,
+),
                       child: _editingId == layer.id
                           ? TextField(
                               controller: layer.text, autofocus: true,
@@ -1556,6 +1730,7 @@ _TextLayer(
                     ),
                   ),
                 ),
+              ],
             ],
           ),
         ),
@@ -1566,16 +1741,16 @@ _TextLayer(
   Widget _controlPanel() {
     final e = _selected;
     final availableFonts = [
-      'Sans',
-      'Sans Bold',
-      'Serif',
-      'Serif Italic',
-      'Mono',
-      'Mono Bold',
-      'Great Vibes',
-      'TeX Gyre Termes',
-      if (_customFontBytes != null) 'Custom',
-    ];
+  'Sans',
+  'Sans Bold',
+  'Serif',
+  'Serif Italic',
+  'Mono',
+  'Mono Bold',
+  'Great Vibes',
+  'Times New Roman',
+  if (_customFontBytes != null) 'Custom',
+];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1595,25 +1770,6 @@ _TextLayer(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-        const Text('Starter designs (or upload your own background)'),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 7,
-          runSpacing: 7,
-          children: [
-            for (final preset in [
-              (0, 'Simple'),
-              (1, 'Classic Gold'),
-              (2, 'Modern Green'),
-            ])
-              ChoiceChip(
-                label: Text(preset.$2),
-                selected: _design == preset.$1 && _background == null,
-                onSelected: (_) => _applyDesign(preset.$1),
-              ),
-          ],
-        ),
-                 const SizedBox(height: 10),
          SwitchListTile.adaptive(
            title: const Text('Show default KAISA logo'),
            value: _showKaisaLogo,
@@ -1627,13 +1783,19 @@ _TextLayer(
          if (_showKaisaLogo) ...[
            const Text('KAISA logo size'),
            Slider(
-             value: _kaisaLogoWidth, min: .05, max: .22,
-             onChangeStart: (_) => _checkpoint(),
-             onChanged: (v) => setState(() {
-               _kaisaLogoWidth = v;
-               _kaisaLogoX = _kaisaLogoX.clamp(0, 1 - v);
-             }),
-           ),
+  value: _kaisaLogoWidth.clamp(0.05, 0.40).toDouble(),
+  min: 0.05,
+  max: 0.40,
+  onChangeStart: (_) => _checkpoint(),
+  onChanged: (value) {
+    setState(() {
+      _kaisaLogoWidth = value;
+      _kaisaLogoX = _kaisaLogoX
+          .clamp(0.0, 1.0 - value)
+          .toDouble();
+    });
+  },
+),
          ],
         const SizedBox(height: 8),
         OutlinedButton.icon(
@@ -1670,22 +1832,36 @@ _TextLayer(
            const SizedBox(height: 10),
            const Text('Image size'),
            Slider(
-             value: _selectedImageId == 'kaisa_default'
-                 ? _kaisaLogoWidth
-                 : _logos.firstWhere((logo) => logo.id == _selectedImageId).width,
-             min: .05, max: .4,
-             onChangeStart: (_) => _checkpoint(),
-             onChanged: (v) => setState(() {
-               if (_selectedImageId == 'kaisa_default') {
-                 _kaisaLogoWidth = v;
-                 _kaisaLogoX = _kaisaLogoX.clamp(0.0, 1.0 - v);
-               } else {
-                 final logo = _logos.firstWhere((logo) => logo.id == _selectedImageId);
-                 logo.width = v;
-                 logo.x = logo.x.clamp(0.0, 1.0 - v);
-               }
-             }),
-           ),
+  value: (_selectedImageId == 'kaisa_default'
+          ? _kaisaLogoWidth
+          : _logos.firstWhere(
+              (logo) => logo.id == _selectedImageId,
+            ).width)
+      .clamp(0.05, 0.40)
+      .toDouble(),
+  min: 0.05,
+  max: 0.40,
+  onChangeStart: (_) => _checkpoint(),
+  onChanged: (value) {
+    setState(() {
+      if (_selectedImageId == 'kaisa_default') {
+        _kaisaLogoWidth = value;
+        _kaisaLogoX = _kaisaLogoX
+            .clamp(0.0, 1.0 - value)
+            .toDouble();
+      } else {
+        final logo = _logos.firstWhere(
+          (logo) => logo.id == _selectedImageId,
+        );
+
+        logo.width = value;
+        logo.x = logo.x
+            .clamp(0.0, 1.0 - value)
+            .toDouble();
+      }
+    });
+  },
+),
          ] else ...[
         const SizedBox(height: 16),
         TextFormField(
@@ -1759,11 +1935,6 @@ _TextLayer(
     ),
   ],
 ),
-        if (e.font == 'Great Vibes' || e.font == 'TeX Gyre Termes')
-          const Text(
-            'The file dialog is expected: choose an extracted .ttf (not a ZIP or .otf). This font is loaded only for the current preview session.',
-            style: TextStyle(fontSize: 12),
-          ),
         if (_customFontName != null)
           Text(
             'Loaded: $_customFontName (local preview only)',
@@ -1778,8 +1949,8 @@ _TextLayer(
             ),
             const Spacer(),
             IconButton(
-              onPressed: e.font == 'Great Vibes' ? null : _toggleSelectedBold,
-              tooltip: e.font == 'Great Vibes'
+              onPressed: _bundledFonts.containsKey(e.font) ? null : _toggleSelectedBold,
+              tooltip: _bundledFonts.containsKey(e.font)
                   ? 'Great Vibes has no native bold face'
                   : 'Bold',
               icon: Icon(
@@ -1885,10 +2056,10 @@ _TextLayer(
                  onChanged: (v) => setState(() => e.y = v),
               ),
             ),
-                    ],
-                ), // Row (Vertical slider)
-              ], // Column children
-            ), // Column
+          ], // Row children
+        ), // Vertical slider Row
+              ], // Formatting Column children
+            ), // Formatting Column
           ), // Padding
         ], // ExpansionTile children
         ), // ExpansionTile
@@ -1915,8 +2086,8 @@ _TextLayer(
           '${_recipients.length} unique recipient(s)',
           style: const TextStyle(color: _forest, fontWeight: FontWeight.w700),
         ),
-         ],
-      ],
+         ], // Text controls else spread
+      ], // Control panel Column children
     );
   }
 
