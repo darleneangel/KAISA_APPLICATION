@@ -6,6 +6,8 @@ import '../../../core/theme/app_colors.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../shared/repositories/resident_account_repository.dart';
 import '../../../core/services/social_otp_service.dart';
+import '../../../core/services/kaisa_resident_profile_gate.dart';
+import '../widgets/kaisa_auth_slideshow_background.dart';
 
 class VerificationPage extends StatefulWidget {
   const VerificationPage({super.key, this.social = false});
@@ -204,7 +206,7 @@ class _VerificationPageState extends State<VerificationPage> {
               ),
               SizedBox(height: 10),
               Text(
-                'Welcome to KAISA. Opening your homepage...',
+                'Welcome to KAISA. Checking your resident profile...',
                 textAlign: TextAlign.center,
               ),
               SizedBox(height: 20),
@@ -216,8 +218,81 @@ class _VerificationPageState extends State<VerificationPage> {
     );
     await Future<void>.delayed(const Duration(milliseconds: 1500));
     if (!mounted) return;
-    Navigator.of(context, rootNavigator: true).pop();
-    if (mounted) context.go('/resident/home');
+
+    // Social sign-in is only complete after the existing social OTP service
+    // has successfully verified the code. Now check the actual profile row.
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null) {
+        throw const AuthException(
+          'Your session has expired. Please sign in again.',
+        );
+      }
+      final destination = await KaisaResidentProfileGate.destinationFor(user);
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pop();
+      context.go(destination);
+    } catch (error) {
+      debugPrint('KAISA post-OTP profile lookup failed: $error');
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pop();
+      // An already verified OTP must not be requested a second time merely
+      // because the profile lookup failed. Offer a fresh lookup or secure exit.
+      await _showProfileLookupRetry();
+    }
+  }
+
+  Future<void> _showProfileLookupRetry() async {
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+          title: const Text('Unable to load your profile'),
+          content: const Text(
+            'Your code was verified, but KAISA could not check whether your '
+            'resident profile is complete. Check your connection and retry.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () async {
+                Navigator.of(dialogContext).pop();
+                // OAuth verification creates an authenticated session.
+                // Cancel it securely instead of leaving an open session.
+                await _cancelVerification();
+              },
+              child: const Text('Cancel sign-in'),
+            ),
+            FilledButton(
+              onPressed: () async {
+                Navigator.of(dialogContext).pop();
+                await _resolveVerifiedSocialDestination();
+              },
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _resolveVerifiedSocialDestination() async {
+    if (!mounted) return;
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null) {
+        throw const AuthException(
+          'Your session has expired. Please sign in again.',
+        );
+      }
+      final destination = await KaisaResidentProfileGate.destinationFor(user);
+      if (mounted) context.go(destination);
+    } catch (error) {
+      debugPrint('KAISA profile lookup retry failed: $error');
+      if (mounted) await _showProfileLookupRetry();
+    }
   }
 
   Future<void> _verify() async {
@@ -382,13 +457,17 @@ class _VerificationPageState extends State<VerificationPage> {
 
   @override
   Widget build(BuildContext context) {
+    // UI only: the OTP workflow, timers, server-state handling, resend limits,
+    // signup verification and social verification methods above are unchanged.
     final email = _social
         ? (Supabase.instance.client.auth.currentUser?.email ?? '')
         : (ResidentAccountRepository.instance.email ?? '');
+
     const forest = Color(0xFF175C42);
     const ink = Color(0xFF18392C);
     const muted = Color(0xFF667970);
-    const yellow = Color(0xFFFFD65A);
+    const border = Color(0xFFDCE7DF);
+
     final expired = _social && _socialSent && _seconds <= 0;
     final attemptsExhausted = _social && _attemptsUsed >= 5;
     final resendUnavailable = _social && _resendsUsed >= 5;
@@ -398,387 +477,497 @@ class _VerificationPageState extends State<VerificationPage> {
         !_canceling &&
         (!_social || (_hasSocialCode && !expired && !attemptsExhausted));
 
+    final statusText = _social && _sending
+        ? 'Requesting verification code...'
+        : _social && !_socialSent
+        ? 'No code requested yet.'
+        : expired
+        ? 'Code expired or unavailable. Request a new one.'
+        : _social
+        ? 'Code time remaining: ${_seconds ~/ 60}:${(_seconds % 60).toString().padLeft(2, '0')}'
+        : _seconds > 0
+        ? 'Resend available in $_seconds seconds'
+        : 'You can request a new code.';
+
     return Scaffold(
-      backgroundColor: const Color(0xFFFAFCFA),
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) => SingleChildScrollView(
-            child: ConstrainedBox(
-              constraints: BoxConstraints(minHeight: constraints.maxHeight),
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 480),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 18, 24, 36),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: TextButton.icon(
-                            style: TextButton.styleFrom(
-                              foregroundColor: ink,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 0,
-                                vertical: 10,
-                              ),
-                            ),
-                            onPressed: (_busy || _canceling)
-                                ? null
-                                : _cancelVerification,
-                            icon: const Icon(
-                              Icons.arrow_back_rounded,
-                              size: 19,
-                            ),
-                            label: const Text('Back'),
-                          ),
-                        ),
-                        const SizedBox(height: 30),
-                        Center(
-                          child: Container(
-                            height: 76,
-                            width: 76,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFEAF5ED),
-                              borderRadius: BorderRadius.circular(23),
-                            ),
-                            child: Stack(
-                              alignment: Alignment.center,
+      backgroundColor: const Color(0xFF002818),
+      body: Stack(
+        children: [
+          const Positioned.fill(child: KaisaAuthSlideshowBackground()),
+          SafeArea(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final mobile = constraints.maxWidth < 520;
+                final padX = mobile ? 16.0 : 26.0;
+                final padY = mobile ? 14.0 : 22.0;
+                final cardPadding = mobile ? 20.0 : 28.0;
+
+                return SingleChildScrollView(
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.onDrag,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: padX,
+                    vertical: padY,
+                  ),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minHeight: constraints.maxHeight > padY * 2
+                          ? constraints.maxHeight - padY * 2
+                          : 0.0,
+                    ),
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 414),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Row(
                               children: [
-                                const Icon(
-                                  Icons.mark_email_read_outlined,
-                                  size: 37,
-                                  color: forest,
-                                ),
-                                Positioned(
-                                  right: 11,
-                                  top: 12,
-                                  child: Container(
-                                    width: 13,
-                                    height: 13,
-                                    decoration: const BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: yellow,
+                                TextButton.icon(
+                                  onPressed: (_busy || _canceling)
+                                      ? null
+                                      : _cancelVerification,
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: Colors.white,
+                                    disabledForegroundColor: Colors.white54,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 0,
+                                      vertical: 8,
                                     ),
+                                  ),
+                                  icon: const Icon(
+                                    Icons.arrow_back_rounded,
+                                    size: 18,
+                                  ),
+                                  label: Text(
+                                    _social
+                                        ? 'Back to login'
+                                        : 'Back to sign up',
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                                const Spacer(),
+                                ClipOval(
+                                  child: SizedBox(
+                                    width: 35,
+                                    height: 35,
+                                    child: Image.asset(
+                                      'assets/images/kaisa_logo.png',
+                                      fit: BoxFit.contain,
+                                      errorBuilder:
+                                          (context, error, stackTrace) =>
+                                              const Icon(
+                                                Icons.diversity_3_rounded,
+                                                color: Colors.white,
+                                                size: 26,
+                                              ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                const Text(
+                                  'KAISA',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 17,
+                                    letterSpacing: 1.1,
                                   ),
                                 ),
                               ],
                             ),
-                          ),
-                        ),
-                        const SizedBox(height: 23),
-                        const Text(
-                          'One last step.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 32,
-                            fontWeight: FontWeight.w800,
-                            height: 1.15,
-                            letterSpacing: -0.8,
-                            color: ink,
-                          ),
-                        ),
-                        const SizedBox(height: 9),
-                        const Text(
-                          'Verify your email to continue',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w500,
-                            color: muted,
-                          ),
-                        ),
-                        const SizedBox(height: 15),
-                        if (email.isNotEmpty)
-                          Center(
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 9,
-                              ),
+                            const SizedBox(height: 18),
+                            Container(
                               decoration: BoxDecoration(
-                                color: const Color(0xFFF1F5F1),
-                                borderRadius: BorderRadius.circular(30),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(
-                                    Icons.alternate_email_rounded,
-                                    size: 16,
-                                    color: forest,
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(18),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.16),
+                                    blurRadius: 32,
+                                    offset: const Offset(0, 12),
                                   ),
-                                  const SizedBox(width: 7),
-                                  Flexible(
-                                    child: Text(
-                                      email,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
+                                ],
+                              ),
+                              child: Padding(
+                                padding: EdgeInsets.fromLTRB(
+                                  cardPadding,
+                                  mobile ? 23 : 28,
+                                  cardPadding,
+                                  mobile ? 22 : 26,
+                                ),
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Center(
+                                      child: Container(
+                                        height: 56,
+                                        width: 56,
+                                        decoration: const BoxDecoration(
+                                          color: Color(0xFFEAF5ED),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(
+                                          Icons.mark_email_read_outlined,
+                                          color: forest,
+                                          size: 28,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    const Text(
+                                      'One last step.',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        fontSize: 25,
+                                        height: 1.12,
+                                        fontWeight: FontWeight.w900,
+                                        letterSpacing: -0.6,
                                         color: ink,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 7),
+                                    const Text(
+                                      'Verify your email to continue',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
                                         fontSize: 13,
-                                        fontWeight: FontWeight.w600,
+                                        height: 1.5,
+                                        color: muted,
+                                      ),
+                                    ),
+                                    if (email.isNotEmpty) ...[
+                                      const SizedBox(height: 12),
+                                      Center(
+                                        child: Container(
+                                          constraints: const BoxConstraints(
+                                            maxWidth: 330,
+                                          ),
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 11,
+                                            vertical: 8,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFF1F6F2),
+                                            borderRadius: BorderRadius.circular(
+                                              20,
+                                            ),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const Icon(
+                                                Icons.alternate_email_rounded,
+                                                size: 15,
+                                                color: forest,
+                                              ),
+                                              const SizedBox(width: 7),
+                                              Flexible(
+                                                child: Text(
+                                                  email,
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  style: const TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: ink,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                    const SizedBox(height: 25),
+                                    const Text(
+                                      'Verification code',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                        color: ink,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 10),
+                                    Row(
+                                      children: [
+                                        for (
+                                          var index = 0;
+                                          index < 6;
+                                          index++
+                                        ) ...[
+                                          if (index > 0)
+                                            const SizedBox(width: 7),
+                                          Expanded(
+                                            child: TextField(
+                                              controller: _fields[index],
+                                              focusNode: _focus[index],
+                                              enabled: !_busy && !_sending,
+                                              textAlign: TextAlign.center,
+                                              keyboardType:
+                                                  TextInputType.number,
+                                              textInputAction: index == 5
+                                                  ? TextInputAction.done
+                                                  : TextInputAction.next,
+                                              inputFormatters: [
+                                                FilteringTextInputFormatter
+                                                    .digitsOnly,
+                                                LengthLimitingTextInputFormatter(
+                                                  1,
+                                                ),
+                                              ],
+                                              style: const TextStyle(
+                                                fontSize: 21,
+                                                fontWeight: FontWeight.w800,
+                                                color: ink,
+                                              ),
+                                              decoration: InputDecoration(
+                                                isDense: true,
+                                                counterText: '',
+                                                contentPadding:
+                                                    const EdgeInsets.symmetric(
+                                                      vertical: 14,
+                                                      horizontal: 0,
+                                                    ),
+                                                filled: true,
+                                                fillColor: Colors.white,
+                                                border: OutlineInputBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(10),
+                                                ),
+                                                enabledBorder:
+                                                    OutlineInputBorder(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            10,
+                                                          ),
+                                                      borderSide:
+                                                          const BorderSide(
+                                                            color: border,
+                                                          ),
+                                                    ),
+                                                focusedBorder:
+                                                    OutlineInputBorder(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            10,
+                                                          ),
+                                                      borderSide:
+                                                          const BorderSide(
+                                                            color: forest,
+                                                            width: 1.8,
+                                                          ),
+                                                    ),
+                                              ),
+                                              onChanged: (value) {
+                                                if (value.isNotEmpty &&
+                                                    index < 5) {
+                                                  _focus[index + 1]
+                                                      .requestFocus();
+                                                } else if (value.isEmpty &&
+                                                    index > 0) {
+                                                  _focus[index - 1]
+                                                      .requestFocus();
+                                                }
+                                              },
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                    if (_socialError != null) ...[
+                                      const SizedBox(height: 14),
+                                      Container(
+                                        padding: const EdgeInsets.all(12),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFFFF0E9),
+                                          borderRadius: BorderRadius.circular(
+                                            10,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          _socialError!,
+                                          style: const TextStyle(
+                                            color: Color(0xFF994A30),
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                    const SizedBox(height: 15),
+                                    Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Icon(
+                                          expired
+                                              ? Icons.info_outline_rounded
+                                              : Icons.schedule_rounded,
+                                          size: 17,
+                                          color: expired
+                                              ? const Color(0xFFBB674C)
+                                              : muted,
+                                        ),
+                                        const SizedBox(width: 7),
+                                        Expanded(
+                                          child: Text(
+                                            statusText,
+                                            style: TextStyle(
+                                              color: expired
+                                                  ? const Color(0xFFBB674C)
+                                                  : muted,
+                                              fontSize: 12,
+                                              height: 1.4,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    if (attemptsExhausted) ...[
+                                      const SizedBox(height: 10),
+                                      const Text(
+                                        'This code can no longer be used. '
+                                        'Request a new code.',
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Color(0xFFBB674C),
+                                          height: 1.4,
+                                        ),
+                                      ),
+                                    ],
+                                    const SizedBox(height: 21),
+                                    SizedBox(
+                                      height: 48,
+                                      child: FilledButton(
+                                        onPressed: canVerify ? _verify : null,
+                                        style: FilledButton.styleFrom(
+                                          backgroundColor: forest,
+                                          foregroundColor: Colors.white,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              10,
+                                            ),
+                                          ),
+                                        ),
+                                        child: _busy
+                                            ? const SizedBox(
+                                                width: 20,
+                                                height: 20,
+                                                child:
+                                                    CircularProgressIndicator(
+                                                      strokeWidth: 2,
+                                                      color: Colors.white,
+                                                    ),
+                                              )
+                                            : const Row(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.center,
+                                                children: [
+                                                  Text(
+                                                    'Verify & continue',
+                                                    style: TextStyle(
+                                                      fontWeight:
+                                                          FontWeight.w800,
+                                                      fontSize: 14,
+                                                    ),
+                                                  ),
+                                                  SizedBox(width: 8),
+                                                  Icon(
+                                                    Icons.arrow_forward_rounded,
+                                                    size: 18,
+                                                  ),
+                                                ],
+                                              ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 11),
+                                    Wrap(
+                                      alignment: WrapAlignment.center,
+                                      crossAxisAlignment:
+                                          WrapCrossAlignment.center,
+                                      spacing: 2,
+                                      children: [
+                                        const Text(
+                                          'Didn’t get the code?',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: muted,
+                                          ),
+                                        ),
+                                        TextButton(
+                                          onPressed:
+                                              (_busy ||
+                                                  _canceling ||
+                                                  _resendingSignup ||
+                                                  _seconds > 0 ||
+                                                  _sending ||
+                                                  resendUnavailable)
+                                              ? null
+                                              : _resend,
+                                          child: Text(
+                                            resendUnavailable
+                                                ? 'Resend limit reached'
+                                                : (_social && !_socialSent
+                                                      ? 'Retry sending code'
+                                                      : _seconds > 0
+                                                      ? 'Resend in ${_seconds}s'
+                                                      : 'Resend code'),
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w800,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 15),
+                            const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 10),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Icon(
+                                    Icons.shield_outlined,
+                                    color: Colors.white70,
+                                    size: 17,
+                                  ),
+                                  SizedBox(width: 9),
+                                  Expanded(
+                                    child: Text(
+                                      'Your account is protected with '
+                                      'one-time email verification.',
+                                      style: TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 11,
+                                        height: 1.45,
                                       ),
                                     ),
                                   ),
                                 ],
                               ),
                             ),
-                          ),
-                        const SizedBox(height: 40),
-                        const Text(
-                          'Verification code',
-                          style: TextStyle(
-                            color: ink,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 13),
-                        LayoutBuilder(
-                          builder: (context, box) {
-                            const gap = 8.0;
-                            final cellWidth = ((box.maxWidth - gap * 5) / 6)
-                                .clamp(34.0, 64.0);
-                            return Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: List.generate(
-                                6,
-                                (index) => SizedBox(
-                                  width: cellWidth,
-                                  child: TextField(
-                                    controller: _fields[index],
-                                    focusNode: _focus[index],
-                                    enabled: !_busy && !_sending,
-                                    textAlign: TextAlign.center,
-                                    keyboardType: TextInputType.number,
-                                    textInputAction: index == 5
-                                        ? TextInputAction.done
-                                        : TextInputAction.next,
-                                    inputFormatters: [
-                                      FilteringTextInputFormatter.digitsOnly,
-                                      LengthLimitingTextInputFormatter(1),
-                                    ],
-                                    style: const TextStyle(
-                                      color: ink,
-                                      fontSize: 23,
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                                    decoration: InputDecoration(
-                                      counterText: '',
-                                      filled: true,
-                                      fillColor: Colors.white,
-                                      contentPadding:
-                                          const EdgeInsets.symmetric(
-                                            vertical: 18,
-                                            horizontal: 0,
-                                          ),
-                                      enabledBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(13),
-                                        borderSide: const BorderSide(
-                                          color: Color(0xFFDCE7DF),
-                                        ),
-                                      ),
-                                      focusedBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(13),
-                                        borderSide: const BorderSide(
-                                          color: forest,
-                                          width: 2,
-                                        ),
-                                      ),
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(13),
-                                      ),
-                                    ),
-                                    onChanged: (value) {
-                                      if (value.isNotEmpty && index < 5) {
-                                        _focus[index + 1].requestFocus();
-                                      } else if (value.isEmpty && index > 0) {
-                                        _focus[index - 1].requestFocus();
-                                      }
-                                    },
-                                  ),
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                        const SizedBox(height: 17),
-                        if (_socialError != null) ...[
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFFFF0E9),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              _socialError!,
-                              style: const TextStyle(
-                                color: Color(0xFF994A30),
-                                fontSize: 12,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                        ],
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              expired
-                                  ? Icons.info_outline_rounded
-                                  : Icons.schedule_rounded,
-                              color: expired ? const Color(0xFFBB674C) : muted,
-                              size: 17,
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              _social && _sending
-                                  ? 'Requesting verification code...'
-                                  : _social && !_socialSent
-                                  ? 'No code requested yet.'
-                                  : expired
-                                  ? 'Code expired or unavailable. Request a new one.'
-                                  : _social
-                                  ? 'Code time remaining: ${_seconds ~/ 60}:${(_seconds % 60).toString().padLeft(2, '0')}'
-                                  : _seconds > 0
-                                  ? 'Resend available in $_seconds seconds'
-                                  : 'You can request a new code.',
-                              style: TextStyle(
-                                color: expired
-                                    ? const Color(0xFFBB674C)
-                                    : muted,
-                                fontSize: 13,
-                              ),
-                            ),
                           ],
                         ),
-                        if (attemptsExhausted) ...[
-                          const SizedBox(height: 12),
-                          const Text(
-                            'This code can no longer be used. Request a new code.',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Color(0xFFBB674C),
-                            ),
-                          ),
-                        ],
-                        const SizedBox(height: 27),
-                        SizedBox(
-                          height: 54,
-                          child: FilledButton(
-                            style: FilledButton.styleFrom(
-                              backgroundColor: forest,
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(15),
-                              ),
-                            ),
-                            onPressed: canVerify ? _verify : null,
-                            child: _busy
-                                ? const SizedBox(
-                                    width: 21,
-                                    height: 21,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.white,
-                                    ),
-                                  )
-                                : const Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Text(
-                                        'Verify & continue',
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                      SizedBox(width: 9),
-                                      Icon(
-                                        Icons.arrow_forward_rounded,
-                                        size: 20,
-                                      ),
-                                    ],
-                                  ),
-                          ),
-                        ),
-                        const SizedBox(height: 22),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Text(
-                              'Didn’t get the code?',
-                              style: TextStyle(color: muted, fontSize: 13),
-                            ),
-                            const SizedBox(width: 4),
-                            TextButton(
-                              onPressed:
-                                  (_busy ||
-                                      _canceling ||
-                                      _resendingSignup ||
-                                      _seconds > 0 ||
-                                      _sending ||
-                                      resendUnavailable)
-                                  ? null
-                                  : _resend,
-                              child: Text(
-                                resendUnavailable
-                                    ? 'Resend limit reached'
-                                    : (_social && !_socialSent
-                                          ? 'Retry sending code'
-                                          : _seconds > 0
-                                          ? 'Resend in ${_seconds}s'
-                                          : 'Resend code'),
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 25),
-                        Row(
-                          children: [
-                            const Expanded(
-                              child: Divider(color: Color(0xFFE6ECE8)),
-                            ),
-                            const Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 12),
-                              child: Text(
-                                'SECURE VERIFICATION',
-                                style: TextStyle(
-                                  color: Color(0xFF91A29A),
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 1.3,
-                                  fontSize: 10,
-                                ),
-                              ),
-                            ),
-                            const Expanded(
-                              child: Divider(color: Color(0xFFE6ECE8)),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 13),
-                        const Text(
-                          'Your account is protected with one-time email verification.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: muted,
-                            fontSize: 12,
-                            height: 1.5,
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
-                ),
-              ),
+                );
+              },
             ),
           ),
-        ),
+        ],
       ),
     );
   }

@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter/services.dart';
 import 'app_colors.dart';
 
-/// One builder for both modes.
-/// Typography: Poppins (headings, numerals) + Inter (body, labels, tables).
+/// Shared theme tuned to Google Stitch's Civic Dignity system.
 class AppTheme {
   AppTheme._();
 
@@ -11,368 +10,172 @@ class AppTheme {
   static ThemeData get darkTheme => _build(Brightness.dark);
 
   static ThemeData _build(Brightness brightness) {
-    final dark = brightness == Brightness.dark;
-    final kc = dark ? KaisaColors.dark : KaisaColors.light;
-    final base = ThemeData(useMaterial3: true, brightness: brightness);
-
+    final isDark = brightness == Brightness.dark;
+    final surface = isDark ? const Color(0xFF16241C) : AppColors.surface;
+    final background = isDark ? const Color(0xFF101C15) : AppColors.background;
+    final ink = isDark ? const Color(0xFFF1F5F2) : AppColors.textPrimary;
+    final sub = isDark ? const Color(0xFFB1C5B9) : AppColors.textSecondary;
+    final outline = isDark ? const Color(0xFF385444) : AppColors.border;
     final scheme =
         ColorScheme.fromSeed(
           seedColor: AppColors.forest,
           brightness: brightness,
         ).copyWith(
-          primary: kc.brand,
-          onPrimary: kc.onBrand,
+          primary: isDark ? const Color(0xFF95D4AD) : AppColors.forest,
+          onPrimary: isDark ? AppColors.deepForest : Colors.white,
           secondary: AppColors.yellow,
-          onSecondary: AppColors.forest,
-          surface: kc.card,
-          onSurface: kc.ink,
-          onSurfaceVariant: kc.inkSoft,
-          surfaceContainerHighest: kc.tile,
-          outline: kc.stroke,
-          outlineVariant: kc.stroke,
+          onSecondary: AppColors.deepForest,
+          surface: surface,
+          onSurface: ink,
+          outline: outline,
+          outlineVariant: outline,
           error: AppColors.error,
         );
 
-    // Headings are Forest Depth in light mode, soft white in dark.
-    final headColor = dark ? kc.ink : AppColors.forest;
-
-    TextStyle poppins(TextStyle? s, FontWeight w, {double ls = 0, double? h}) =>
-        GoogleFonts.poppins(
-          textStyle: s,
-          fontWeight: w,
-          letterSpacing: ls,
-          height: h,
-          color: headColor,
-        );
-
-    final inter = GoogleFonts.interTextTheme(
-      base.textTheme,
-    ).apply(bodyColor: kc.ink, displayColor: kc.ink);
-
-    final textTheme = inter.copyWith(
-      displayLarge: poppins(
-        inter.displayLarge,
-        FontWeight.w700,
-        ls: -1.2,
-        h: 1.1,
-      ),
-      displayMedium: poppins(
-        inter.displayMedium,
-        FontWeight.w700,
-        ls: -1.0,
-        h: 1.1,
-      ),
-      displaySmall: poppins(
-        inter.displaySmall,
-        FontWeight.w700,
-        ls: -0.8,
-        h: 1.15,
-      ),
-      headlineLarge: poppins(
-        inter.headlineLarge,
-        FontWeight.w700,
-        ls: -0.6,
-        h: 1.15,
-      ),
-      headlineMedium: poppins(
-        inter.headlineMedium,
-        FontWeight.w600,
-        ls: -0.4,
-        h: 1.2,
-      ),
-      headlineSmall: poppins(
-        inter.headlineSmall,
-        FontWeight.w600,
-        ls: -0.3,
-        h: 1.25,
-      ),
-      titleLarge: poppins(inter.titleLarge, FontWeight.w600, ls: -0.2),
-      titleMedium: poppins(inter.titleMedium, FontWeight.w600, ls: -0.1),
-      titleSmall: inter.titleSmall?.copyWith(fontWeight: FontWeight.w600),
-      labelLarge: inter.labelLarge?.copyWith(
-        fontWeight: FontWeight.w600,
-        letterSpacing: 0.1,
-      ),
-      labelMedium: inter.labelMedium?.copyWith(fontWeight: FontWeight.w500),
-      bodyLarge: inter.bodyLarge?.copyWith(height: 1.55),
-      bodyMedium: inter.bodyMedium?.copyWith(height: 1.5),
-      bodySmall: inter.bodySmall?.copyWith(color: kc.inkSoft, height: 1.45),
-    );
-
-    const pill = StadiumBorder();
-
-    final buttonText = GoogleFonts.poppins(
-      fontSize: 15,
-      fontWeight: FontWeight.w600,
-      letterSpacing: 0.1,
-    );
-
-    OutlineInputBorder inputBorder(Color color, [double width = 1.0]) =>
-        OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: color, width: width),
-        );
-
-    return base.copyWith(
+    return ThemeData(
+      useMaterial3: true,
+      brightness: brightness,
       colorScheme: scheme,
-      scaffoldBackgroundColor: kc.page,
-      canvasColor: kc.card,
-      visualDensity: VisualDensity.adaptivePlatformDensity,
-      textTheme: textTheme,
-      primaryTextTheme: GoogleFonts.interTextTheme(
-        base.primaryTextTheme,
-      ).apply(bodyColor: kc.ink, displayColor: kc.ink),
-      extensions: [kc],
-
-      // App bar: borderless, blends with the stone canvas
+      scaffoldBackgroundColor: background,
+      fontFamily: 'Inter',
       appBarTheme: AppBarTheme(
-        backgroundColor: kc.page,
-        foregroundColor: kc.ink,
+        backgroundColor: surface,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
-        surfaceTintColor: Colors.transparent,
         centerTitle: false,
-        titleTextStyle: GoogleFonts.poppins(
-          fontSize: 18,
-          fontWeight: FontWeight.w600,
-          color: headColor,
+        foregroundColor: ink,
+        systemOverlayStyle: isDark
+            ? SystemUiOverlayStyle.light
+            : SystemUiOverlayStyle.dark,
+        titleTextStyle: TextStyle(
+          fontFamily: 'Outfit',
+          fontSize: 20,
+          fontWeight: FontWeight.w700,
+          color: ink,
         ),
-        iconTheme: IconThemeData(color: kc.ink, size: 22),
       ),
-
-      // Cards: white, 24px radius, hairline border (soft shadow lives in KaisaCard)
       cardTheme: CardThemeData(
-        color: kc.card,
         elevation: 0,
-        margin: EdgeInsets.zero,
+        color: surface,
         surfaceTintColor: Colors.transparent,
+        margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24),
-          side: BorderSide(color: kc.stroke),
+          borderRadius: BorderRadius.circular(10),
+          side: BorderSide(color: outline),
         ),
       ),
-
-      // Buttons: stadium pills
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          backgroundColor: kc.brand,
-          foregroundColor: kc.onBrand,
-          elevation: 0,
-          minimumSize: const Size(0, 54),
-          padding: const EdgeInsets.symmetric(horizontal: 28),
-          shape: pill,
-          textStyle: buttonText,
+          backgroundColor: scheme.primary,
+          foregroundColor: scheme.onPrimary,
+          minimumSize: const Size(0, 44),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
         ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: kc.brand,
-          foregroundColor: kc.onBrand,
+          backgroundColor: scheme.primary,
+          foregroundColor: scheme.onPrimary,
           elevation: 0,
-          minimumSize: const Size(0, 54),
-          padding: const EdgeInsets.symmetric(horizontal: 28),
-          shape: pill,
-          textStyle: buttonText,
+          minimumSize: const Size(0, 44),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: kc.ink,
-          backgroundColor: kc.card,
-          minimumSize: const Size(0, 54),
-          padding: const EdgeInsets.symmetric(horizontal: 28),
-          side: BorderSide(color: kc.stroke, width: 1.2),
-          shape: pill,
-          textStyle: buttonText,
+          foregroundColor: scheme.primary,
+          minimumSize: const Size(0, 44),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+          side: BorderSide(color: scheme.primary, width: 1.2),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          foregroundColor: dark ? kc.brand : AppColors.forest,
-          shape: pill,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          textStyle: GoogleFonts.inter(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-          ),
+          foregroundColor: scheme.primary,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
         ),
       ),
-
-      // Inputs: soft stone fill, 12px radius, crisp focus ring
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: kc.tile,
+        fillColor: surface,
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: 18,
-          vertical: 16,
+          horizontal: 13,
+          vertical: 13,
         ),
-        labelStyle: TextStyle(
-          color: kc.inkSoft,
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
+        hintStyle: TextStyle(color: sub, fontSize: 14),
+        labelStyle: TextStyle(color: sub, fontSize: 14),
+        prefixIconColor: sub,
+        suffixIconColor: sub,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(5),
+          borderSide: BorderSide(color: outline),
         ),
-        floatingLabelStyle: TextStyle(
-          color: dark ? kc.brand : AppColors.forest,
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(5),
+          borderSide: BorderSide(color: outline),
         ),
-        hintStyle: TextStyle(color: kc.inkMuted, fontSize: 14),
-        errorStyle: const TextStyle(
-          color: AppColors.error,
-          fontWeight: FontWeight.w500,
-          fontSize: 12,
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(5),
+          borderSide: BorderSide(color: scheme.primary, width: 1.8),
         ),
-        prefixIconColor: WidgetStateColor.resolveWith(
-          (s) => s.contains(WidgetState.focused)
-              ? (dark ? kc.brand : AppColors.forest)
-              : kc.inkSoft,
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(5),
+          borderSide: const BorderSide(color: AppColors.error),
         ),
-        suffixIconColor: kc.inkSoft,
-        border: inputBorder(Colors.transparent),
-        enabledBorder: inputBorder(dark ? kc.stroke : Colors.transparent),
-        focusedBorder: inputBorder(dark ? kc.brand : AppColors.forest, 1.5),
-        errorBorder: inputBorder(AppColors.error.withValues(alpha: .5)),
-        focusedErrorBorder: inputBorder(AppColors.error, 1.5),
       ),
-
-      // Chips: stadium; selected = solid forest
-      chipTheme: ChipThemeData(
-        backgroundColor: kc.card,
-        selectedColor: dark ? kc.brand : AppColors.forest,
-        side: BorderSide(color: kc.stroke),
-        shape: const StadiumBorder(),
-        labelStyle: GoogleFonts.inter(
-          fontSize: 13,
-          fontWeight: FontWeight.w500,
-          color: kc.inkSoft,
-        ),
-        secondaryLabelStyle: GoogleFonts.inter(
-          fontSize: 13,
-          fontWeight: FontWeight.w600,
-          color: dark ? kc.onBrand : Colors.white,
-        ),
-        checkmarkColor: dark ? kc.onBrand : Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      ),
-
-      // Material nav bar (KaisaBottomBar in kaisa_widgets.dart is the spec'd one)
       navigationBarTheme: NavigationBarThemeData(
-        height: 76,
+        backgroundColor: surface,
+        height: 66,
         elevation: 0,
-        backgroundColor: kc.sheet,
-        surfaceTintColor: Colors.transparent,
-        indicatorColor: Colors.transparent,
-        iconTheme: WidgetStateProperty.resolveWith(
-          (s) => IconThemeData(
-            size: 24,
-            color: s.contains(WidgetState.selected)
-                ? (dark ? kc.brand : AppColors.forest)
-                : kc.inkMuted,
+        indicatorColor: AppColors.mint,
+        labelTextStyle: WidgetStateProperty.resolveWith(
+          (states) => TextStyle(
+            fontSize: 11,
+            fontWeight: states.contains(WidgetState.selected)
+                ? FontWeight.w700
+                : FontWeight.w500,
+            color: states.contains(WidgetState.selected) ? scheme.primary : sub,
           ),
         ),
-        labelTextStyle: WidgetStateProperty.resolveWith((s) {
-          final selected = s.contains(WidgetState.selected);
-          return GoogleFonts.inter(
-            fontSize: 11,
-            fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-            color: selected
-                ? (dark ? kc.brand : AppColors.forest)
-                : kc.inkMuted,
-          );
-        }),
       ),
-
-      navigationRailTheme: NavigationRailThemeData(
-        backgroundColor: kc.sheet,
-        useIndicator: true,
-        indicatorColor: dark ? kc.brand : AppColors.forest,
-        indicatorShape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-        ),
-        selectedIconTheme: IconThemeData(
-          color: dark ? kc.onBrand : Colors.white,
-        ),
-        unselectedIconTheme: IconThemeData(color: kc.inkSoft),
-        selectedLabelTextStyle: GoogleFonts.inter(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          color: kc.ink,
-        ),
-        unselectedLabelTextStyle: GoogleFonts.inter(
-          fontSize: 12,
+      chipTheme: ChipThemeData(
+        backgroundColor: surface,
+        selectedColor: AppColors.mint,
+        labelStyle: TextStyle(
+          color: ink,
           fontWeight: FontWeight.w500,
-          color: kc.inkSoft,
+          fontSize: 12,
+        ),
+        secondaryLabelStyle: const TextStyle(
+          color: AppColors.forest,
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(30),
+          side: BorderSide(color: outline),
         ),
       ),
-
       dialogTheme: DialogThemeData(
-        backgroundColor: kc.sheet,
+        backgroundColor: surface,
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-        elevation: 0,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
       bottomSheetTheme: BottomSheetThemeData(
-        backgroundColor: kc.sheet,
-        modalBackgroundColor: kc.sheet,
+        backgroundColor: surface,
         surfaceTintColor: Colors.transparent,
-        elevation: 0,
-        dragHandleColor: kc.stroke,
         shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(14)),
         ),
       ),
-
-      snackBarTheme: SnackBarThemeData(
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: dark ? kc.card : AppColors.forest,
-        actionTextColor: AppColors.yellow,
-        contentTextStyle: GoogleFonts.inter(
-          color: dark ? kc.ink : Colors.white,
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
-        ),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        elevation: 0,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-      ),
-
-      dividerTheme: DividerThemeData(color: kc.stroke, thickness: 1, space: 24),
-
-      checkboxTheme: CheckboxThemeData(
-        fillColor: WidgetStateProperty.resolveWith(
-          (s) => s.contains(WidgetState.selected)
-              ? (dark ? kc.brand : AppColors.forest)
-              : Colors.transparent,
-        ),
-        checkColor: WidgetStatePropertyAll(kc.onBrand),
-        side: BorderSide(color: kc.inkMuted, width: 1.5),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-      ),
-      progressIndicatorTheme: ProgressIndicatorThemeData(
-        color: dark ? kc.brand : AppColors.forest,
-        linearTrackColor: AppColors.sageTrack,
-        circularTrackColor: kc.stroke,
-      ),
-      popupMenuTheme: PopupMenuThemeData(
-        color: kc.sheet,
-        surfaceTintColor: Colors.transparent,
-        elevation: 4,
-        shadowColor: Colors.black.withValues(alpha: .06),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: kc.stroke),
-        ),
-      ),
-      datePickerTheme: DatePickerThemeData(
-        backgroundColor: kc.sheet,
-        surfaceTintColor: Colors.transparent,
-        headerBackgroundColor: kc.card,
-        headerForegroundColor: kc.ink,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(28),
-          side: BorderSide(color: kc.stroke),
-        ),
-      ),
+      dividerTheme: DividerThemeData(color: outline, thickness: 1),
     );
   }
 }

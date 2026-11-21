@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/services/kaisa_auth_service.dart';
+import '../../../core/services/kaisa_resident_profile_gate.dart';
 
 /// KAISA login — compact Civic Dignity UI with 5-photo crossfade background.
 ///
@@ -150,11 +151,15 @@ class _LoginPageState extends State<LoginPage> {
         return;
       }
 
-      final destination = _destinationFor(user);
+      // Preserve trusted administrator routing. Only resident accounts
+      // must pass through the persisted profile-completion check.
+      final adminDestination = _destinationFor(user);
+      final destination =
+          adminDestination ??
+          await KaisaResidentProfileGate.destinationFor(user);
       if (!mounted) return;
 
-      // Existing resident flow; admin routes take precedence.
-      context.go(destination ?? '/resident/home');
+      context.go(destination);
     } on AuthException catch (error) {
       if (mounted) _showError(_messageForAuthError(error));
     } on FormatException catch (error) {
@@ -531,7 +536,7 @@ class _LoginPageState extends State<LoginPage> {
                       textInputAction: TextInputAction.next,
                       autocorrect: false,
                       decoration: _inputDecoration(
-                        hint: 'Enter Email Address',
+                        hint: 'name@domain.ph',
                         prefix: Icons.alternate_email_rounded,
                       ),
                       validator: (value) {

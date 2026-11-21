@@ -65,6 +65,7 @@ import '../../features/resident/verification/verification_status_page.dart';
 import '../../features/resident/notifications/notifications_page.dart';
 import '../../features/resident/messaging/messages_page.dart';
 import '../../features/resident/my-qr/kaisa_my_qr_page.dart';
+import '../../features/resident/profile/resident_user_profile_page.dart';
 
 import '../../features/auth/views/reset_password_page.dart';
 
@@ -254,6 +255,18 @@ final appRouter = GoRouter(
         GoRoute(
           path: '/resident/events',
           builder: (context, state) => const EventsPage(),
+        ),
+        GoRoute(
+          path: '/resident/user/:userId',
+          builder: (context, state) {
+            final info = state.extra is Map ? state.extra as Map : const {};
+
+            return ResidentUserProfilePage(
+              userId: state.pathParameters['userId']!,
+              initialName: info['name']?.toString(),
+              initialAvatarPath: info['avatar_path']?.toString(),
+            );
+          },
         ),
         GoRoute(
           path: '/resident/event-details',

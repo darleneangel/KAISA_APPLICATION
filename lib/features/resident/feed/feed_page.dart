@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:math' as math;
 import '../widgets/kaisa_account_refresh.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -8,11 +10,383 @@ import 'package:camera/camera.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../widgets/kaisa_resident_design.dart';
 
-const _forest = Color(0xFF14532D);
-const _green = Color(0xFF237A50);
-const _yellow = Color(0xFFFBC02D);
-const _ink = Color(0xFF173D2B);
-const _muted = Color(0xFF69786F);
+// Civic Dignity: Stitch is a visual reference, not a source of new features.
+const _forest = Color(0xFF00301B);
+const _green = Color(0xFF2C6A4A);
+const _yellow = Color(0xFFFDBC19);
+const _ink = Color(0xFF151C27);
+const _muted = Color(0xFF66736B);
+const _canvas = Color(0xFFF9FAF9);
+const _soft = Color(0xFFF0F5F1);
+const _line = Color(0xFFE5ECE7);
+const _sage = Color(0xFF95D4AD);
+
+String _relativeTime(DateTime? date) {
+  if (date == null) return 'Recently';
+  final elapsed = DateTime.now().difference(date);
+  if (elapsed.isNegative || elapsed.inMinutes < 1) return 'Just now';
+  if (elapsed.inMinutes < 60) return '${elapsed.inMinutes}m ago';
+  if (elapsed.inHours < 24) return '${elapsed.inHours}h ago';
+  if (elapsed.inDays < 7) return '${elapsed.inDays}d ago';
+  const months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+  return '${months[date.month - 1]} ${date.day}, ${date.year}';
+}
+
+Color _categoryTint(String category) {
+  switch (category.toLowerCase()) {
+    case 'announcement':
+      return const Color(0xFFFFF2D5);
+    case 'event':
+      return const Color(0xFFE8F0FF);
+    case 'organization':
+      return const Color(0xFFF0EAFE);
+    default:
+      return const Color(0xFFE9F4EC);
+  }
+}
+
+Color _categoryInk(String category) {
+  switch (category.toLowerCase()) {
+    case 'announcement':
+      return const Color(0xFF856000);
+    case 'event':
+      return const Color(0xFF2D567E);
+    case 'organization':
+      return const Color(0xFF65528E);
+    default:
+      return _forest;
+  }
+}
+
+IconData _categoryIcon(String category) {
+  switch (category.toLowerCase()) {
+    case 'announcement':
+      return Icons.campaign_outlined;
+    case 'event':
+      return Icons.event_available_outlined;
+    case 'organization':
+      return Icons.groups_2_outlined;
+    default:
+      return Icons.forum_outlined;
+  }
+}
+
+// Interest/skill names mirror the KAISA Profile Setup screen. They are
+// preferences, NOT authorization claims and not extra public profile fields.
+const _kaisaInterests = <String>[
+  'Environment',
+  'Education',
+  'Health',
+  'Youth',
+  'Sports',
+  'Arts & Culture',
+  'Technology',
+  'Community Service',
+  'Disaster Preparedness',
+  'Livelihood',
+];
+const _kaisaSkills = <String>[
+  'Communication',
+  'Leadership',
+  'Graphic Design',
+  'Photography',
+  'Video Editing',
+  'Programming',
+  'Writing',
+  'Public Speaking',
+  'Event Management',
+  'First Aid',
+];
+
+// Common terms help connect a resident's selection with ordinary post text.
+// This is explainable on-device ranking, not an ML prediction or a new RPC.
+const _interestKeywords = <String, List<String>>{
+  'Environment': [
+    'environment',
+    'ecology',
+    'sustainability',
+    'clean up',
+    'recycling',
+    'tree planting',
+    'green',
+    'coastal',
+  ],
+  'Education': [
+    'education',
+    'learning',
+    'school',
+    'tutoring',
+    'student',
+    'workshop',
+    'seminar',
+  ],
+  'Health': [
+    'health',
+    'wellness',
+    'clinic',
+    'medical',
+    'nutrition',
+    'mental health',
+    'first aid',
+  ],
+  'Youth': ['youth', 'students', 'young people', 'leadership', 'teen'],
+  'Sports': [
+    'sports',
+    'basketball',
+    'volleyball',
+    'athletics',
+    'fitness',
+    'tournament',
+  ],
+  'Arts & Culture': [
+    'art',
+    'arts',
+    'culture',
+    'music',
+    'dance',
+    'painting',
+    'heritage',
+  ],
+  'Technology': [
+    'technology',
+    'digital',
+    'coding',
+    'programming',
+    'computer',
+    'software',
+    'it workshop',
+  ],
+  'Community Service': [
+    'community service',
+    'volunteer',
+    'outreach',
+    'donation',
+    'charity',
+    'bayanihan',
+  ],
+  'Disaster Preparedness': [
+    'disaster',
+    'preparedness',
+    'emergency',
+    'rescue',
+    'evacuation',
+    'flood',
+    'safety',
+  ],
+  'Livelihood': [
+    'livelihood',
+    'employment',
+    'job',
+    'business',
+    'entrepreneur',
+    'training',
+    'income',
+  ],
+};
+const _skillKeywords = <String, List<String>>{
+  'Communication': [
+    'communication',
+    'public relations',
+    'discussion',
+    'advocacy',
+  ],
+  'Leadership': [
+    'leadership',
+    'organizing',
+    'facilitation',
+    'community leader',
+  ],
+  'Graphic Design': ['graphic design', 'poster', 'design', 'layout'],
+  'Photography': ['photography', 'photographer', 'photos', 'photo walk'],
+  'Video Editing': ['video editing', 'film', 'videography', 'video'],
+  'Programming': [
+    'programming',
+    'coding',
+    'python',
+    'software',
+    'app development',
+  ],
+  'Writing': ['writing', 'creative writing', 'journalism', 'copywriting'],
+  'Public Speaking': [
+    'public speaking',
+    'speech',
+    'seminar',
+    'host',
+    'presentation',
+  ],
+  'Event Management': [
+    'event management',
+    'event planning',
+    'organizer',
+    'logistics',
+    'coordination',
+  ],
+  'First Aid': ['first aid', 'cpr', 'emergency response', 'rescue'],
+};
+
+String _normalized(String text) =>
+    text.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), ' ').trim();
+
+// Only a small typo tolerance. This never performs a broad user-directory query.
+bool _withinOneEdit(String a, String b) {
+  if ((a.length - b.length).abs() > 1) return false;
+  if (a == b) return true;
+  var i = 0, j = 0, edits = 0;
+  while (i < a.length && j < b.length) {
+    if (a[i] == b[j]) {
+      i++;
+      j++;
+      continue;
+    }
+    if (++edits > 1) return false;
+    if (a.length > b.length) {
+      i++;
+    } else if (b.length > a.length) {
+      j++;
+    } else {
+      i++;
+      j++;
+    }
+  }
+  return edits + (a.length - i) + (b.length - j) <= 1;
+}
+
+bool _termMatch(String text, String term) {
+  final needle = _normalized(term);
+  final haystack = _normalized(text);
+  if (needle.isEmpty || haystack.isEmpty) return false;
+  if (' $haystack '.contains(' $needle ')) return true;
+  final tokens = haystack.split(' ');
+  if (needle.contains(' ')) return false;
+  return tokens.any(
+    (word) =>
+        word.startsWith(needle) ||
+        (needle.length >= 5 &&
+            word.length >= 5 &&
+            _withinOneEdit(needle, word)),
+  );
+}
+
+List<String> _readTags(dynamic value) {
+  if (value is List)
+    return value
+        .map((e) => e.toString().trim())
+        .where((e) => e.isNotEmpty)
+        .toSet()
+        .toList();
+  if (value is String) {
+    final input = value.trim();
+    if (input.startsWith('[')) {
+      try {
+        return _readTags(jsonDecode(input));
+      } catch (_) {
+        /* legacy CSV */
+      }
+    }
+    return input
+        .split(RegExp(r'[,;]'))
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toSet()
+        .toList();
+  }
+  return <String>[];
+}
+
+String _postCorpus(Map<String, dynamic> post) => [
+  post['title'],
+  post['body'],
+  post['category'],
+  post['shared_body'],
+  post['shared_author_name'],
+].map((value) => '${value ?? ''}').join(' ');
+
+// All search/ranking is applied only to rows already returned by the existing
+// kaisa_feed_stream RPC. Supabase visibility and RLS stay authoritative.
+double _postSearchScore(Map<String, dynamic> post, String query) {
+  final tokens = _normalized(query).split(' ').where((e) => e.isNotEmpty);
+  if (tokens.isEmpty) return 1;
+  final fields = <(String, double)>[
+    ('${post['author_name'] ?? ''}', 8),
+    ('${post['title'] ?? ''}', 7),
+    ('${post['category'] ?? ''}', 6),
+    ('${post['body'] ?? ''}', 3),
+    ('${post['shared_body'] ?? ''}', 2),
+    ('${post['shared_author_name'] ?? ''}', 3),
+  ];
+  var score = 0.0;
+  for (final token in tokens) {
+    var weight = 0.0;
+    for (final field in fields) {
+      if (_termMatch(field.$1, token)) weight = math.max(weight, field.$2);
+    }
+    if (weight == 0) return 0; // Every word must match somewhere.
+    score += weight;
+  }
+  final phrase = _normalized(query);
+  if (phrase.isNotEmpty && _normalized(_postCorpus(post)).contains(phrase))
+    score += 5;
+  return score;
+}
+
+List<String> _matchingPreferences(
+  Map<String, dynamic> post,
+  List<String> interests,
+  List<String> skills,
+) {
+  final corpus = _postCorpus(post);
+  return [
+    for (final tag in interests)
+      if ((_interestKeywords[tag] ?? [tag]).any(
+        (term) => _termMatch(corpus, term),
+      ))
+        tag,
+    for (final tag in skills)
+      if ((_skillKeywords[tag] ?? [tag]).any(
+        (term) => _termMatch(corpus, term),
+      ))
+        tag,
+  ];
+}
+
+double _recommendationScore(
+  Map<String, dynamic> post,
+  List<String> interests,
+  List<String> skills,
+) {
+  final published = DateTime.tryParse('${post['created_at'] ?? ''}')?.toLocal();
+  final daysOld = published == null
+      ? 90.0
+      : math.max(0.0, DateTime.now().difference(published).inHours / 24.0);
+  // Recency matters; popularity has a capped influence so newcomers are seen.
+  final freshness = 24.0 / (1 + daysOld / 3.0);
+  final likes = (num.tryParse('${post['likes'] ?? 0}') ?? 0).toDouble();
+  final comments = (num.tryParse('${post['comments'] ?? 0}') ?? 0).toDouble();
+  final engagement = math.min(
+    12.0,
+    2 * math.log(1 + math.max(0, likes) + 2 * math.max(0, comments)),
+  );
+  final relevant = _matchingPreferences(post, interests, skills);
+  final interestHits = relevant.where(interests.contains).length;
+  final skillHits = relevant.where(skills.contains).length;
+  return freshness +
+      engagement +
+      math.min(32.0, interestHits * 16.0) +
+      math.min(18.0, skillHits * 9.0);
+}
 
 class FeedPage extends StatefulWidget {
   const FeedPage({super.key});
@@ -24,6 +398,13 @@ class _FeedPageState extends State<FeedPage> {
   final db = Supabase.instance.client;
   List<Map<String, dynamic>> posts = [];
   String filter = 'All';
+  final TextEditingController _searchController = TextEditingController();
+  List<String> _feedInterests = [];
+  List<String> _feedSkills = [];
+  bool _personalized = true;
+  bool _savingPreferences = false;
+  bool _showCategoryFilters = true;
+  Map<String, String> _storyUrls = {};
   bool loading = true;
   bool tier2 = false;
   List<Map<String, dynamic>> stories = [];
@@ -50,6 +431,7 @@ class _FeedPageState extends State<FeedPage> {
   @override
   void dispose() {
     _storyTicker?.cancel();
+    _searchController.dispose();
     kaisaAccountRefresh.removeListener(_profileChangeListener);
     super.dispose();
   }
@@ -63,6 +445,35 @@ class _FeedPageState extends State<FeedPage> {
           .select('first_name,last_name,avatar_path')
           .eq('user_id', uid)
           .maybeSingle();
+      // The saved onboarding fields may live in profile columns or Auth
+      // metadata, depending on the current KAISA schema. Never require either.
+      final meta = db.auth.currentUser?.userMetadata ?? <String, dynamic>{};
+      var interests = _readTags(
+        meta['kaisa_feed_interests'] ??
+            meta['interests'] ??
+            meta['community_interests'],
+      );
+      var skills = _readTags(meta['kaisa_feed_skills'] ?? meta['skills']);
+      if (!meta.containsKey('kaisa_feed_interests') ||
+          !meta.containsKey('kaisa_feed_skills')) {
+        try {
+          final extra = await db
+              .from('resident_profiles')
+              .select('interests,skills')
+              .eq('user_id', uid)
+              .maybeSingle();
+          if (!meta.containsKey('kaisa_feed_interests') &&
+              _readTags(extra?['interests']).isNotEmpty) {
+            interests = _readTags(extra?['interests']);
+          }
+          if (!meta.containsKey('kaisa_feed_skills') &&
+              _readTags(extra?['skills']).isNotEmpty) {
+            skills = _readTags(extra?['skills']);
+          }
+        } catch (_) {
+          // Optional columns are absent on some KAISA deployments.
+        }
+      }
       if (!mounted) return;
       setState(() {
         displayName = [
@@ -71,10 +482,59 @@ class _FeedPageState extends State<FeedPage> {
         ].where((v) => v != null && '$v'.trim().isNotEmpty).join(' ');
         if (displayName.isEmpty) displayName = 'KAISA Resident';
         avatarPath = '${value?['avatar_path'] ?? ''}';
+        _feedInterests = interests;
+        _feedSkills = skills;
       });
     } catch (_) {
       // Keep a safe avatar fallback without hiding the Feed on profile errors.
     }
+  }
+
+  Future<void> _editFeedPreferences() async {
+    final selection =
+        await showDialog<({List<String> interests, List<String> skills})>(
+          context: context,
+          builder: (dialogContext) => _FeedPreferencesDialog(
+            interests: _feedInterests,
+            skills: _feedSkills,
+          ),
+        );
+    if (selection == null || !mounted || _savingPreferences) return;
+    setState(() => _savingPreferences = true);
+    try {
+      final meta = Map<String, dynamic>.from(
+        db.auth.currentUser?.userMetadata ?? <String, dynamic>{},
+      );
+      // Update only namespaced user metadata; no new database table or migration.
+      meta['kaisa_feed_interests'] = selection.interests;
+      meta['kaisa_feed_skills'] = selection.skills;
+      await db.auth.updateUser(UserAttributes(data: meta));
+      if (!mounted) return;
+      setState(() {
+        _feedInterests = selection.interests;
+        _feedSkills = selection.skills;
+      });
+      _snack('Feed preferences saved. Recommendations updated.');
+    } catch (e) {
+      _snack('Could not save feed preferences: $e');
+    } finally {
+      if (mounted) setState(() => _savingPreferences = false);
+    }
+  }
+
+  Future<void> _openSmartSearch() async {
+    final selected = await showDialog<String>(
+      context: context,
+      builder: (_) => _FeedSmartSearchDialog(
+        posts: posts,
+        initialQuery: _searchController.text,
+      ),
+    );
+    if (selected == null || !mounted) return;
+    _searchController.text = selected;
+    setState(() {
+      filter = 'All';
+    });
   }
 
   Future<void> _load() async {
@@ -110,13 +570,31 @@ class _FeedPageState extends State<FeedPage> {
 
   Future<void> _loadStories() async {
     try {
+      // Keep the existing active-stories RPC and signed storage URLs.
       final result = await db.rpc('kaisa_active_stories');
+      final fetched = (result as List)
+          .map((e) => Map<String, dynamic>.from(e as Map))
+          .toList();
+      final thumbnails = <String, String>{};
+      // Load thumbnails only for stories actually visible in the strip.
+      await Future.wait(
+        fetched.take(25).map((story) async {
+          final path = (story['image_path'] ?? '').toString().trim();
+          if (path.isEmpty) return;
+          try {
+            thumbnails[path] = await db.storage
+                .from('kaisa-stories')
+                .createSignedUrl(path, 10 * 60);
+          } catch (_) {
+            // Missing/unauthorized media uses a consistent icon fallback.
+          }
+        }),
+      );
       if (mounted) {
-        setState(
-          () => stories = (result as List)
-              .map((e) => Map<String, dynamic>.from(e as Map))
-              .toList(),
-        );
+        setState(() {
+          stories = fetched;
+          _storyUrls = thumbnails;
+        });
       }
     } catch (e) {
       if (mounted) _snack('Stories could not load: $e');
@@ -154,39 +632,84 @@ class _FeedPageState extends State<FeedPage> {
     await showDialog<void>(
       context: context,
       builder: (dialogContext) => Dialog(
+        insetPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 24),
         backgroundColor: _forest,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(17)),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 480),
-          child: Padding(
-            padding: const EdgeInsets.all(18),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        '${story['author_name']}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
+          child: SizedBox(
+            height: MediaQuery.sizeOf(dialogContext).height * .75,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 13, 16, 18),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.auto_stories_outlined,
+                        color: _yellow,
+                        size: 22,
+                      ),
+                      const SizedBox(width: 9),
+                      Expanded(
+                        child: Text(
+                          '${story['author_name'] ?? 'Resident'}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Close story',
+                        onPressed: () => Navigator.pop(dialogContext),
+                        icon: const Icon(Icons.close, color: Colors.white),
+                      ),
+                    ],
+                  ),
+                  const Divider(color: Colors.white24),
+                  Expanded(
+                    child: Center(
+                      child: url == null
+                          ? const Icon(
+                              Icons.auto_stories_rounded,
+                              color: _sage,
+                              size: 70,
+                            )
+                          : Image.network(
+                              url!,
+                              fit: BoxFit.contain,
+                              errorBuilder: (_, _, _) => const Icon(
+                                Icons.broken_image_outlined,
+                                size: 58,
+                                color: Colors.white70,
+                              ),
+                            ),
+                    ),
+                  ),
+                  if ('${story['caption'] ?? ''}'.trim().isNotEmpty)
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxHeight: 125),
+                      child: SingleChildScrollView(
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 13),
+                          child: Text(
+                            '${story['caption']}',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              height: 1.5,
+                              fontSize: 14,
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                    IconButton(
-                      onPressed: () => Navigator.pop(dialogContext),
-                      icon: const Icon(Icons.close, color: Colors.white),
-                    ),
-                  ],
-                ),
-                if (url != null)
-                  Image.network(url, height: 320, fit: BoxFit.contain),
-                const SizedBox(height: 12),
-                Text(
-                  '${story['caption'] ?? ''}',
-                  style: const TextStyle(color: Colors.white, fontSize: 16),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -194,78 +717,156 @@ class _FeedPageState extends State<FeedPage> {
     );
   }
 
-  Widget _storiesStrip() => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      const Padding(
-        padding: EdgeInsets.only(bottom: 10),
-        child: Text(
-          'Stories · 24 hours',
-          style: TextStyle(
-            color: _ink,
-            fontWeight: FontWeight.w900,
-            fontSize: 18,
-          ),
-        ),
-      ),
-      SizedBox(
-        height: 112,
-        child: ListView(
-          scrollDirection: Axis.horizontal,
+  Widget _storiesStrip() => Container(
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(15),
+      border: Border.all(color: _line),
+    ),
+    padding: const EdgeInsets.fromLTRB(16, 17, 12, 12),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
           children: [
-            SizedBox(
-              width: 94,
-              child: InkWell(
-                onTap: _createStory,
-                child: Column(
-                  children: [
-                    CircleAvatar(
-                      radius: 31,
-                      backgroundColor: const Color(0xFFE2F1E6),
-                      child: Icon(
-                        tier2 ? Icons.add_rounded : Icons.lock_outline,
-                        color: _forest,
-                        size: 27,
-                      ),
-                    ),
-                    const SizedBox(height: 7),
-                    Text(
-                      tier2 ? 'Your story' : 'Verify',
-                      style: const TextStyle(fontSize: 12, color: _ink),
-                    ),
-                  ],
+            const Icon(Icons.auto_stories_outlined, size: 19, color: _forest),
+            const SizedBox(width: 9),
+            const Expanded(
+              child: Text(
+                'Community stories',
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                  color: _ink,
                 ),
               ),
             ),
-            for (final story in stories)
+            Text(
+              '${stories.length} active · 24h',
+              style: const TextStyle(fontSize: 11, color: _muted),
+            ),
+          ],
+        ),
+        const SizedBox(height: 15),
+        SizedBox(
+          height: 105,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            children: [
               SizedBox(
-                width: 96,
+                width: 83,
                 child: InkWell(
-                  onTap: () => _viewStory(story),
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: _createStory,
                   child: Column(
                     children: [
-                      const CircleAvatar(
-                        radius: 31,
-                        backgroundColor: Color(0xFFE2F1E6),
-                        child: Icon(Icons.auto_stories, color: _forest),
+                      Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Container(
+                            width: 65,
+                            height: 65,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(color: _yellow, width: 2),
+                              color: _soft,
+                            ),
+                            alignment: Alignment.center,
+                            child: _avatar(radius: 28),
+                          ),
+                          Positioned(
+                            right: -1,
+                            bottom: -2,
+                            child: Container(
+                              width: 25,
+                              height: 25,
+                              decoration: BoxDecoration(
+                                color: _forest,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.white,
+                                  width: 2,
+                                ),
+                              ),
+                              child: Icon(
+                                tier2 ? Icons.add : Icons.lock_outline,
+                                size: 15,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 7),
+                      const SizedBox(height: 8),
                       Text(
-                        '${story['author_name']}',
-                        maxLines: 2,
+                        tier2 ? 'Your story' : 'Verify first',
+                        maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(fontSize: 11, color: _ink),
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: _ink,
+                        ),
                       ),
                     ],
                   ),
                 ),
               ),
-          ],
+              ...stories.map((story) {
+                final imagePath = '${story['image_path'] ?? ''}';
+                final thumb = _storyUrls[imagePath];
+                final author = '${story['author_name'] ?? 'Resident'}';
+                return SizedBox(
+                  width: 89,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () => _viewStory(story),
+                    child: Column(
+                      children: [
+                        Container(
+                          width: 66,
+                          height: 66,
+                          padding: const EdgeInsets.all(3),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(color: _green, width: 2),
+                          ),
+                          child: CircleAvatar(
+                            backgroundColor: _soft,
+                            backgroundImage: thumb == null
+                                ? null
+                                : NetworkImage(thumb),
+                            child: thumb == null
+                                ? const Icon(
+                                    Icons.auto_stories_rounded,
+                                    size: 26,
+                                    color: _forest,
+                                  )
+                                : null,
+                          ),
+                        ),
+                        const SizedBox(height: 7),
+                        Text(
+                          author,
+                          maxLines: 2,
+                          textAlign: TextAlign.center,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w600,
+                            color: _ink,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }),
+            ],
+          ),
         ),
-      ),
-      const SizedBox(height: 12),
-    ],
+      ],
+    ),
   );
 
   Future<void> _compose() async {
@@ -329,14 +930,23 @@ class _FeedPageState extends State<FeedPage> {
   }
 
   Future<void> _comments(Map<String, dynamic> post) async {
-    await showModalBottomSheet<void>(
+    await showDialog<void>(
       context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (_) =>
-          _CommentsSheet(postId: post['id'] as String, canComment: tier2),
+      barrierDismissible: true,
+      builder: (dialogContext) => Dialog(
+        insetPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 24),
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 640),
+          child: _CommentsSheet(
+            postId: post['id'] as String,
+            canComment: tier2,
+          ),
+        ),
+      ),
     );
-    await _load();
+    if (mounted) await _load();
   }
 
   Future<void> _share(Map<String, dynamic> post) async {
@@ -488,8 +1098,8 @@ class _FeedPageState extends State<FeedPage> {
                 ),
                 _quickLink(
                   Icons.search_rounded,
-                  'Discover more',
-                  '/resident/search',
+                  'Community Feed',
+                  '/resident/feed',
                 ),
               ],
             ),
@@ -531,8 +1141,8 @@ class _FeedPageState extends State<FeedPage> {
                 ),
                 _quickLink(
                   Icons.chat_bubble_outline_rounded,
-                  'Messages',
-                  '/resident/messages',
+                  'My organizations',
+                  '/resident/my-organizations',
                 ),
                 _quickLink(
                   Icons.groups_2_outlined,
@@ -591,7 +1201,7 @@ class _FeedPageState extends State<FeedPage> {
     decoration: BoxDecoration(
       color: Colors.white,
       border: Border.all(color: KaisaResidentDesign.border),
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(13),
     ),
     padding: const EdgeInsets.fromLTRB(10, 16, 10, 10),
     child: Column(
@@ -623,35 +1233,42 @@ class _FeedPageState extends State<FeedPage> {
   );
 
   Widget _composer() => Container(
-    padding: const EdgeInsets.all(16),
+    padding: const EdgeInsets.fromLTRB(17, 17, 17, 11),
     decoration: BoxDecoration(
       color: Colors.white,
-      border: Border.all(color: KaisaResidentDesign.border),
-      borderRadius: BorderRadius.circular(18),
+      border: Border.all(color: _line),
+      borderRadius: BorderRadius.circular(15),
+      boxShadow: const [
+        BoxShadow(
+          color: Color(0x06000000),
+          blurRadius: 12,
+          offset: Offset(0, 3),
+        ),
+      ],
     ),
     child: Column(
       children: [
         Row(
           children: [
-            _avatar(radius: 21),
-            const SizedBox(width: 11),
+            _avatar(radius: 23),
+            const SizedBox(width: 12),
             Expanded(
               child: Material(
-                color: const Color(0xFFF2F5F2),
-                borderRadius: BorderRadius.circular(30),
+                color: _soft,
+                borderRadius: BorderRadius.circular(11),
                 child: InkWell(
-                  borderRadius: BorderRadius.circular(30),
+                  borderRadius: BorderRadius.circular(11),
                   onTap: _compose,
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
+                      horizontal: 15,
                       vertical: 15,
-                      horizontal: 18,
                     ),
                     child: Text(
                       tier2
-                          ? "What's on your mind, $displayName?"
-                          : 'Get verified to share a post',
-                      maxLines: 1,
+                          ? 'Share something with your community…'
+                          : 'Verify your account to join the conversation',
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(fontSize: 13, color: _muted),
                     ),
@@ -661,29 +1278,30 @@ class _FeedPageState extends State<FeedPage> {
             ),
           ],
         ),
-        const SizedBox(height: 13),
-        const Divider(height: 1, color: Color(0xFFEBEFEB)),
-        const SizedBox(height: 9),
+        const SizedBox(height: 12),
+        const Divider(height: 1, color: _line),
+        const SizedBox(height: 8),
         Row(
           children: [
             Expanded(
               child: TextButton.icon(
                 onPressed: _compose,
-                icon: const Icon(
-                  Icons.add_photo_alternate_outlined,
-                  color: _green,
-                ),
-                label: const Text('Photo', style: TextStyle(color: _ink)),
+                icon: const Icon(Icons.add_photo_alternate_outlined, size: 21),
+                label: const Text('Photo'),
+                style: TextButton.styleFrom(foregroundColor: _green),
               ),
             ),
             Expanded(
               child: TextButton.icon(
                 onPressed: _compose,
-                icon: const Icon(Icons.edit_note_outlined, color: _green),
-                label: Text(
-                  tier2 ? 'Write a post' : 'Verify',
-                  style: const TextStyle(color: _ink),
+                icon: Icon(
+                  tier2
+                      ? Icons.edit_note_rounded
+                      : Icons.verified_user_outlined,
+                  size: 21,
                 ),
+                label: Text(tier2 ? 'Write a post' : 'Get verified'),
+                style: TextButton.styleFrom(foregroundColor: _forest),
               ),
             ),
           ],
@@ -692,117 +1310,589 @@ class _FeedPageState extends State<FeedPage> {
     ),
   );
 
-  Widget _feedMain(List<Map<String, dynamic>> shown) => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      Row(
-        children: [
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'COMMUNITY CONNECTIONS',
-                  style: TextStyle(
-                    color: _green,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 1.6,
+  Widget _bulletin(Map<String, dynamic> announcement) {
+    final author = (announcement['author_name'] ?? 'Community member')
+        .toString();
+    final body = (announcement['body'] ?? '').toString().trim();
+    if (body.isEmpty) return const SizedBox.shrink();
+    final excerpt = body.length > 220 ? '${body.substring(0, 220)}…' : body;
+    return Material(
+      color: const Color(0xFFFFF4DB),
+      borderRadius: BorderRadius.circular(13),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(13),
+        onTap: () => setState(() => filter = 'Announcement'),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(17),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(13),
+            border: Border.all(color: const Color(0xFFF1DFA9)),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: _yellow,
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: const Icon(
+                  Icons.campaign_rounded,
+                  color: _forest,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'FROM YOUR COMMUNITY',
+                      style: TextStyle(
+                        color: Color(0xFF7B5900),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      author,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: _forest,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 7),
+                    Text(
+                      excerpt,
+                      maxLines: 4,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: _ink,
+                        height: 1.4,
+                        fontSize: 13,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'See announcements',
+                          style: TextStyle(
+                            color: _forest,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 12,
+                          ),
+                        ),
+                        SizedBox(width: 6),
+                        Icon(
+                          Icons.arrow_forward_rounded,
+                          size: 16,
+                          color: _forest,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _feedSortChip(String title, IconData icon, bool personalized) {
+    final selected = _personalized == personalized;
+    return Material(
+      color: selected ? _forest : _soft,
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: () => setState(() => _personalized = personalized),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 15, color: selected ? _yellow : _forest),
+              const SizedBox(width: 6),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: selected ? Colors.white : _forest,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _feedMain(List<Map<String, dynamic>> shown) {
+    final announcements = posts
+        .where(
+          (p) =>
+              p['category'] == 'Announcement' &&
+              '${p['body'] ?? ''}'.trim().isNotEmpty,
+        )
+        .toList();
+    final latestAnnouncement = announcements.isEmpty
+        ? null
+        : announcements.first;
+    const categories = <String>[
+      'All',
+      'Community',
+      'Announcement',
+      'Event',
+      'Organization',
+    ];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.circle, size: 7, color: _green),
+                      SizedBox(width: 7),
+                      Expanded(
+                        child: Text(
+                          'CAVITE CITY  /  COMMUNITY CONNECTIONS',
+                          style: TextStyle(
+                            color: _green,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 10,
+                            letterSpacing: 1.15,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 7),
+                  const Text(
+                    'Community Feed',
+                    style: TextStyle(
+                      fontSize: 31,
+                      color: _forest,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -1,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  const Text(
+                    'A place for updates, conversations, and community stories.',
+                    style: TextStyle(color: _muted, fontSize: 13, height: 1.45),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Tooltip(
+              message: tier2
+                  ? 'Identity verified (Tier 2)'
+                  : 'Basic account (Tier 1)',
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 11,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: tier2
+                      ? const Color(0xFFE5EFE9)
+                      : const Color(0xFFF1F3F0),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Column(
+                  children: [
+                    Icon(
+                      tier2
+                          ? Icons.verified_user_rounded
+                          : Icons.person_outline,
+                      size: 18,
+                      color: _forest,
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      tier2 ? 'Tier 2' : 'Tier 1',
+                      style: const TextStyle(
+                        fontSize: 10,
+                        color: _forest,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 19),
+        Row(
+          children: [
+            Expanded(
+              child: Material(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: _openSmartSearch,
+                  child: Container(
+                    height: 49,
+                    padding: const EdgeInsets.symmetric(horizontal: 13),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: _line),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.search_rounded,
+                          color: _forest,
+                          size: 21,
+                        ),
+                        const SizedBox(width: 11),
+                        Expanded(
+                          child: Text(
+                            _searchController.text.trim().isEmpty
+                                ? 'Search posts, residents, and topics…'
+                                : _searchController.text,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: _searchController.text.isEmpty
+                                  ? _muted
+                                  : _ink,
+                            ),
+                          ),
+                        ),
+                        if (_searchController.text.trim().isNotEmpty)
+                          IconButton(
+                            tooltip: 'Clear search',
+                            onPressed: () =>
+                                setState(() => _searchController.clear()),
+                            icon: const Icon(
+                              Icons.close_rounded,
+                              color: _forest,
+                              size: 18,
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
                 ),
-                SizedBox(height: 5),
-                Text(
-                  'Community Feed',
-                  style: TextStyle(
-                    color: _ink,
-                    fontSize: 26,
-                    fontWeight: FontWeight.w900,
-                  ),
+              ),
+            ),
+            const SizedBox(width: 9),
+            Material(
+              color: _soft,
+              borderRadius: BorderRadius.circular(12),
+              child: IconButton(
+                tooltip: _showCategoryFilters ? 'Hide filters' : 'Show filters',
+                icon: Icon(
+                  _showCategoryFilters
+                      ? Icons.tune_rounded
+                      : Icons.filter_list_rounded,
+                  color: _forest,
                 ),
-              ],
+                onPressed: () => setState(
+                  () => _showCategoryFilters = !_showCategoryFilters,
+                ),
+              ),
+            ),
+            const SizedBox(width: 2),
+            IconButton(
+              tooltip: 'Refresh posts and stories',
+              onPressed: () {
+                _load();
+                _loadStories();
+              },
+              icon: const Icon(Icons.refresh_rounded, color: _forest),
+            ),
+          ],
+        ),
+        if (_showCategoryFilters) ...[
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 39,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: categories.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 8),
+              itemBuilder: (context, i) {
+                final f = categories[i];
+                final selected = filter == f;
+                return Material(
+                  color: selected ? _forest : Colors.white,
+                  borderRadius: BorderRadius.circular(22),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(22),
+                    onTap: () => setState(() => filter = f),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 13),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(22),
+                        border: Border.all(color: selected ? _forest : _line),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (f != 'All') ...[
+                            Icon(
+                              _categoryIcon(f),
+                              size: 15,
+                              color: selected ? _yellow : _categoryInk(f),
+                            ),
+                            const SizedBox(width: 6),
+                          ],
+                          Text(
+                            f == 'All' ? 'All updates' : f,
+                            style: TextStyle(
+                              color: selected ? Colors.white : _ink,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          if (!loading && posts.isNotEmpty) ...[
+                            const SizedBox(width: 6),
+                            Text(
+                              '${f == 'All' ? posts.length : posts.where((p) => p['category'] == f).length}',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: selected ? _sage : _muted,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
             ),
           ),
-          IconButton(
-            tooltip: 'Refresh posts',
-            onPressed: _load,
-            icon: const Icon(Icons.refresh_rounded, color: _forest),
-          ),
         ],
-      ),
-      const SizedBox(height: 16),
-      _storiesStrip(),
-      _composer(),
-      const SizedBox(height: 18),
-      SizedBox(
-        height: 46,
-        child: ListView(
-          scrollDirection: Axis.horizontal,
-          children: [
-            for (final f in const [
-              'All',
-              'Community',
-              'Announcement',
-              'Event',
-              'Organization',
-            ])
-              Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: ChoiceChip(
-                  label: Text(f),
-                  selected: filter == f,
-                  selectedColor: const Color(0xFFE2F1E6),
-                  onSelected: (_) => setState(() => filter = f),
+        const SizedBox(height: 15),
+        Container(
+          padding: const EdgeInsets.fromLTRB(12, 11, 12, 11),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: _line),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(
+                    Icons.auto_awesome_outlined,
+                    color: _forest,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      'Discover what matters to you',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        color: _forest,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                  TextButton.icon(
+                    onPressed: _savingPreferences ? null : _editFeedPreferences,
+                    icon: const Icon(Icons.tune_rounded, size: 16),
+                    label: const Text('Interests & skills'),
+                    style: TextButton.styleFrom(foregroundColor: _green),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 7),
+              if (_feedInterests.isEmpty && _feedSkills.isEmpty)
+                const Text(
+                  'Choose interests and skills to personalize your feed.',
+                  style: TextStyle(fontSize: 12, color: _muted),
+                )
+              else
+                Text(
+                  'Based on ${[..._feedInterests, ..._feedSkills].take(3).join(', ')}'
+                  '${_feedInterests.length + _feedSkills.length > 3 ? ' and more' : ''}',
+                  style: const TextStyle(color: _muted, fontSize: 12),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  _feedSortChip(
+                    'For you',
+                    Icons.favorite_outline_rounded,
+                    true,
+                  ),
+                  const SizedBox(width: 8),
+                  _feedSortChip('Most recent', Icons.schedule_rounded, false),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 17),
+        _storiesStrip(),
+        const SizedBox(height: 14),
+        _composer(),
+        if (latestAnnouncement != null &&
+            filter == 'All' &&
+            _searchController.text.trim().isEmpty) ...[
+          const SizedBox(height: 16),
+          _bulletin(latestAnnouncement),
+        ],
+        const SizedBox(height: 25),
+        Row(
+          children: [
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'COMMUNITY CONVERSATIONS',
+                    style: TextStyle(
+                      color: _green,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.3,
+                    ),
+                  ),
+                  SizedBox(height: 3),
+                  Text(
+                    'From your community',
+                    style: TextStyle(
+                      color: _ink,
+                      fontSize: 19,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (!loading && error == null)
+              Text(
+                '${shown.length} ${shown.length == 1 ? 'post' : 'posts'}',
+                style: const TextStyle(color: _muted, fontSize: 12),
               ),
           ],
         ),
-      ),
-      const SizedBox(height: 10),
-      if (loading)
-        const Padding(
-          padding: EdgeInsets.symmetric(vertical: 50),
-          child: Center(child: CircularProgressIndicator(color: _green)),
-        )
-      else if (error != null)
-        _feedNotice(error!, action: 'Try again', onTap: _load)
-      else if (shown.isEmpty)
-        _feedNotice(
-          'No community posts found yet.',
-          action: tier2 ? 'Create the first post' : 'Get verified',
-          onTap: _compose,
-        )
-      else
-        for (final post in shown) ...[
-          _PostCard(
-            post: post,
-            tier2: tier2,
-            onLike: () => _toggleLike(post),
-            onComments: () => _comments(post),
-            onShare: () => _share(post),
-          ),
-          const SizedBox(height: 14),
-        ],
-    ],
-  );
+        const SizedBox(height: 13),
+        if (loading)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 60),
+            child: Center(child: CircularProgressIndicator(color: _green)),
+          )
+        else if (error != null)
+          _feedNotice(
+            error!,
+            action: 'Try again',
+            onTap: _load,
+            icon: Icons.wifi_off_rounded,
+          )
+        else if (shown.isEmpty)
+          _feedNotice(
+            _searchController.text.trim().isNotEmpty
+                ? 'No posts match your search. Try another word or clear the search.'
+                : filter != 'All'
+                ? 'There are no ${filter.toLowerCase()} posts yet.'
+                : 'No community posts yet. Be the first to start a conversation!',
+            action: _searchController.text.trim().isNotEmpty || filter != 'All'
+                ? 'Show all posts'
+                : tier2
+                ? 'Create a post'
+                : 'Get verified',
+            onTap: () {
+              if (_searchController.text.trim().isNotEmpty || filter != 'All') {
+                _searchController.clear();
+                setState(() => filter = 'All');
+              } else {
+                _compose();
+              }
+            },
+          )
+        else
+          for (final post in shown) ...[
+            _PostCard(
+              post: post,
+              tier2: tier2,
+              matches: _personalized && _searchController.text.trim().isEmpty
+                  ? _matchingPreferences(post, _feedInterests, _feedSkills)
+                  : const [],
+              onLike: () => _toggleLike(post),
+              onComments: () => _comments(post),
+              onShare: () => _share(post),
+            ),
+            const SizedBox(height: 15),
+          ],
+      ],
+    );
+  }
 
   Widget _feedNotice(
     String message, {
     required String action,
     required VoidCallback onTap,
+    IconData icon = Icons.forum_outlined,
   }) => Container(
-    padding: const EdgeInsets.all(28),
-    alignment: Alignment.center,
+    width: double.infinity,
+    padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 24),
     decoration: BoxDecoration(
       color: Colors.white,
-      borderRadius: BorderRadius.circular(18),
-      border: Border.all(color: KaisaResidentDesign.border),
+      borderRadius: BorderRadius.circular(14),
+      border: Border.all(color: _line),
     ),
     child: Column(
       children: [
-        const Icon(Icons.forum_outlined, color: _green, size: 37),
-        const SizedBox(height: 12),
-        Text(message, textAlign: TextAlign.center),
-        TextButton(onPressed: onTap, child: Text(action)),
+        Container(
+          width: 62,
+          height: 62,
+          decoration: BoxDecoration(
+            color: _soft,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Icon(icon, size: 30, color: _green),
+        ),
+        const SizedBox(height: 15),
+        Text(
+          message,
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: _ink, fontSize: 14, height: 1.5),
+        ),
+        const SizedBox(height: 13),
+        FilledButton.icon(
+          onPressed: onTap,
+          icon: const Icon(Icons.arrow_forward_rounded, size: 17),
+          label: Text(action),
+          style: FilledButton.styleFrom(
+            backgroundColor: _forest,
+            foregroundColor: Colors.white,
+          ),
+        ),
       ],
     ),
   );
@@ -810,44 +1900,66 @@ class _FeedPageState extends State<FeedPage> {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
+    final query = _searchController.text.trim();
     final shown = posts
-        .where((p) => filter == 'All' || p['category'] == filter)
+        .where(
+          (p) =>
+              (filter == 'All' || p['category'] == filter) &&
+              _postSearchScore(p, query) > 0,
+        )
         .toList();
-    final wide = size.width >= 1200;
-    final medium = size.width >= 850 && !wide;
+    // Search ranks by text relevance. Otherwise use interest/skill matches
+    // plus freshness or plain reverse chronological order.
+    shown.sort((a, b) {
+      if (query.isNotEmpty) {
+        final byQuery = _postSearchScore(
+          b,
+          query,
+        ).compareTo(_postSearchScore(a, query));
+        if (byQuery != 0) return byQuery;
+      } else if (_personalized &&
+          (_feedInterests.isNotEmpty || _feedSkills.isNotEmpty)) {
+        final byInterest = _recommendationScore(
+          b,
+          _feedInterests,
+          _feedSkills,
+        ).compareTo(_recommendationScore(a, _feedInterests, _feedSkills));
+        if (byInterest != 0) return byInterest;
+      }
+      final aTime =
+          DateTime.tryParse('${a['created_at'] ?? ''}') ??
+          DateTime.fromMillisecondsSinceEpoch(0);
+      final bTime =
+          DateTime.tryParse('${b['created_at'] ?? ''}') ??
+          DateTime.fromMillisecondsSinceEpoch(0);
+      return bTime.compareTo(aTime);
+    });
+    final wide = size.width >= 1060;
     return Scaffold(
-      backgroundColor: KaisaResidentDesign.paper,
+      backgroundColor: _canvas,
       body: SafeArea(
         child: RefreshIndicator(
-          onRefresh: _load,
+          onRefresh: () async {
+            await Future.wait<void>([_load(), _loadStories()]);
+          },
+          color: _green,
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: EdgeInsets.fromLTRB(
-              size.width < 560 ? 12 : 22,
-              20,
-              size.width < 560 ? 12 : 22,
-              100,
+              size.width < 560 ? 16 : 26,
+              25,
+              size.width < 560 ? 16 : 26,
+              96,
             ),
             child: Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 1180),
+                constraints: const BoxConstraints(maxWidth: 1120),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Expanded(flex: 7, child: _feedMain(shown)),
                     if (wide) ...[
-                      Expanded(flex: 3, child: _sidebar(false)),
-                      const SizedBox(width: 20),
-                    ],
-                    Expanded(
-                      flex: wide
-                          ? 7
-                          : medium
-                          ? 7
-                          : 1,
-                      child: _feedMain(shown),
-                    ),
-                    if (wide || medium) ...[
-                      const SizedBox(width: 20),
+                      const SizedBox(width: 25),
                       Expanded(flex: 3, child: _sidebar(true)),
                     ],
                   ],
@@ -865,12 +1977,14 @@ class _PostCard extends StatelessWidget {
   const _PostCard({
     required this.post,
     required this.tier2,
+    required this.matches,
     required this.onLike,
     required this.onComments,
     required this.onShare,
   });
   final Map<String, dynamic> post;
   final bool tier2;
+  final List<String> matches;
   final VoidCallback onLike, onComments, onShare;
   Future<void> _showLikers(BuildContext context) async {
     try {
@@ -926,6 +2040,7 @@ class _PostCard extends StatelessWidget {
                                 Navigator.pop(sheetContext);
                                 context.push(
                                   '/resident/user/${item['user_id']}',
+                                  extra: {'name': name, 'avatar_path': avatar},
                                 );
                               },
                             );
@@ -946,40 +2061,126 @@ class _PostCard extends StatelessWidget {
     }
   }
 
+  void _openPostImage(BuildContext context, String url) {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => Dialog(
+        insetPadding: const EdgeInsets.all(13),
+        backgroundColor: const Color(0xFF111C17),
+        child: Stack(
+          children: [
+            ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: MediaQuery.sizeOf(dialogContext).width * .95,
+                maxHeight: MediaQuery.sizeOf(dialogContext).height * .84,
+              ),
+              child: InteractiveViewer(
+                minScale: 0.8,
+                maxScale: 5,
+                child: Image.network(
+                  url,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, _, _) => const SizedBox(
+                    height: 200,
+                    child: Center(
+                      child: Icon(
+                        Icons.broken_image_outlined,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              top: 5,
+              right: 5,
+              child: IconButton.filledTonal(
+                tooltip: 'Close image',
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                icon: const Icon(Icons.close_rounded),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final date = DateTime.tryParse('${post['created_at']}')?.toLocal();
-    final names = (post['images'] as List? ?? []).cast<String>();
+    final names = (post['images'] as List? ?? [])
+        .map((e) => '$e')
+        .where((path) => path.isNotEmpty)
+        .toList();
     final storage = Supabase.instance.client.storage.from('kaisa-feed');
-    return Card(
-      elevation: 0,
-      color: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(KaisaResidentDesign.cardRadius),
-        side: const BorderSide(color: KaisaResidentDesign.border),
+    final author = (post['author_name'] ?? 'KAISA Resident').toString().trim();
+    final safeAuthor = author.isEmpty ? 'KAISA Resident' : author;
+    final authorId = '${post['author_id'] ?? ''}';
+    final category = '${post['category'] ?? 'Community'}';
+    final postText = '${post['body'] ?? ''}'.trim();
+    final postTitle = '${post['title'] ?? ''}'.trim();
+    final liked = post['liked'] == true;
+    final likes = post['likes'] ?? 0;
+    final comments = post['comments'] ?? 0;
+    final visibility = '${post['visibility'] ?? 'public'}';
+    final rawAvatar =
+        '${post['author_avatar_path'] ?? post['avatar_path'] ?? ''}';
+    final avatarUrl = rawAvatar.isEmpty
+        ? null
+        : rawAvatar.startsWith('http')
+        ? rawAvatar
+        : Supabase.instance.client.storage
+              .from('kaisa-avatars')
+              .getPublicUrl(rawAvatar);
+
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: _line),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x06000000),
+            blurRadius: 16,
+            offset: Offset(0, 4),
+          ),
+        ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(KaisaResidentDesign.cardPadding),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(17, 17, 17, 0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 InkWell(
-                  onTap: () =>
-                      context.push('/resident/user/${post['author_id']}'),
+                  onTap: authorId.isEmpty
+                      ? null
+                      : () => context.push(
+                          '/resident/user/$authorId',
+                          extra: {'name': safeAuthor, 'avatar_path': rawAvatar},
+                        ),
                   borderRadius: BorderRadius.circular(40),
                   child: CircleAvatar(
-                    backgroundColor: const Color(0xFFE5F3E9),
-                    child: Text(
-                      (post['author_name'] as String? ?? 'R')
-                          .substring(0, 1)
-                          .toUpperCase(),
-                      style: const TextStyle(
-                        color: _forest,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    radius: 23,
+                    backgroundColor: _categoryTint(category),
+                    backgroundImage: avatarUrl == null
+                        ? null
+                        : NetworkImage(avatarUrl),
+                    child: avatarUrl == null
+                        ? Text(
+                            safeAuthor.substring(0, 1).toUpperCase(),
+                            style: TextStyle(
+                              color: _categoryInk(category),
+                              fontWeight: FontWeight.w900,
+                              fontSize: 18,
+                            ),
+                          )
+                        : null,
                   ),
                 ),
                 const SizedBox(width: 11),
@@ -988,125 +2189,398 @@ class _PostCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       InkWell(
-                        onTap: () =>
-                            context.push('/resident/user/${post['author_id']}'),
+                        onTap: authorId.isEmpty
+                            ? null
+                            : () => context.push(
+                                '/resident/user/$authorId',
+                                extra: {
+                                  'name': safeAuthor,
+                                  'avatar_path': rawAvatar,
+                                },
+                              ),
                         child: Text(
-                          '${post['author_name']}',
+                          safeAuthor,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                            color: _ink,
+                            color: _forest,
                             fontWeight: FontWeight.w800,
+                            fontSize: 14.5,
                           ),
                         ),
                       ),
-                      Text(
-                        '${post['category']}  •  ${date == null ? 'Recently' : '${date.day}/${date.month}/${date.year}'}',
-                        style: const TextStyle(fontSize: 12, color: _muted),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              _relativeTime(date),
+                              style: const TextStyle(
+                                color: _muted,
+                                fontSize: 11.5,
+                              ),
+                            ),
+                          ),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 5),
+                            child: Icon(Icons.circle, color: _muted, size: 3),
+                          ),
+                          Icon(
+                            visibility == 'private'
+                                ? Icons.lock_outline_rounded
+                                : visibility == 'friends'
+                                ? Icons.people_outline_rounded
+                                : Icons.public_rounded,
+                            size: 14,
+                            color: _muted,
+                          ),
+                          const SizedBox(width: 3),
+                          Flexible(
+                            child: Text(
+                              visibility == 'private'
+                                  ? 'Only me'
+                                  : visibility == 'friends'
+                                  ? 'Friends'
+                                  : 'Public',
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: _muted,
+                                fontSize: 11.5,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ),
-                Icon(
-                  post['visibility'] == 'private'
-                      ? Icons.lock_outline
-                      : post['visibility'] == 'friends'
-                      ? Icons.people_outline
-                      : Icons.public_rounded,
-                  color: _muted,
-                  size: 17,
+                PopupMenuButton<String>(
+                  tooltip: 'Post options',
+                  padding: EdgeInsets.zero,
+                  icon: const Icon(Icons.more_horiz_rounded, color: _muted),
+                  onSelected: (choice) async {
+                    if (choice == 'copy') {
+                      await Clipboard.setData(ClipboardData(text: postText));
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Post text copied')),
+                        );
+                      }
+                    } else if (choice == 'author' && authorId.isNotEmpty) {
+                      if (context.mounted)
+                        context.push(
+                          '/resident/user/$authorId',
+                          extra: {'name': safeAuthor, 'avatar_path': rawAvatar},
+                        );
+                    }
+                  },
+                  itemBuilder: (_) => [
+                    const PopupMenuItem(
+                      value: 'copy',
+                      child: ListTile(
+                        dense: true,
+                        leading: Icon(Icons.copy_rounded),
+                        title: Text('Copy post text'),
+                      ),
+                    ),
+                    if (authorId.isNotEmpty)
+                      const PopupMenuItem(
+                        value: 'author',
+                        child: ListTile(
+                          dense: true,
+                          leading: Icon(Icons.account_circle_outlined),
+                          title: Text('View author'),
+                        ),
+                      ),
+                  ],
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            Text(
-              '${post['body']}',
-              style: const TextStyle(color: _ink, height: 1.5, fontSize: 15),
-            ),
-            if (post['shared_post_id'] != null)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF2F7F3),
-                  border: Border.all(color: KaisaResidentDesign.border),
-                  borderRadius: BorderRadius.circular(12),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(17, 14, 17, 0),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 9,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _categoryTint(category),
+                    borderRadius: BorderRadius.circular(5),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        _categoryIcon(category),
+                        size: 13,
+                        color: _categoryInk(category),
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        category.toUpperCase(),
+                        style: TextStyle(
+                          color: _categoryInk(category),
+                          fontSize: 9.5,
+                          letterSpacing: .5,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Shared from ${post['shared_author_name'] ?? 'Resident'}',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w800,
-                        color: _green,
+              ],
+            ),
+          ),
+          if (matches.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(17, 10, 17, 0),
+              child: Wrap(
+                spacing: 6,
+                runSpacing: 5,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.only(right: 2, top: 4),
+                    child: Text(
+                      'Relevant to you',
+                      style: TextStyle(color: _muted, fontSize: 10.5),
+                    ),
+                  ),
+                  for (final tag in matches.take(2))
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _soft,
+                        borderRadius: BorderRadius.circular(5),
+                      ),
+                      child: Text(
+                        tag,
+                        style: const TextStyle(
+                          color: _green,
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Text('${post['shared_body'] ?? ''}'),
-                  ],
+                ],
+              ),
+            ),
+          if (postTitle.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(17, 12, 17, 0),
+              child: Text(
+                postTitle,
+                style: const TextStyle(
+                  color: _ink,
+                  fontSize: 19,
+                  fontWeight: FontWeight.w800,
+                  height: 1.3,
                 ),
               ),
-            if (names.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              LayoutBuilder(
-                builder: (context, c) => Row(
-                  children: [
-                    for (var i = 0; i < names.length; i++)
+            ),
+          if (postText.isNotEmpty)
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                17,
+                postTitle.isNotEmpty ? 7 : 13,
+                17,
+                0,
+              ),
+              child: SelectableText(
+                postText,
+                style: const TextStyle(
+                  color: _ink,
+                  fontSize: 14.5,
+                  height: 1.55,
+                ),
+              ),
+            ),
+          if (post['shared_post_id'] != null)
+            Container(
+              margin: const EdgeInsets.fromLTRB(17, 13, 17, 0),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: _soft,
+                borderRadius: BorderRadius.circular(9),
+                border: const Border(left: BorderSide(color: _green, width: 3)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.repeat_rounded, size: 16, color: _green),
+                      const SizedBox(width: 7),
                       Expanded(
-                        child: Padding(
-                          padding: EdgeInsets.only(
-                            right: i == 0 && names.length > 1 ? 8 : 0,
+                        child: Text(
+                          'Shared from ${post['shared_author_name'] ?? 'Resident'}',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            color: _green,
+                            fontSize: 12.5,
                           ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '${post['shared_body'] ?? ''}',
+                    style: const TextStyle(
+                      color: _ink,
+                      fontSize: 13.5,
+                      height: 1.45,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          if (names.isNotEmpty) ...[
+            const SizedBox(height: 15),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final isDouble = names.length > 1;
+                final height = isDouble ? 205.0 : 290.0;
+                return SizedBox(
+                  height: height,
+                  width: double.infinity,
+                  child: Row(
+                    children: [
+                      for (var i = 0; i < names.length; i++) ...[
+                        if (i > 0) const SizedBox(width: 4),
+                        Expanded(
+                          child: InkWell(
+                            onTap: () => _openPostImage(
+                              context,
+                              storage.getPublicUrl(names[i]),
+                            ),
                             child: Image.network(
                               storage.getPublicUrl(names[i]),
-                              height: 260,
                               fit: BoxFit.cover,
-                              errorBuilder: (_, _, _) => const SizedBox(
-                                height: 260,
-                                child: Center(
-                                  child: Icon(Icons.broken_image_outlined),
+                              width: double.infinity,
+                              height: height,
+                              errorBuilder: (_, _, _) => Container(
+                                color: _soft,
+                                alignment: Alignment.center,
+                                child: const Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.broken_image_outlined,
+                                      color: _muted,
+                                      size: 28,
+                                    ),
+                                    SizedBox(height: 6),
+                                    Text(
+                                      'Image unavailable',
+                                      style: TextStyle(
+                                        color: _muted,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
                           ),
                         ),
-                      ),
-                  ],
-                ),
-              ),
-            ],
-            const SizedBox(height: 12),
-            InkWell(
-              onTap: () => _showLikers(context),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Text(
-                  '${post['likes']} likes  •  ${post['comments']} comments',
-                  style: const TextStyle(fontSize: 12, color: _muted),
-                ),
-              ),
+                      ],
+                    ],
+                  ),
+                );
+              },
             ),
-            const Divider(height: 23, color: Color(0xFFE3EBE5)),
-            Row(
+          ],
+          Padding(
+            padding: const EdgeInsets.fromLTRB(17, 14, 17, 10),
+            child: Row(
+              children: [
+                InkWell(
+                  borderRadius: BorderRadius.circular(8),
+                  onTap: () => _showLikers(context),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 5),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.favorite_rounded,
+                          size: 15,
+                          color: liked ? const Color(0xFFB64959) : _green,
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          '$likes',
+                          style: const TextStyle(
+                            color: _ink,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(width: 5),
+                        const Text(
+                          'likes',
+                          style: TextStyle(color: _muted, fontSize: 11.5),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const Spacer(),
+                InkWell(
+                  onTap: onComments,
+                  child: Text(
+                    '$comments comments',
+                    style: const TextStyle(color: _muted, fontSize: 11.5),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1, color: _line),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+            child: Row(
               children: [
                 Expanded(
                   child: TextButton.icon(
                     onPressed: tier2 ? onLike : null,
                     icon: Icon(
-                      post['liked'] == true
-                          ? Icons.favorite
-                          : Icons.favorite_border,
-                      color: post['liked'] == true ? Colors.redAccent : _green,
+                      liked ? Icons.favorite_rounded : Icons.favorite_border,
+                      size: 19,
+                      color: tier2
+                          ? (liked ? const Color(0xFFB64959) : _forest)
+                          : Colors.grey,
                     ),
-                    label: const Text('Like'),
+                    label: Text(liked ? 'Liked' : 'Like'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: liked
+                          ? const Color(0xFFB64959)
+                          : _forest,
+                      textStyle: const TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
                 ),
                 Expanded(
                   child: TextButton.icon(
                     onPressed: onComments,
-                    icon: const Icon(Icons.chat_bubble_outline, color: _green),
+                    icon: const Icon(Icons.mode_comment_outlined, size: 19),
                     label: const Text('Comment'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: _forest,
+                      textStyle: const TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
                 ),
                 Expanded(
@@ -1117,14 +2591,21 @@ class _PostCard extends StatelessWidget {
                             post['visibility'] != 'private'
                         ? onShare
                         : null,
-                    icon: const Icon(Icons.share_outlined, color: _green),
+                    icon: const Icon(Icons.share_outlined, size: 19),
                     label: const Text('Share'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: _forest,
+                      textStyle: const TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
                 ),
               ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -1272,9 +2753,9 @@ class _CreatePostSheetState extends State<_CreatePostSheet> {
     child: Padding(
       padding: EdgeInsets.fromLTRB(
         20,
-        12,
+        16,
         20,
-        MediaQuery.viewInsetsOf(context).bottom + 24,
+        MediaQuery.viewInsetsOf(context).bottom + 22,
       ),
       child: SingleChildScrollView(
         child: Column(
@@ -1283,86 +2764,184 @@ class _CreatePostSheetState extends State<_CreatePostSheet> {
           children: [
             Row(
               children: [
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: _soft,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.edit_note_rounded,
+                    size: 24,
+                    color: _forest,
+                  ),
+                ),
+                const SizedBox(width: 12),
                 const Expanded(
-                  child: Text(
-                    'Create a community post',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 22,
-                      color: _ink,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'NEW COMMUNITY POST',
+                        style: TextStyle(
+                          color: _green,
+                          fontSize: 10,
+                          letterSpacing: 1.2,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'Share an update',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                          color: _forest,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 IconButton(
                   tooltip: 'Close without posting',
                   onPressed: busy ? null : () => Navigator.pop(context, false),
-                  icon: const Icon(Icons.close_rounded),
+                  icon: const Icon(Icons.close_rounded, color: _ink),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            const Text(
-              'Share news, activities, and stories with your neighbors.',
-              style: TextStyle(color: _muted),
-            ),
             const SizedBox(height: 14),
+            const Text(
+              'Keep your neighbors informed, connected, and inspired.',
+              style: TextStyle(color: _muted, fontSize: 13),
+            ),
+            const SizedBox(height: 22),
+            const Text(
+              'CATEGORY',
+              style: TextStyle(
+                color: _forest,
+                letterSpacing: 1,
+                fontWeight: FontWeight.w800,
+                fontSize: 11,
+              ),
+            ),
+            const SizedBox(height: 7),
             DropdownButtonFormField<String>(
               initialValue: category,
-              decoration: const InputDecoration(labelText: 'Post category'),
-              items: const [
-                'Community',
-                'Announcement',
-                'Event',
-                'Organization',
-              ].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
-              onChanged: (v) => setState(() => category = v ?? category),
+              decoration: InputDecoration(
+                prefixIcon: Icon(_categoryIcon(category), color: _green),
+                labelText: 'Post category',
+                filled: true,
+                fillColor: _soft,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: _line),
+                ),
+              ),
+              items:
+                  const ['Community', 'Announcement', 'Event', 'Organization']
+                      .map(
+                        (value) =>
+                            DropdownMenuItem(value: value, child: Text(value)),
+                      )
+                      .toList(),
+              onChanged: busy
+                  ? null
+                  : (value) => setState(() => category = value ?? category),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 15),
+            const Text(
+              'WHO CAN SEE THIS?',
+              style: TextStyle(
+                color: _forest,
+                letterSpacing: 1,
+                fontWeight: FontWeight.w800,
+                fontSize: 11,
+              ),
+            ),
+            const SizedBox(height: 7),
             DropdownButtonFormField<String>(
               initialValue: visibility,
-              decoration: const InputDecoration(labelText: 'Audience'),
+              decoration: InputDecoration(
+                prefixIcon: Icon(
+                  visibility == 'private'
+                      ? Icons.lock_outline_rounded
+                      : visibility == 'friends'
+                      ? Icons.people_outline_rounded
+                      : Icons.public_rounded,
+                  color: _green,
+                ),
+                labelText: 'Audience',
+                filled: true,
+                fillColor: _soft,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: _line),
+                ),
+              ),
               items: const [
                 DropdownMenuItem(
                   value: 'public',
                   child: Text('Public · Everyone'),
                 ),
-                DropdownMenuItem(
-                  value: 'friends',
-                  child: Text('Friends · Accepted friends only'),
-                ),
+                DropdownMenuItem(value: 'friends', child: Text('Friends only')),
                 DropdownMenuItem(value: 'private', child: Text('Only me')),
               ],
               onChanged: busy
                   ? null
-                  : (v) => setState(() {
-                      visibility = v ?? 'public';
+                  : (value) => setState(() {
+                      visibility = value ?? 'public';
                       if (visibility != 'public') images.clear();
                     }),
             ),
             if (visibility != 'public')
               const Padding(
-                padding: EdgeInsets.symmetric(vertical: 8),
+                padding: EdgeInsets.symmetric(vertical: 9),
                 child: Text(
-                  'Private/Friends photos will be available after secure media migration.',
+                  'Photos are currently available for public posts only.',
                   style: TextStyle(fontSize: 12, color: _muted),
                 ),
               ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 17),
+            const Text(
+              'YOUR MESSAGE',
+              style: TextStyle(
+                color: _forest,
+                letterSpacing: 1,
+                fontWeight: FontWeight.w800,
+                fontSize: 11,
+              ),
+            ),
+            const SizedBox(height: 7),
             TextField(
               controller: text,
               onChanged: (_) => setState(() {}),
-              minLines: 3,
-              maxLines: 7,
+              minLines: 4,
+              maxLines: 8,
               maxLength: 2000,
-              decoration: const InputDecoration(
-                hintText: 'What would you like to share?',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                hintText: 'What would you like to share with your community?',
+                hintStyle: const TextStyle(color: _muted, fontSize: 14),
+                filled: true,
+                fillColor: Colors.white,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: _line),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: _line),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: _green, width: 1.5),
+                ),
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 5),
             Wrap(
-              spacing: 8,
-              runSpacing: 8,
+              spacing: 9,
+              runSpacing: 9,
               children: [
                 for (final img in images)
                   Stack(
@@ -1371,16 +2950,18 @@ class _CreatePostSheetState extends State<_CreatePostSheet> {
                         borderRadius: BorderRadius.circular(10),
                         child: Image.memory(
                           img.bytes,
-                          width: 110,
-                          height: 100,
+                          width: 112,
+                          height: 108,
                           fit: BoxFit.cover,
                         ),
                       ),
                       Positioned(
-                        right: 0,
-                        top: 0,
+                        top: 3,
+                        right: 3,
                         child: IconButton.filledTonal(
-                          icon: const Icon(Icons.close, size: 16),
+                          iconSize: 18,
+                          icon: const Icon(Icons.close_rounded),
+                          tooltip: 'Remove photo',
                           onPressed: busy
                               ? null
                               : () => setState(() => images.remove(img)),
@@ -1390,29 +2971,54 @@ class _CreatePostSheetState extends State<_CreatePostSheet> {
                   ),
               ],
             ),
-            TextButton.icon(
+            const SizedBox(height: 10),
+            OutlinedButton.icon(
               onPressed: busy || images.length >= 2 || visibility != 'public'
                   ? null
                   : _add,
               icon: const Icon(Icons.add_photo_alternate_outlined),
-              label: Text('Add photos (${images.length}/2, max 200 KB each)'),
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton(
-                onPressed: busy ? null : () => Navigator.pop(context, false),
-                child: const Text('Cancel'),
+              label: Text('Add photo (${images.length}/2 · 200 KB each)'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: _forest,
+                side: const BorderSide(color: _line),
               ),
             ),
-            const SizedBox(height: 8),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                style: FilledButton.styleFrom(backgroundColor: _forest),
-                onPressed: busy || text.text.trim().isEmpty ? null : _submit,
-                child: Text(busy ? 'Publishing...' : 'Publish post'),
-              ),
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: busy
+                        ? null
+                        : () => Navigator.pop(context, false),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 15),
+                      foregroundColor: _forest,
+                      side: const BorderSide(color: _line),
+                    ),
+                    child: const Text('Cancel'),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  flex: 2,
+                  child: FilledButton.icon(
+                    onPressed: busy || text.text.trim().isEmpty
+                        ? null
+                        : _submit,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: _forest,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 15),
+                    ),
+                    icon: Icon(
+                      busy ? Icons.hourglass_empty_rounded : Icons.send_rounded,
+                      size: 18,
+                    ),
+                    label: Text(busy ? 'Publishing…' : 'Publish post'),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -1492,80 +3098,684 @@ class _CommentsSheetState extends State<_CommentsSheet> {
   }
 
   @override
-  Widget build(BuildContext context) => SafeArea(
-    child: Padding(
-      padding: EdgeInsets.fromLTRB(
-        16,
-        10,
-        16,
-        MediaQuery.viewInsetsOf(context).bottom + 16,
-      ),
-      child: SizedBox(
-        height: MediaQuery.sizeOf(context).height * .55,
-        child: Column(
-          children: [
-            const Text(
-              'Community comments',
-              style: TextStyle(
-                fontSize: 19,
-                fontWeight: FontWeight.w800,
-                color: _ink,
-              ),
+  Widget build(BuildContext context) {
+    final availableHeight =
+        (MediaQuery.sizeOf(context).height -
+                MediaQuery.viewInsetsOf(context).bottom -
+                65)
+            .clamp(220.0, 700.0)
+            .toDouble();
+    return SizedBox(
+      height: availableHeight,
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(19, 11, 11, 10),
+            child: Row(
+              children: [
+                Container(
+                  width: 37,
+                  height: 37,
+                  decoration: BoxDecoration(
+                    color: _soft,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.mode_comment_outlined,
+                    color: _green,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 11),
+                const Expanded(
+                  child: Text(
+                    'Comments',
+                    style: TextStyle(
+                      color: _forest,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Close comments',
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.close_rounded),
+                ),
+              ],
             ),
-            const SizedBox(height: 12),
-            Expanded(
-              child: comments.isEmpty
-                  ? const Center(
-                      child: Text('No comments yet. Start the conversation!'),
-                    )
-                  : ListView.builder(
-                      itemCount: comments.length,
-                      itemBuilder: (c, i) => ListTile(
-                        leading: const CircleAvatar(
-                          child: Icon(Icons.person_outline),
-                        ),
-                        onTap: () {
-                          final author = comments[i]['author_id']?.toString();
-                          if (author != null && author.isNotEmpty) {
-                            Navigator.pop(context);
-                            context.push('/resident/user/$author');
-                          }
-                        },
-                        title: Text(
-                          '${comments[i]['author_name']}',
-                          style: const TextStyle(fontWeight: FontWeight.w700),
-                        ),
-                        subtitle: Text('${comments[i]['body']}'),
+          ),
+          const Divider(height: 1, color: _line),
+          Expanded(
+            child: comments.isEmpty
+                ? const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.chat_bubble_outline,
+                            color: _sage,
+                            size: 42,
+                          ),
+                          SizedBox(height: 12),
+                          Text(
+                            'No comments yet',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 16,
+                              color: _ink,
+                            ),
+                          ),
+                          SizedBox(height: 6),
+                          Text(
+                            'Start the conversation with your community.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: _muted, fontSize: 12),
+                          ),
+                        ],
                       ),
                     ),
-            ),
-            if (!widget.canComment)
-              const Padding(
-                padding: EdgeInsets.all(10),
-                child: Text('Tier 2 verification required to comment.'),
-              )
-            else
-              Row(
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+                    itemCount: comments.length,
+                    itemBuilder: (ctx, i) {
+                      final item = comments[i];
+                      final author = '${item['author_name'] ?? 'Resident'}';
+                      final id = '${item['author_id'] ?? ''}';
+                      final when = DateTime.tryParse(
+                        '${item['created_at'] ?? ''}',
+                      )?.toLocal();
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 18),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            InkWell(
+                              onTap: id.isEmpty
+                                  ? null
+                                  : () {
+                                      final router = GoRouter.of(context);
+                                      Navigator.pop(context);
+                                      router.push(
+                                        '/resident/user/$id',
+                                        extra: {'name': author},
+                                      );
+                                    },
+                              child: CircleAvatar(
+                                radius: 19,
+                                backgroundColor: const Color(0xFFE3EEE7),
+                                child: Text(
+                                  author.isEmpty
+                                      ? 'R'
+                                      : author[0].toUpperCase(),
+                                  style: const TextStyle(
+                                    color: _forest,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 11),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  InkWell(
+                                    onTap: id.isEmpty
+                                        ? null
+                                        : () {
+                                            final router = GoRouter.of(context);
+                                            Navigator.pop(context);
+                                            router.push(
+                                              '/resident/user/$id',
+                                              extra: {'name': author},
+                                            );
+                                          },
+                                    child: Text(
+                                      author,
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w800,
+                                        color: _forest,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    '${item['body'] ?? ''}',
+                                    style: const TextStyle(
+                                      fontSize: 13.5,
+                                      color: _ink,
+                                      height: 1.45,
+                                    ),
+                                  ),
+                                  if (when != null) ...[
+                                    const SizedBox(height: 5),
+                                    Text(
+                                      _relativeTime(when),
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        color: _muted,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+          ),
+          const Divider(height: 1, color: _line),
+          if (!widget.canComment)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
+              child: TextButton.icon(
+                onPressed: () {
+                  final router = GoRouter.of(context);
+                  Navigator.pop(context);
+                  router.push('/resident/identity-verification');
+                },
+                icon: const Icon(Icons.verified_user_outlined),
+                label: const Text('Verify your account to comment'),
+                style: TextButton.styleFrom(foregroundColor: _forest),
+              ),
+            )
+          else
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 11, 16, 12),
+              child: Row(
                 children: [
                   Expanded(
                     child: TextField(
                       controller: message,
                       maxLength: 500,
-                      decoration: const InputDecoration(
+                      minLines: 1,
+                      maxLines: 3,
+                      textCapitalization: TextCapitalization.sentences,
+                      textInputAction: TextInputAction.send,
+                      onSubmitted: (_) {
+                        if (!busy) _send();
+                      },
+                      decoration: InputDecoration(
                         hintText: 'Write a comment…',
                         counterText: '',
-                        border: OutlineInputBorder(),
+                        isDense: true,
+                        filled: true,
+                        fillColor: _soft,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(22),
+                          borderSide: BorderSide.none,
+                        ),
                       ),
                     ),
                   ),
-                  IconButton(
+                  const SizedBox(width: 10),
+                  IconButton.filled(
+                    tooltip: 'Post comment',
+                    style: IconButton.styleFrom(backgroundColor: _forest),
                     onPressed: busy ? null : _send,
-                    icon: const Icon(Icons.send_rounded, color: _green),
+                    icon: busy
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.send_rounded, color: Colors.white),
                   ),
                 ],
               ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Edit existing profile-style choices without requiring database migrations.
+class _FeedPreferencesDialog extends StatefulWidget {
+  const _FeedPreferencesDialog({required this.interests, required this.skills});
+  final List<String> interests;
+  final List<String> skills;
+
+  @override
+  State<_FeedPreferencesDialog> createState() => _FeedPreferencesDialogState();
+}
+
+class _FeedPreferencesDialogState extends State<_FeedPreferencesDialog> {
+  late final Set<String> selectedInterests = {...widget.interests};
+  late final Set<String> selectedSkills = {...widget.skills};
+
+  Widget _choices(List<String> choices, Set<String> selected) => Wrap(
+    spacing: 8,
+    runSpacing: 6,
+    children: [
+      for (final value in choices)
+        FilterChip(
+          selected: selected.contains(value),
+          label: Text(value, style: const TextStyle(fontSize: 12)),
+          selectedColor: const Color(0xFFDDEFE3),
+          checkmarkColor: _forest,
+          side: BorderSide(color: selected.contains(value) ? _green : _line),
+          onSelected: (checked) => setState(() {
+            if (checked) {
+              selected.add(value);
+            } else {
+              selected.remove(value);
+            }
+          }),
+        ),
+    ],
+  );
+
+  @override
+  Widget build(BuildContext context) => Dialog(
+    insetPadding: const EdgeInsets.symmetric(horizontal: 13, vertical: 18),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+    child: ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 570),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 18, 20, 15),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.interests_rounded, color: _forest),
+                const SizedBox(width: 9),
+                const Expanded(
+                  child: Text(
+                    'Personalize your feed',
+                    style: TextStyle(
+                      color: _forest,
+                      fontSize: 19,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Close',
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.close_rounded),
+                ),
+              ],
+            ),
+            const Text(
+              'Choose the same interests and skills used in KAISA Profile Setup. '
+              'These help order posts that you already have permission to view.',
+              style: TextStyle(fontSize: 12.5, color: _muted, height: 1.45),
+            ),
+            const SizedBox(height: 13),
+            Flexible(
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'COMMUNITY INTERESTS',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w900,
+                        color: _green,
+                        letterSpacing: 1,
+                        fontSize: 11,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    _choices(_kaisaInterests, selectedInterests),
+                    const SizedBox(height: 18),
+                    const Text(
+                      'YOUR SKILLS',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w900,
+                        color: _green,
+                        letterSpacing: 1,
+                        fontSize: 11,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    _choices(_kaisaSkills, selectedSkills),
+                  ],
+                ),
+              ),
+            ),
+            const Divider(height: 23),
+            Row(
+              children: [
+                TextButton(
+                  onPressed: () => setState(() {
+                    selectedInterests.clear();
+                    selectedSkills.clear();
+                  }),
+                  child: const Text('Clear all'),
+                ),
+                const Spacer(),
+                FilledButton(
+                  style: FilledButton.styleFrom(backgroundColor: _forest),
+                  onPressed: () => Navigator.pop(context, (
+                    interests: selectedInterests.toList(),
+                    skills: selectedSkills.toList(),
+                  )),
+                  child: const Text('Save preferences'),
+                ),
+              ],
+            ),
           ],
         ),
+      ),
+    ),
+  );
+}
+
+/// Facebook-like discovery modal, intentionally limited to posts and authors
+/// returned by kaisa_feed_stream. No public user directory is queried.
+class _FeedSmartSearchDialog extends StatefulWidget {
+  const _FeedSmartSearchDialog({
+    required this.posts,
+    required this.initialQuery,
+  });
+  final List<Map<String, dynamic>> posts;
+  final String initialQuery;
+  @override
+  State<_FeedSmartSearchDialog> createState() => _FeedSmartSearchDialogState();
+}
+
+class _FeedSmartSearchDialogState extends State<_FeedSmartSearchDialog> {
+  late final TextEditingController controller = TextEditingController(
+    text: widget.initialQuery,
+  );
+  String tab = 'All';
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final query = controller.text.trim();
+    final foundPosts =
+        widget.posts.where((post) => _postSearchScore(post, query) > 0).toList()
+          ..sort(
+            (a, b) => _postSearchScore(
+              b,
+              query,
+            ).compareTo(_postSearchScore(a, query)),
+          );
+    final people = <String, Map<String, String>>{};
+    for (final post in widget.posts) {
+      final id = '${post['author_id'] ?? ''}';
+      final name = '${post['author_name'] ?? ''}'.trim();
+      if (id.isEmpty || name.isEmpty) continue;
+      if (query.isEmpty ||
+          _termMatch(name, query) ||
+          _normalized(query).split(' ').every((t) => _termMatch(name, t))) {
+        people[id] = {
+          'name': name,
+          'id': id,
+          'avatar_path':
+              '${post['author_avatar_path'] ?? post['avatar_path'] ?? ''}',
+        };
+      }
+    }
+    final categories = <String>{};
+    for (final post in widget.posts) {
+      final category = '${post['category'] ?? ''}';
+      if (category.isNotEmpty &&
+          (query.isEmpty || _termMatch(category, query))) {
+        categories.add(category);
+      }
+    }
+    return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 22),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 640),
+        child: SizedBox(
+          height:
+              (MediaQuery.sizeOf(context).height -
+                      MediaQuery.viewInsetsOf(context).bottom -
+                      50)
+                  .clamp(210.0, 680.0)
+                  .toDouble(),
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(15, 12, 7, 11),
+                child: Row(
+                  children: [
+                    const Icon(Icons.search_rounded, color: _forest, size: 23),
+                    const SizedBox(width: 9),
+                    Expanded(
+                      child: TextField(
+                        controller: controller,
+                        autofocus: true,
+                        textInputAction: TextInputAction.search,
+                        onChanged: (_) => setState(() {}),
+                        onSubmitted: (value) =>
+                            Navigator.pop(context, value.trim()),
+                        decoration: const InputDecoration(
+                          hintText: 'Search people, posts, or topics',
+                          hintStyle: TextStyle(color: _muted, fontSize: 14),
+                          border: InputBorder.none,
+                          filled: false,
+                        ),
+                      ),
+                    ),
+                    if (query.isNotEmpty)
+                      IconButton(
+                        onPressed: () => setState(() => controller.clear()),
+                        icon: const Icon(Icons.close, color: _muted),
+                        tooltip: 'Clear',
+                      ),
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.close_rounded),
+                      tooltip: 'Close search',
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1, color: _line),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                child: Row(
+                  children: [
+                    for (final name in const ['All', 'Posts', 'People'])
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: ChoiceChip(
+                          label: Text(name),
+                          selected: tab == name,
+                          onSelected: (_) => setState(() => tab = name),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(14, 2, 14, 12),
+                  children: [
+                    if (tab != 'Posts' && people.isNotEmpty) ...[
+                      const _SearchGroupTitle('PEOPLE IN YOUR COMMUNITY FEED'),
+                      for (final person in people.values.take(
+                        query.isEmpty ? 4 : 8,
+                      ))
+                        ListTile(
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 5,
+                          ),
+                          leading: CircleAvatar(
+                            backgroundColor: _soft,
+                            child: Text(
+                              person['name']![0].toUpperCase(),
+                              style: const TextStyle(
+                                color: _forest,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                          title: Text(
+                            person['name']!,
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                          subtitle: const Text(
+                            'View resident profile',
+                            style: TextStyle(fontSize: 11.5, color: _muted),
+                          ),
+                          trailing: const Icon(Icons.chevron_right_rounded),
+                          onTap: () {
+                            final router = GoRouter.of(context);
+                            Navigator.pop(context);
+                            router.push(
+                              '/resident/user/${person['id']}',
+                              extra: {
+                                'name': person['name'],
+                                'avatar_path': person['avatar_path'],
+                              },
+                            );
+                          },
+                        ),
+                    ],
+                    if (tab == 'All' && categories.isNotEmpty) ...[
+                      const _SearchGroupTitle('TOPICS'),
+                      Wrap(
+                        spacing: 7,
+                        runSpacing: 5,
+                        children: [
+                          for (final topic in categories)
+                            ActionChip(
+                              avatar: Icon(
+                                _categoryIcon(topic),
+                                size: 16,
+                                color: _forest,
+                              ),
+                              label: Text(topic),
+                              onPressed: () => Navigator.pop(context, topic),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                    ],
+                    if (tab != 'People') ...[
+                      const _SearchGroupTitle('MATCHING POSTS'),
+                      if (foundPosts.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.all(18),
+                          child: Text(
+                            'No matching posts in your current feed.',
+                            style: TextStyle(color: _muted),
+                          ),
+                        )
+                      else
+                        for (final post in foundPosts.take(12))
+                          ListTile(
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 5,
+                            ),
+                            leading: Container(
+                              width: 38,
+                              height: 38,
+                              decoration: BoxDecoration(
+                                color: _categoryTint(
+                                  '${post['category'] ?? 'Community'}',
+                                ),
+                                borderRadius: BorderRadius.circular(9),
+                              ),
+                              child: Icon(
+                                _categoryIcon('${post['category'] ?? ''}'),
+                                color: _forest,
+                                size: 21,
+                              ),
+                            ),
+                            title: Text(
+                              '${post['author_name'] ?? 'Resident'} · '
+                              '${post['category'] ?? 'Community'}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            subtitle: Text(
+                              '${post['body'] ?? ''}',
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                            onTap: () => Navigator.pop(
+                              context,
+                              query.isEmpty
+                                  ? '${post['author_name'] ?? ''}'
+                                  : query,
+                            ),
+                          ),
+                    ],
+                    if (tab == 'People' && people.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.all(18),
+                        child: Text(
+                          'No matching residents in loaded posts.',
+                          style: TextStyle(color: _muted),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1, color: _line),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 9, 16, 13),
+                child: Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Searches posts already visible to your account.',
+                        style: TextStyle(fontSize: 11, color: _muted),
+                      ),
+                    ),
+                    FilledButton.icon(
+                      onPressed: () => Navigator.pop(context, query),
+                      icon: const Icon(Icons.search_rounded, size: 17),
+                      label: const Text('Search'),
+                      style: FilledButton.styleFrom(backgroundColor: _forest),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SearchGroupTitle extends StatelessWidget {
+  const _SearchGroupTitle(this.title);
+  final String title;
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(5, 12, 5, 7),
+    child: Text(
+      title,
+      style: const TextStyle(
+        color: _green,
+        fontSize: 10,
+        letterSpacing: .9,
+        fontWeight: FontWeight.w900,
       ),
     ),
   );

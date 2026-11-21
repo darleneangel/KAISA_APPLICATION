@@ -109,7 +109,7 @@ class _Ring extends StatelessWidget {
     decoration: BoxDecoration(
       shape: BoxShape.circle,
       border: Border.all(
-        color: AppColors.sage.withValues(alpha: .18),
+        color: Colors.white.withValues(alpha: .18),
         width: 1.2,
       ),
     ),
@@ -160,8 +160,8 @@ class _Dots extends CustomPainter {
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [
-          AppColors.sage.withValues(alpha: .22),
-          AppColors.sage.withValues(alpha: 0),
+          Colors.white.withValues(alpha: .22),
+          Colors.white.withValues(alpha: 0),
         ],
         stops: const [0, .6],
       ).createShader(rect);
