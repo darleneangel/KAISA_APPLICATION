@@ -279,8 +279,9 @@ class _AccountManagementPageState extends State<AccountManagementPage> {
                         ),
                       ],
                       onChanged: (value) {
-                        if (value != null)
+                        if (value != null) {
                           updateDialog(() => selectedTier = value);
+                        }
                       },
                     ),
                   ] else ...[
@@ -923,7 +924,7 @@ class _AccountManagementPageState extends State<AccountManagementPage> {
                   OutlinedButton.icon(
                     onPressed: _exporting ? null : _exportCsv,
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color.fromARGB(255, 0, 0, 0),
+                      foregroundColor: Colors.white,
                       side: const BorderSide(color: Color(0x77FFFFFF)),
                       padding: const EdgeInsets.symmetric(
                         horizontal: 20,

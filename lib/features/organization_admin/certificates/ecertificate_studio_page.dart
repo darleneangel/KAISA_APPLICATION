@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:async';
+import 'certificate_leave_guard_stub.dart' if (dart.library.html) 'certificate_leave_guard_web.dart' as leave_guard;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -6,6 +9,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Organization-scoped E-Certificate Studio backed by verified KAISA attendance.
 class ECertificateStudioPage extends StatefulWidget {
@@ -222,6 +226,518 @@ _TextLayer(
   final List<Map<String, dynamic>> _redoStack = [];
   final Map<String, String> _lastTextValues = {};
   bool _restoring = false;
+
+  // Browser-persistent, organization-scoped template library.
+  List<Map<String, dynamic>> _savedTemplates = [];
+  bool _templatesLoading = false;
+  bool _templatesBusy = false;
+  String? _activeTemplateId;
+  String? _savedFingerprint;
+  bool _libraryReady = false;
+  Timer? _draftTimer;
+  String? _observedFingerprint;
+  String? _baselineFingerprint;
+  bool _loadingDesign = false;
+  bool _allowRouteExit = false;
+  String _draftStatus = 'Draft protection ready';
+
+  String? get _draftStorageKey => _templateStorageKey == null
+      ? null : '${_templateStorageKey!}_draft_v1';
+
+  bool get _hasUncommittedEdits => _libraryReady &&
+      _currentFingerprint != (_savedFingerprint ?? _baselineFingerprint);
+
+  void _scheduleDraftIfChanged() {
+    if (!_libraryReady || _loadingDesign || _templateStorageKey == null) return;
+    final fingerprint = _currentFingerprint;
+    if (_observedFingerprint == fingerprint) return;
+    _observedFingerprint = fingerprint;
+    _draftTimer?.cancel();
+    leave_guard.setUnsaved(_hasUncommittedEdits);
+    _draftTimer = Timer(const Duration(seconds: 2), _writeDraft);
+  }
+
+  Future<void> _writeDraft() async {
+    final key = _draftStorageKey;
+    if (key == null || !_libraryReady || _loadingDesign) return;
+    final fingerprint = _currentFingerprint;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (!_hasUncommittedEdits) {
+        await prefs.remove(key);
+        if (mounted) setState(() => _draftStatus = 'All changes saved');
+        return;
+      }
+      final ok = await prefs.setString(key, jsonEncode({
+        'savedAt': DateTime.now().toIso8601String(),
+        'activeTemplateId': _activeTemplateId,
+        'savedFingerprint': _savedFingerprint,
+        'design': _serializeDesign(),
+      }));
+      if (!ok) throw StateError('Browser storage rejected the draft');
+      if (mounted) setState(() => _draftStatus =
+          fingerprint == _currentFingerprint ? 'Draft auto-saved' : 'Saving newer edits…');
+    } catch (e) {
+      if (mounted) setState(() => _draftStatus = 'Auto-save failed: $e');
+    }
+  }
+
+  Future<void> _recoverDraft() async {
+    final key = _draftStorageKey;
+    if (key == null) return;
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(key);
+    if (raw == null || !mounted) return;
+    Map<String, dynamic> record;
+    try {
+      record = Map<String, dynamic>.from(jsonDecode(raw) as Map);
+    } catch (_) { return; }
+    final recover = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Recover your certificate draft?'),
+        content: Text('KAISA found an auto-saved design from '
+            '${record['savedAt'] ?? 'a previous session'}. Restore it?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Discard draft')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Restore draft')),
+        ],
+      ),
+    );
+    if (!mounted || key != _draftStorageKey) return;
+    if (recover != true) {
+      await prefs.remove(key);
+      return;
+    }
+    try {
+      _loadingDesign = true;
+      await _applySavedDesign(Map<String, dynamic>.from(record['design'] as Map));
+      if (!mounted) return;
+      _activeTemplateId = record['activeTemplateId'] as String?;
+      if (!_savedTemplates.any((e) => e['id'] == _activeTemplateId)) {
+        _activeTemplateId = null;
+      }
+      _savedFingerprint = record['savedFingerprint'] as String?;
+      _observedFingerprint = _currentFingerprint;
+      leave_guard.setUnsaved(_hasUncommittedEdits);
+      setState(() => _draftStatus = 'Recovered auto-saved draft');
+    } catch (e) {
+      if (mounted) setState(() => _message = 'Draft recovery failed: $e');
+    } finally {
+      _loadingDesign = false;
+    }
+  }
+
+  Future<void> _confirmRouteExit() async {
+    if (!await _confirmDiscardChanges()) return;
+    if (!mounted) return;
+    _allowRouteExit = true;
+    Navigator.of(context).pop();
+  }
+
+
+  String? get _templateStorageKey {
+    final userId = _supabase.auth.currentUser?.id;
+    if (userId == null || _organizationId == null) return null;
+    return 'kaisa_cert_templates_v1_${userId}_${_organizationId!}';
+  }
+
+  Map<String, dynamic> _serializeDesign() {
+    final snapshot = _snapshot();
+    return {
+      'version': 1,
+      'zOrder': snapshot['zOrder'],
+      'design': snapshot['design'],
+      'background': _background == null ? null : base64Encode(_background!),
+      'backgroundName': _backgroundName,
+      'showLogo': _showKaisaLogo,
+      'showBorder': _showKaisaBorder,
+      'logoX': _kaisaLogoX,
+      'logoY': _kaisaLogoY,
+      'logoWidth': _kaisaLogoWidth,
+      'layers': _layers.map((e) => {
+        'id': e.id, 'label': e.label, 'text': e.text.text,
+        'x': e.x, 'y': e.y, 'size': e.size, 'font': e.font,
+        'color': e.color.toARGB32(), 'bold': e.bold,
+        'visible': e.visible, 'align': e.align.name,
+      }).toList(),
+      'logos': _logos.map((e) => {
+        'id': e.id, 'name': e.name, 'bytes': base64Encode(e.bytes),
+        'visible': e.visible, 'x': e.x, 'y': e.y, 'width': e.width,
+      }).toList(),
+      'customFontBytes': _customFontBytes == null ? null : base64Encode(_customFontBytes!),
+      'customFontName': _customFontName,
+      'namedFontBytes': {
+        for (final entry in _namedFontBytes.entries)
+          if (!_bundledFonts.containsKey(entry.key)) entry.key: base64Encode(entry.value),
+      },
+    };
+  }
+
+  Future<void> _applySavedDesign(Map<String, dynamic> design) async {
+    if (design['version'] != 1) throw const FormatException('Unsupported template version');
+    final layers = (design['layers'] as List).map((item) {
+      final v = Map<String, dynamic>.from(item as Map);
+      return <String, dynamic>{
+        'id': v['id'] as String, 'label': v['label'] as String,
+        'text': v['text'] as String,
+        'x': (v['x'] as num).toDouble(), 'y': (v['y'] as num).toDouble(),
+        'size': (v['size'] as num).toDouble(),
+        'font': v['font'] as String, 'color': Color(v['color'] as int),
+        'bold': v['bold'] as bool, 'visible': v['visible'] as bool,
+        'align': TextAlign.values.byName(v['align'] as String),
+      };
+    }).toList();
+    if (layers.isEmpty) throw const FormatException('Template contains no text layers');
+    final logos = (design['logos'] as List).map((item) {
+      final v = Map<String, dynamic>.from(item as Map);
+      return <String, dynamic>{
+        'id': v['id'] as String, 'name': v['name'] as String,
+        'bytes': base64Decode(v['bytes'] as String),
+        'visible': v['visible'] as bool,
+        'x': (v['x'] as num).toDouble(), 'y': (v['y'] as num).toDouble(),
+        'width': (v['width'] as num).toDouble(),
+      };
+    }).toList();
+    final custom = design['customFontBytes'] as String?;
+    final restoredNamed = <String, Uint8List>{};
+    for (final entry in (design['namedFontBytes'] as Map? ?? {}).entries) {
+      restoredNamed[entry.key.toString()] = base64Decode(entry.value as String);
+    }
+    // Restore font registrations before rendering layers.
+    String? customFamily;
+    if (custom != null) {
+      customFamily = 'KAISARecoveredCustom_${DateTime.now().microsecondsSinceEpoch}';
+      final loader = FontLoader(customFamily)
+        ..addFont(Future.value(ByteData.sublistView(base64Decode(custom))));
+      await loader.load();
+    }
+    final restoredFamilies = <String, String>{};
+    for (final entry in restoredNamed.entries) {
+      final family = 'KAISARecovered_${restoredFamilies.length}_${DateTime.now().microsecondsSinceEpoch}';
+      final loader = FontLoader(family)
+        ..addFont(Future.value(ByteData.sublistView(entry.value)));
+      await loader.load();
+      restoredFamilies[entry.key] = family;
+    }
+    if (!mounted) return;
+    _checkpoint();
+    _restore({
+      'zOrder': (design['zOrder'] as List).cast<String>(),
+      'design': design['design'] as int,
+      'background': design['background'] == null ? null : base64Decode(design['background'] as String),
+      'backgroundName': design['backgroundName'],
+      'selectedId': layers.first['id'], 'selectedImageId': null,
+      'showLogo': design['showLogo'] as bool,
+      'showBorder': design['showBorder'] as bool,
+      'logoX': (design['logoX'] as num).toDouble(),
+      'logoY': (design['logoY'] as num).toDouble(),
+      'logoWidth': (design['logoWidth'] as num).toDouble(),
+      'layers': layers, 'logos': logos,
+    });
+    _customFontBytes = custom == null ? null : base64Decode(custom);
+    _customFontName = design['customFontName'] as String?;
+    _customFontFamily = customFamily;
+    _namedFontBytes..clear()..addAll(restoredNamed);
+    _namedFontFamilies..clear()..addAll(restoredFamilies);
+    _nextLayerId = 1 + _layers.where((e) => e.id.startsWith('extra_'))
+      .map((e) => int.tryParse(e.id.substring(6)) ?? 0).fold<int>(0, (a, b) => a > b ? a : b);
+    _nextLogoId = 1 + _logos.where((e) => e.id.startsWith('logo_'))
+      .map((e) => int.tryParse(e.id.substring(5)) ?? 0).fold<int>(0, (a, b) => a > b ? a : b);
+    _undoStack.clear();
+    _redoStack.clear();
+    setState(() {});
+  }
+
+  String get _currentFingerprint => jsonEncode(_serializeDesign());
+  bool get _hasUnsavedTemplateChanges => _hasUncommittedEdits;
+
+  Future<void> _loadTemplateLibrary() async {
+    final key = _templateStorageKey;
+    setState(() { _templatesLoading = true; _libraryReady = false; });
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = key == null ? null : prefs.getString(key);
+      final decoded = raw == null ? <dynamic>[] : jsonDecode(raw) as List;
+      if (!mounted || key != _templateStorageKey) return;
+      setState(() {
+        _savedTemplates = decoded.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        _activeTemplateId = null;
+        _savedFingerprint = null;
+        _libraryReady = true;
+        _baselineFingerprint = _currentFingerprint;
+        _observedFingerprint = _currentFingerprint;
+      });
+      await _recoverDraft();
+    } catch (e) {
+      if (mounted) setState(() => _message = 'Could not load My Templates: $e');
+    } finally {
+      if (mounted) setState(() => _templatesLoading = false);
+    }
+  }
+
+  Future<void> _persistTemplates() async {
+    final key = _templateStorageKey;
+    if (key == null) throw StateError('Select an authorized organization first.');
+    final prefs = await SharedPreferences.getInstance();
+    final ok = await prefs.setString(key, jsonEncode(_savedTemplates));
+    if (!ok) throw StateError('Browser storage rejected the save.');
+  }
+
+  Future<String?> _askTemplateName({String? initial}) async {
+    final controller = TextEditingController(text: initial ?? '');
+    try {
+      return await showDialog<String>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(initial == null ? 'Save certificate template' : 'Template name'),
+          content: TextField(
+            controller: controller, autofocus: true, maxLength: 80,
+            decoration: const InputDecoration(labelText: 'Template name'),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            FilledButton(
+              onPressed: () {
+                final name = controller.text.trim();
+                if (name.isNotEmpty) Navigator.pop(ctx, name);
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      );
+    } finally {
+      controller.dispose();
+    }
+  }
+
+  Future<bool> _confirmDiscardChanges() async {
+    if (!_hasUncommittedEdits) return true;
+    return await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Discard unsaved changes?'),
+        content: const Text('Your edits have not been saved as a named template. An auto-saved draft may be recoverable on this browser.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Keep editing')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Discard changes')),
+        ],
+      ),
+    ) ?? false;
+  }
+
+  Future<void> _saveTemplate({bool saveAs = false}) async {
+    if (_templatesBusy || !_libraryReady || _templateStorageKey == null) return;
+    final existingIndex = _savedTemplates.indexWhere((e) => e['id'] == _activeTemplateId);
+    String? name;
+    if (saveAs || existingIndex < 0) {
+      name = await _askTemplateName(initial: saveAs && existingIndex >= 0
+        ? '${_savedTemplates[existingIndex]['name']} copy' : null);
+      if (name == null) return;
+    }
+    setState(() => _templatesBusy = true);
+    final previous = List<Map<String, dynamic>>.from(_savedTemplates);
+    try {
+      final id = (!saveAs && existingIndex >= 0)
+        ? _activeTemplateId!
+        : DateTime.now().microsecondsSinceEpoch.toString();
+      final record = <String, dynamic>{
+        'id': id,
+        'name': name ?? _savedTemplates[existingIndex]['name'],
+        'updatedAt': DateTime.now().toIso8601String(),
+        'design': _serializeDesign(),
+      };
+      if (!saveAs && existingIndex >= 0) {
+        _savedTemplates[existingIndex] = record;
+      } else {
+        _savedTemplates.insert(0, record);
+      }
+      await _persistTemplates();
+      if (!mounted) return;
+      setState(() {
+        _activeTemplateId = id;
+        _savedFingerprint = _currentFingerprint;
+        _baselineFingerprint = _currentFingerprint;
+        _observedFingerprint = _currentFingerprint;
+        leave_guard.setUnsaved(false);
+        _draftTimer?.cancel();
+        _draftStatus = 'All changes saved';
+        _message = 'Template saved in this browser.';
+      });
+      final draftKey = _draftStorageKey;
+      if (draftKey != null) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove(draftKey);
+      }
+    } catch (e) {
+      _savedTemplates = previous;
+      if (mounted) setState(() => _message = 'Template save failed (browser storage may be full): $e');
+    } finally {
+      if (mounted) setState(() => _templatesBusy = false);
+    }
+  }
+
+  Future<void> _openTemplate(Map<String, dynamic> template) async {
+    if (_templatesBusy || !await _confirmDiscardChanges()) return;
+    setState(() => _templatesBusy = true);
+    try {
+      _loadingDesign = true;
+      await _applySavedDesign(Map<String, dynamic>.from(template['design'] as Map));
+      if (!mounted) return;
+      setState(() {
+        _activeTemplateId = template['id'] as String;
+        _savedFingerprint = _currentFingerprint;
+        _baselineFingerprint = _currentFingerprint;
+        _observedFingerprint = _currentFingerprint;
+        _draftTimer?.cancel();
+        leave_guard.setUnsaved(false);
+        _draftStatus = 'All changes saved';
+        _message = 'Opened ${template['name']}.';
+      });
+      final draftKey = _draftStorageKey;
+      if (draftKey != null) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove(draftKey);
+      }
+    } catch (e) {
+      if (mounted) setState(() => _message = 'Unable to open template: $e');
+    } finally {
+      _loadingDesign = false;
+      if (mounted) setState(() => _templatesBusy = false);
+    }
+  }
+
+  Future<void> _renameTemplate(Map<String, dynamic> template) async {
+    final name = await _askTemplateName(initial: template['name'] as String);
+    if (name == null) return;
+    final previous = template['name'];
+    template['name'] = name;
+    try {
+      await _persistTemplates();
+      if (mounted) setState(() {});
+    } catch (e) {
+      template['name'] = previous;
+      if (mounted) setState(() => _message = 'Rename failed: $e');
+    }
+  }
+
+  Future<void> _duplicateTemplate(Map<String, dynamic> template) async {
+    final duplicate = <String, dynamic>{
+      ...template,
+      'id': DateTime.now().microsecondsSinceEpoch.toString(),
+      'name': '${template['name']} (copy)',
+      'updatedAt': DateTime.now().toIso8601String(),
+    };
+    _savedTemplates.insert(0, duplicate);
+    try {
+      await _persistTemplates();
+      if (mounted) setState(() {});
+    } catch (e) {
+      _savedTemplates.remove(duplicate);
+      if (mounted) setState(() => _message = 'Duplicate failed: $e');
+    }
+  }
+
+  Future<void> _deleteTemplate(Map<String, dynamic> template) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete template?'),
+        content: Text('Delete "${template['name']}" from this browser?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete')),
+        ],
+      ),
+    ) ?? false;
+    if (!confirm) return;
+    final previous = List<Map<String, dynamic>>.from(_savedTemplates);
+    _savedTemplates.removeWhere((e) => e['id'] == template['id']);
+    try {
+      await _persistTemplates();
+      if (!mounted) return;
+      setState(() {
+        if (_activeTemplateId == template['id']) {
+          _activeTemplateId = null;
+          _savedFingerprint = null;
+        }
+      });
+    } catch (e) {
+      _savedTemplates = previous;
+      if (mounted) setState(() => _message = 'Delete failed: $e');
+    }
+  }
+
+  Widget _myTemplatesPanel() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            const Icon(Icons.folder_copy_outlined, color: _forest),
+            const SizedBox(width: 8),
+            const Expanded(child: Text('My Templates', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800))),
+            if (_templatesLoading || _templatesBusy)
+              const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)),
+          ]),
+          const SizedBox(height: 6),
+          const Text('Templates and recovery drafts are stored in this browser for the selected organization. Not synced across devices.',
+            style: TextStyle(fontSize: 12, color: Colors.grey)),
+          const SizedBox(height: 12),
+          Wrap(spacing: 8, runSpacing: 8, children: [
+            FilledButton.icon(
+              onPressed: _libraryReady && !_templatesBusy ? () => _saveTemplate() : null,
+              icon: const Icon(Icons.save_outlined),
+              label: Text(_activeTemplateId == null ? 'Save template' : 'Save changes'),
+            ),
+            OutlinedButton.icon(
+              onPressed: _libraryReady && !_templatesBusy ? () => _saveTemplate(saveAs: true) : null,
+              icon: const Icon(Icons.add_box_outlined),
+              label: const Text('Save as new'),
+            ),
+          ]),
+          if (_libraryReady) ...[
+            const SizedBox(height: 8),
+            Text(_hasUnsavedTemplateChanges ? '● Unsaved edits — $_draftStatus' : '✓ $_draftStatus',
+              style: TextStyle(fontSize: 12, color: _hasUnsavedTemplateChanges ? Colors.deepOrange : _forest)),
+          ],
+          const Divider(height: 24),
+          if (_savedTemplates.isEmpty)
+            const Text('No saved templates yet. Design a certificate, then select Save template.')
+          else
+            ..._savedTemplates.map((template) => ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(template['id'] == _activeTemplateId ? Icons.description : Icons.article_outlined, color: _forest),
+              title: Text(template['name'] as String, maxLines: 1, overflow: TextOverflow.ellipsis),
+              subtitle: Text('Updated ${((template['updatedAt'] as String?) ?? '').replaceFirst('T', ' ').split('.').first}'),
+              onTap: _templatesBusy ? null : () => _openTemplate(template),
+              trailing: PopupMenuButton<String>(
+                enabled: !_templatesBusy,
+                tooltip: 'Template actions',
+                onSelected: (action) {
+                  switch (action) {
+                    case 'open': _openTemplate(template);
+                    case 'rename': _renameTemplate(template);
+                    case 'duplicate': _duplicateTemplate(template);
+                    case 'delete': _deleteTemplate(template);
+                  }
+                },
+                itemBuilder: (_) => const [
+                  PopupMenuItem(value: 'open', child: Text('Open')),
+                  PopupMenuItem(value: 'rename', child: Text('Rename')),
+                  PopupMenuItem(value: 'duplicate', child: Text('Duplicate')),
+                  PopupMenuItem(value: 'delete', child: Text('Delete')),
+                ],
+              ),
+            )),
+        ]),
+      ),
+    );
+  }
 
   int _nextLayerId = 1;
   int _nextLogoId = 1;
@@ -463,7 +979,10 @@ _TextLayer(
             ? 'No authorized Organization Admin membership for the selected organization.'
             : null;
       });
-      if (selected != null) await _loadEvents();
+      if (selected != null) {
+        await _loadTemplateLibrary();
+        await _loadEvents();
+      }
     } catch (error) {
       if (mounted) {
         setState(() {
@@ -475,7 +994,11 @@ _TextLayer(
   }
 
   Future<void> _changeOrganization(String? id) async {
-    if (id == null) return;
+    if (id == null || id == _organizationId) return;
+    if (!await _confirmDiscardChanges()) return;
+    _draftTimer?.cancel();
+    leave_guard.setUnsaved(false);
+    _libraryReady = false;
     setState(() {
       _organizationId = id;
       _eventId = null;
@@ -486,6 +1009,7 @@ _TextLayer(
       _names.clear();
       _dataError = null;
     });
+    await _loadTemplateLibrary();
     await _loadEvents();
   }
 
@@ -731,6 +1255,8 @@ _TextLayer(
 
   @override
   void dispose() {
+    _draftTimer?.cancel();
+    leave_guard.setUnsaved(false);
     _names.removeListener(_onNamesChange);
     _names.dispose();
     for (final layer in _layers) {
@@ -2167,8 +2693,16 @@ if (_recipients.length > 1) ...[
 
   @override
   Widget build(BuildContext context) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _scheduleDraftIfChanged();
+    });
     final desktop = MediaQuery.sizeOf(context).width >= 1000;
-    return CallbackShortcuts(
+    return PopScope(
+      canPop: _allowRouteExit || !_hasUncommittedEdits,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) _confirmRouteExit();
+      },
+      child: CallbackShortcuts(
       bindings: {
         const SingleActivator(LogicalKeyboardKey.keyZ, control: true): _undo,
         const SingleActivator(LogicalKeyboardKey.keyY, control: true): _redo,
@@ -2207,6 +2741,8 @@ if (_recipients.length > 1) ...[
               ),
               const SizedBox(height: 16),
               _supabasePanel(),
+              const SizedBox(height: 16),
+              _myTemplatesPanel(),
               const SizedBox(height: 16),
               if (desktop)
                 Row(
@@ -2251,6 +2787,7 @@ if (_recipients.length > 1) ...[
             ],
           ),
         ),
+      ),
       ),
       ),
       ),
