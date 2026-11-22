@@ -1,17 +1,20 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:file_saver/file_saver.dart';
 
 import '../../../shared/models/organization_model.dart';
 import '../../../shared/repositories/organization_repository.dart';
 
 // Same design tokens as the redesigned KAISA LGU dashboard.
-const _forest = Color(0xFF00492C);
-const _green = Color(0xFF287D55);
-const _paper = Color(0xFFF6F8F5);
+const _forest = Color(0xFF14532D);
+const _green = Color(0xFF237A50);
+const _paper = Color(0xFFF8FAF8);
 const _ink = Color(0xFF173D2B);
 const _muted = Color(0xFF687B70);
 const _stroke = Color(0xFFE2EBE4);
-const _gold = Color(0xFFFBBA16);
-const _soft = Color(0xFFEAF5EE);
+const _gold = Color(0xFFFFCC47);
 
 class OrganizationRegistryPage extends StatefulWidget {
   const OrganizationRegistryPage({super.key});
@@ -24,7 +27,6 @@ class OrganizationRegistryPage extends StatefulWidget {
 class _OrganizationRegistryPageState extends State<OrganizationRegistryPage> {
   final searchController = TextEditingController();
 
-  String statusFilter = 'All';
   String categoryFilter = 'All';
 
   final OrganizationRepository repository = OrganizationRepository.instance;
@@ -57,16 +59,12 @@ class _OrganizationRegistryPageState extends State<OrganizationRegistryPage> {
       final matchesSearch =
           org.name.toLowerCase().contains(query) ||
           org.category.toLowerCase().contains(query) ||
-          org.registryReference.toLowerCase().contains(query) ||
-          org.id.toLowerCase().contains(query) ||
-          org.adminEmail.toLowerCase().contains(query) ||
-          org.email.toLowerCase().contains(query);
+          org.registryReference.toLowerCase().contains(query);
 
-      final matchesStatus = statusFilter == 'All' || org.status == statusFilter;
       final matchesCategory =
           categoryFilter == 'All' || org.category == categoryFilter;
 
-      return matchesSearch && matchesStatus && matchesCategory;
+      return matchesSearch && matchesCategory;
     }).toList();
   }
 
@@ -105,50 +103,38 @@ class _OrganizationRegistryPageState extends State<OrganizationRegistryPage> {
     final email = await showDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text(
-          'Assign organization representative',
-          style: TextStyle(color: _forest, fontWeight: FontWeight.w800),
-        ),
-        content: SizedBox(
-          width: 440,
-          child: SingleChildScrollView(
-            child: Form(
-              key: formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(org.name),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: controller,
-                    keyboardType: TextInputType.emailAddress,
-                    decoration: const InputDecoration(
-                      labelText: 'Authorized representative email',
-                      border: OutlineInputBorder(),
-                    ),
-                    validator: (value) {
-                      final email = value?.trim() ?? '';
-                      if (email.isEmpty ||
-                          !RegExp(
-                            r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
-                          ).hasMatch(email)) {
-                        return 'Enter a valid email address';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'Draft registry assignment only. This does not create a user, '
-                    'change an account role, or grant access. IT provisions approved access separately.',
-                    style: TextStyle(fontSize: 12),
-                  ),
-                ],
+        title: const Text('Assign organization representative'),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(org.name),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: controller,
+                keyboardType: TextInputType.emailAddress,
+                decoration: const InputDecoration(
+                  labelText: 'Authorized representative email',
+                  border: OutlineInputBorder(),
+                ),
+                validator: (value) {
+                  final email = value?.trim() ?? '';
+                  if (email.isEmpty ||
+                      !RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)) {
+                    return 'Enter a valid email address';
+                  }
+                  return null;
+                },
               ),
-            ),
+              const SizedBox(height: 12),
+              const Text(
+                'Draft registry assignment only. This does not create a user, '
+                'change an account role, or grant access. IT provisions approved access separately.',
+                style: TextStyle(fontSize: 12),
+              ),
+            ],
           ),
         ),
         actions: [
@@ -162,10 +148,6 @@ class _OrganizationRegistryPageState extends State<OrganizationRegistryPage> {
                 Navigator.pop(dialogContext, controller.text.trim());
               }
             },
-            style: FilledButton.styleFrom(
-              backgroundColor: _forest,
-              foregroundColor: Colors.white,
-            ),
             child: const Text('Save Assignment'),
           ),
         ],
@@ -184,103 +166,84 @@ class _OrganizationRegistryPageState extends State<OrganizationRegistryPage> {
     );
   }
 
-  Future<void> toggleStatus(RegistryOrganization org) async {
-    final newStatus = org.status == 'Active' ? 'Inactive' : 'Active';
-    final formKey = GlobalKey<FormState>();
-    String? reason;
-    final options = newStatus == 'Inactive'
-        ? const [
-            'Organization requested deactivation',
-            'Registry information requires review',
-            'Organization operations discontinued',
-            'Administrative record correction',
-          ]
-        : const [
-            'Organization requested reactivation',
-            'Registry information validated',
-            'Administrative record correction',
-          ];
+  bool _exportingPdf = false;
 
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (dialogContext, refreshDialog) => AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
+  /// Downloads the current filtered registry as an actual PDF document.
+  /// Prototype data only; no organization status is shown or exported.
+  Future<void> exportPdf() async {
+    if (_exportingPdf) return;
+    setState(() => _exportingPdf = true);
+    try {
+      final records = filteredOrganizations;
+      final document = pw.Document();
+      document.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4.landscape,
+          margin: const pw.EdgeInsets.all(30),
+          header: (context) => pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Text('KAISA  |  OPERATIONS ADMINISTRATION',
+                style: pw.TextStyle(fontSize: 9, color: PdfColor.fromHex('00492C'))),
+              pw.SizedBox(height: 6),
+              pw.Text('Organization Registry Report',
+                style: pw.TextStyle(fontSize: 19, fontWeight: pw.FontWeight.bold)),
+              pw.SizedBox(height: 5),
+              pw.Text('Filtered organizations: ${records.length} / ${organizations.length}  |  Generated: ${DateTime.now().toLocal().toString().split('.').first}',
+                style: const pw.TextStyle(fontSize: 9)),
+              pw.Divider(),
+              pw.SizedBox(height: 10),
+            ],
           ),
-          title: Text(
-            '${newStatus == 'Active' ? 'Activate' : 'Deactivate'} organization',
+          footer: (context) => pw.Align(
+            alignment: pw.Alignment.centerRight,
+            child: pw.Text('KAISA prototype registry  |  Page ${context.pageNumber} of ${context.pagesCount}',
+              style: const pw.TextStyle(fontSize: 8)),
           ),
-          content: SizedBox(
-            width: 420,
-            child: Form(
-              key: formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    org.name,
-                    style: const TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 11),
-                  const Text(
-                    'Select a reason for this prototype status change.',
-                    style: TextStyle(fontSize: 12, color: _muted),
-                  ),
-                  const SizedBox(height: 15),
-                  DropdownButtonFormField<String>(
-                    isExpanded: true,
-                    initialValue: reason,
-                    decoration: const InputDecoration(
-                      labelText: 'Reason (required)',
-                      border: OutlineInputBorder(),
-                    ),
-                    items: [
-                      for (final option in options)
-                        DropdownMenuItem(
-                          value: option,
-                          child: Text(option, overflow: TextOverflow.ellipsis),
-                        ),
-                    ],
-                    onChanged: (value) => refreshDialog(() => reason = value),
-                    validator: (value) =>
-                        value == null ? 'Choose a reason' : null,
-                  ),
-                  const SizedBox(height: 11),
-                  const Text(
-                    'Changes only the local registry. A real deployment requires approval records, audit logs and backend authorization.',
-                    style: TextStyle(fontSize: 11, color: _muted),
-                  ),
+          build: (_) => [
+            if (records.isEmpty)
+              pw.Text('No organizations match the current filters.'),
+            if (records.isNotEmpty)
+              pw.TableHelper.fromTextArray(
+                headers: const [
+                  'Organization', 'Category', 'Registry Ref.',
+                  'Contact Email', 'Representative',
                 ],
+                data: [for (final org in records) [
+                  org.name, org.category, org.registryReference,
+                  org.email, org.adminEmail.isEmpty ? 'Not assigned' : org.adminEmail,
+                ]],
+                headerStyle: pw.TextStyle(
+                  fontWeight: pw.FontWeight.bold, color: PdfColors.white, fontSize: 9),
+                headerDecoration: pw.BoxDecoration(color: PdfColor.fromHex('00492C')),
+                cellStyle: const pw.TextStyle(fontSize: 8),
+                cellPadding: const pw.EdgeInsets.all(7),
+                oddRowDecoration: pw.BoxDecoration(color: PdfColor.fromHex('EAF5EE')),
+                border: pw.TableBorder.all(color: PdfColor.fromHex('DFE9E0'), width: 0.5),
               ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () {
-                if (formKey.currentState!.validate())
-                  Navigator.pop(dialogContext, true);
-              },
-              child: const Text('Confirm demo change'),
-            ),
           ],
         ),
-      ),
-    );
-    if (confirmed == true && mounted) {
-      repository.setStatus(org.id, newStatus);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Prototype: ${org.name} set to $newStatus. Reason: $reason. Not a persistent audit record.',
-          ),
-        ),
       );
+      final bytes = Uint8List.fromList(await document.save());
+      await FileSaver.instance.saveFile(
+        name: 'kaisa_organization_registry_${DateTime.now().millisecondsSinceEpoch}',
+        bytes: bytes,
+        fileExtension: 'pdf',
+        mimeType: MimeType.pdf,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Organization Registry PDF exported.')),
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('PDF export failed: $error')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _exportingPdf = false);
     }
   }
 
@@ -300,7 +263,6 @@ class _OrganizationRegistryPageState extends State<OrganizationRegistryPage> {
                 _detail('Organization', org.name),
                 _detail('Record ID', org.id),
                 _detail('Category', org.category),
-                _detail('Status', org.status),
                 _detail('LGU registry reference', org.registryReference),
                 _detail('Contact email', org.email),
                 _detail(
@@ -350,10 +312,9 @@ class _OrganizationRegistryPageState extends State<OrganizationRegistryPage> {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final compact = constraints.maxWidth < 780;
+        final compact = constraints.maxWidth < 720;
         final results = filteredOrganizations;
         final total = organizations.length;
-        final active = organizations.where((o) => o.status == 'Active').length;
         final unassigned = organizations
             .where((o) => o.adminEmail.trim().isEmpty)
             .length;
@@ -362,23 +323,23 @@ class _OrganizationRegistryPageState extends State<OrganizationRegistryPage> {
           color: _paper,
           child: ListView(
             padding: EdgeInsets.fromLTRB(
-              compact ? 16 : 28,
-              24,
-              compact ? 16 : 28,
+              compact ? 16 : 30,
+              26,
+              compact ? 16 : 30,
               48,
             ),
             children: [
               Center(
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 1260),
+                  constraints: const BoxConstraints(maxWidth: 1320),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Container(
                         width: double.infinity,
-                        padding: EdgeInsets.all(compact ? 23 : 30),
+                        padding: EdgeInsets.all(compact ? 22 : 29),
                         decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(24),
+                          borderRadius: BorderRadius.circular(22),
                           gradient: const LinearGradient(
                             colors: [
                               Color(0xFF0B3024),
@@ -418,7 +379,7 @@ class _OrganizationRegistryPageState extends State<OrganizationRegistryPage> {
                                   ),
                                   const SizedBox(height: 9),
                                   const Text(
-                                    'Maintain organization records and responsible representatives, with clear status and registration references.',
+                                    'Maintain organization records and responsible representatives, with clear registration references.',
                                     style: TextStyle(
                                       color: Color(0xFFE2EEE5),
                                       fontSize: 13,
@@ -464,7 +425,6 @@ class _OrganizationRegistryPageState extends State<OrganizationRegistryPage> {
                       const SizedBox(height: 25),
                       _summaryStrip(
                         total: total,
-                        active: active,
                         unassigned: unassigned,
                         compact: compact,
                       ),
@@ -509,21 +469,29 @@ class _OrganizationRegistryPageState extends State<OrganizationRegistryPage> {
                                       ),
                                     ],
                                   ),
-                                  FilledButton.icon(
-                                    onPressed: () => openOrganizationForm(),
-                                    icon: const Icon(
-                                      Icons.add_rounded,
-                                      size: 18,
-                                    ),
-                                    label: const Text('Add Organization'),
-                                    style: FilledButton.styleFrom(
-                                      backgroundColor: _forest,
-                                      foregroundColor: Colors.white,
-                                      minimumSize: const Size(0, 44),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(9),
+                                  Wrap(
+                                    spacing: 10,
+                                    runSpacing: 10,
+                                    children: [
+                                      OutlinedButton.icon(
+                                        onPressed: _exportingPdf ? null : exportPdf,
+                                        icon: const Icon(Icons.picture_as_pdf_outlined),
+                                        label: Text(_exportingPdf ? 'Exporting...' : 'Export PDF'),
                                       ),
-                                    ),
+                                      FilledButton.icon(
+                                        onPressed: () => openOrganizationForm(),
+                                        icon: const Icon(Icons.add_rounded, size: 18),
+                                        label: const Text('Add Organization'),
+                                        style: FilledButton.styleFrom(
+                                          backgroundColor: _forest,
+                                          foregroundColor: Colors.white,
+                                          minimumSize: const Size(0, 44),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(9),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),
@@ -531,7 +499,7 @@ class _OrganizationRegistryPageState extends State<OrganizationRegistryPage> {
                             const Divider(height: 1, color: _stroke),
                             Padding(
                               padding: const EdgeInsets.all(18),
-                              child: _filterBar(),
+                              child: _filterBar(compact),
                             ),
                             Padding(
                               padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
@@ -551,7 +519,6 @@ class _OrganizationRegistryPageState extends State<OrganizationRegistryPage> {
                                     onPressed: () {
                                       searchController.clear();
                                       setState(() {
-                                        statusFilter = 'All';
                                         categoryFilter = 'All';
                                       });
                                     },
@@ -592,7 +559,7 @@ class _OrganizationRegistryPageState extends State<OrganizationRegistryPage> {
                                       ),
                                       SizedBox(height: 5),
                                       Text(
-                                        'Try a different search or status filter.',
+                                        'Try a different search or category filter.',
                                         style: TextStyle(
                                           color: _muted,
                                           fontSize: 12,
@@ -627,13 +594,11 @@ class _OrganizationRegistryPageState extends State<OrganizationRegistryPage> {
 
   Widget _summaryStrip({
     required int total,
-    required int active,
     required int unassigned,
     required bool compact,
   }) {
     final entries = <(String, int, IconData)>[
       ('Total Organizations', total, Icons.apartment_outlined),
-      ('Active Organizations', active, Icons.check_circle_outline),
       ('Unassigned Administrators', unassigned, Icons.person_off_outlined),
     ];
     return LayoutBuilder(
@@ -697,13 +662,13 @@ class _OrganizationRegistryPageState extends State<OrganizationRegistryPage> {
     );
   }
 
-  Widget _filterBar() {
+  Widget _filterBar(bool compact) {
     final search = TextField(
       controller: searchController,
       onChanged: (_) => setState(() {}),
       decoration: InputDecoration(
-        hintText: 'Search organizations, reference or administrator',
-        hintStyle: const TextStyle(fontSize: 12, color: _muted),
+        hintText: 'Search name, category or reference...',
+        hintStyle: const TextStyle(fontSize: 13, color: _muted),
         prefixIcon: const Icon(Icons.search_rounded, color: _muted, size: 20),
         suffixIcon: searchController.text.isEmpty
             ? null
@@ -717,33 +682,11 @@ class _OrganizationRegistryPageState extends State<OrganizationRegistryPage> {
         isDense: true,
         filled: true,
         fillColor: Colors.white,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
       ),
-    );
-    final filter = DropdownButtonFormField<String>(
-      key: ValueKey(statusFilter),
-      initialValue: statusFilter,
-      isExpanded: true,
-      decoration: InputDecoration(
-        labelText: 'Status',
-        isDense: true,
-        filled: true,
-        fillColor: Colors.white,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-      items: const ['All', 'Active', 'Inactive']
-          .map(
-            (status) => DropdownMenuItem(
-              value: status,
-              child: Text(status, overflow: TextOverflow.ellipsis),
-            ),
-          )
-          .toList(),
-      onChanged: (value) => setState(() => statusFilter = value ?? 'All'),
     );
     final categoryOptions = <String>{
       'All',
-      categoryFilter, // Keeps selected value valid after a record is edited.
       ...organizations.map((o) => o.category),
     }.toList()..sort();
     final categorySelect = DropdownButtonFormField<String>(
@@ -753,7 +696,7 @@ class _OrganizationRegistryPageState extends State<OrganizationRegistryPage> {
       decoration: InputDecoration(
         labelText: 'Category',
         isDense: true,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
       ),
       items: [
         for (final category in categoryOptions)
@@ -764,43 +707,21 @@ class _OrganizationRegistryPageState extends State<OrganizationRegistryPage> {
       ],
       onChanged: (value) => setState(() => categoryFilter = value ?? 'All'),
     );
-    // Let filters wrap independently of the page breakpoint. This avoids
-    // RenderFlex overflow on narrow browsers, split screens and tablets.
-    return LayoutBuilder(
-      builder: (context, limits) {
-        final narrow = limits.maxWidth < 760;
-        if (narrow) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              search,
-              const SizedBox(height: 12),
-              if (limits.maxWidth >= 420)
-                Row(
-                  children: [
-                    Expanded(child: filter),
-                    const SizedBox(width: 12),
-                    Expanded(child: categorySelect),
-                  ],
-                )
-              else ...[
-                filter,
-                const SizedBox(height: 12),
-                categorySelect,
-              ],
-            ],
-          );
-        }
-        return Row(
-          children: [
-            Expanded(flex: 3, child: search),
-            const SizedBox(width: 12),
-            Expanded(flex: 2, child: filter),
-            const SizedBox(width: 12),
-            Expanded(flex: 2, child: categorySelect),
-          ],
-        );
-      },
+    if (compact) {
+      return Column(
+        children: [
+          search,
+          const SizedBox(height: 12),
+          categorySelect,
+        ],
+      );
+    }
+    return Row(
+      children: [
+        Expanded(flex: 3, child: search),
+        const SizedBox(width: 12),
+        SizedBox(width: 180, child: categorySelect),
+      ],
     );
   }
 
@@ -809,7 +730,7 @@ class _OrganizationRegistryPageState extends State<OrganizationRegistryPage> {
       builder: (context, bounds) => SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: SizedBox(
-          width: bounds.maxWidth < 1060 ? 1060 : bounds.maxWidth,
+          width: bounds.maxWidth < 960 ? 960 : bounds.maxWidth,
           child: DataTable(
             headingRowColor: WidgetStateProperty.all(const Color(0xFFF2F6F2)),
             dataRowMinHeight: 64,
@@ -821,16 +742,12 @@ class _OrganizationRegistryPageState extends State<OrganizationRegistryPage> {
               DataColumn(label: Text('ORGANIZATION')),
               DataColumn(label: Text('CATEGORY')),
               DataColumn(label: Text('REGISTRY REFERENCE')),
-              DataColumn(label: Text('STATUS')),
               DataColumn(label: Text('ASSIGNED ADMIN')),
               DataColumn(label: Text('ACTIONS')),
             ],
             rows: [
               for (final org in records)
                 DataRow(
-                  color: WidgetStateProperty.resolveWith<Color?>((states) {
-                    return states.contains(WidgetState.hovered) ? _soft : null;
-                  }),
                   cells: [
                     DataCell(
                       SizedBox(
@@ -860,7 +777,6 @@ class _OrganizationRegistryPageState extends State<OrganizationRegistryPage> {
                           ],
                         ),
                       ),
-                      onTap: () => showOrganizationDetails(org),
                     ),
                     DataCell(
                       Text(org.category, style: const TextStyle(fontSize: 12)),
@@ -875,7 +791,6 @@ class _OrganizationRegistryPageState extends State<OrganizationRegistryPage> {
                         ),
                       ),
                     ),
-                    DataCell(_statusTag(org.status)),
                     DataCell(
                       SizedBox(
                         width: 185,
@@ -931,8 +846,6 @@ class _OrganizationRegistryPageState extends State<OrganizationRegistryPage> {
             style: const TextStyle(color: _muted, fontSize: 12),
           ),
           const SizedBox(height: 10),
-          _statusTag(org.status),
-          const SizedBox(height: 9),
           Text(
             'Reference: ${org.registryReference}',
             style: const TextStyle(color: _muted, fontSize: 12),
@@ -942,25 +855,6 @@ class _OrganizationRegistryPageState extends State<OrganizationRegistryPage> {
             style: const TextStyle(color: _muted, fontSize: 12),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _statusTag(String status) {
-    final active = status == 'Active';
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: active ? const Color(0xFFE7F3E9) : const Color(0xFFFFF3D8),
-        borderRadius: BorderRadius.circular(5),
-      ),
-      child: Text(
-        status,
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          color: active ? _forest : const Color(0xFF94670A),
-        ),
       ),
     );
   }
@@ -977,8 +871,6 @@ class _OrganizationRegistryPageState extends State<OrganizationRegistryPage> {
             openOrganizationForm(org);
           case 'admin':
             assignAdmin(org);
-          case 'status':
-            toggleStatus(org);
         }
       },
       itemBuilder: (context) => [
@@ -992,14 +884,6 @@ class _OrganizationRegistryPageState extends State<OrganizationRegistryPage> {
                 : 'Change representative (draft)',
           ),
         ),
-        PopupMenuItem(
-          value: 'status',
-          child: Text(
-            org.status == 'Active'
-                ? 'Deactivate organization'
-                : 'Activate organization',
-          ),
-        ),
       ],
     );
   }
@@ -1007,7 +891,7 @@ class _OrganizationRegistryPageState extends State<OrganizationRegistryPage> {
   BoxDecoration _surfaceDecoration() => BoxDecoration(
     color: Colors.white,
     border: Border.all(color: _stroke),
-    borderRadius: BorderRadius.circular(18),
+    borderRadius: BorderRadius.circular(12),
   );
 }
 
@@ -1034,7 +918,6 @@ class _OrganizationFormDialogState extends State<_OrganizationFormDialog> {
   late final TextEditingController reference;
 
   String category = 'Youth';
-  String status = 'Active';
 
   static const categories = [
     'Youth',
@@ -1057,7 +940,6 @@ class _OrganizationFormDialogState extends State<_OrganizationFormDialog> {
     reference = TextEditingController(text: org?.registryReference ?? '');
 
     category = org?.category ?? 'Youth';
-    status = org?.status ?? 'Active';
   }
 
   @override
@@ -1089,7 +971,7 @@ class _OrganizationFormDialogState extends State<_OrganizationFormDialog> {
         email: email.text.trim(),
         registryReference: reference.text.trim(),
         adminEmail: widget.organization?.adminEmail ?? '',
-        status: status,
+        status: widget.organization?.status ?? 'Active',
       ),
     );
   }
@@ -1110,7 +992,6 @@ class _OrganizationFormDialogState extends State<_OrganizationFormDialog> {
           child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _field(name, 'Organization Name'),
                 const SizedBox(height: 12),
@@ -1120,14 +1001,8 @@ class _OrganizationFormDialogState extends State<_OrganizationFormDialog> {
                     labelText: 'Category',
                     border: OutlineInputBorder(),
                   ),
-                  isExpanded: true,
-                  items: {...categories, category}
-                      .map(
-                        (c) => DropdownMenuItem(
-                          value: c,
-                          child: Text(c, overflow: TextOverflow.ellipsis),
-                        ),
-                      )
+                  items: categories
+                      .map((c) => DropdownMenuItem(value: c, child: Text(c)))
                       .toList(),
                   onChanged: (v) => setState(() => category = v ?? 'Youth'),
                 ),
@@ -1138,18 +1013,6 @@ class _OrganizationFormDialogState extends State<_OrganizationFormDialog> {
                 const SizedBox(height: 12),
                 _field(reference, 'LGU Registry Reference'),
                 const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  initialValue: status,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Status',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: ['Active', 'Inactive']
-                      .map((s) => DropdownMenuItem(value: s, child: Text(s)))
-                      .toList(),
-                  onChanged: (v) => setState(() => status = v ?? 'Active'),
-                ),
               ],
             ),
           ),
@@ -1163,7 +1026,7 @@ class _OrganizationFormDialogState extends State<_OrganizationFormDialog> {
         FilledButton(
           onPressed: save,
           style: FilledButton.styleFrom(
-            backgroundColor: _forest,
+            backgroundColor: _green,
             foregroundColor: Colors.white,
           ),
           child: const Text('Save organization'),

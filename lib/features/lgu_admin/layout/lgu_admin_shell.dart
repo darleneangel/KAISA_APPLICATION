@@ -581,34 +581,7 @@ class LguAdminShell extends StatelessWidget {
                 ],
               ),
             ),
-            if (desktop) ...[
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 11,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF0F7F2),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Row(
-                  children: [
-                    Icon(Icons.shield_outlined, color: _green, size: 16),
-                    SizedBox(width: 7),
-                    Text(
-                      'LGU PORTAL',
-                      style: TextStyle(
-                        color: _green,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 10,
-                        letterSpacing: 1,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 18),
-            ],
+            
             PopupMenuButton<String>(
               tooltip: 'Administrator account',
               offset: const Offset(0, 48),
