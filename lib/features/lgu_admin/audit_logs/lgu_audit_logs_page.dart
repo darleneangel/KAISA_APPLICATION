@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'dart:typed_data';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:file_saver/file_saver.dart';
 
 import '../../../shared/models/audit_log_model.dart';
 import '../../../shared/repositories/audit_log_repository.dart';
@@ -189,36 +193,132 @@ class _LguAuditLogsPageState extends State<LguAuditLogsPage> {
     border: Border.all(color: _stroke),
   );
 
-  Future<void> _copyCsv(List<AuditLog> records) async {
-    if (records.isEmpty) {
-      _snack('No matching records to export.');
+  bool _exporting = false;
+
+  // Write the current filtered register as a PDF (no CSV output).
+  // The prototype repository contains no reliable outcome or actor UUID.
+  Future<void> _exportPdf(List<AuditLog> records) async {
+    if (_exporting || records.isEmpty) {
+      if (records.isEmpty) _snack('No matching activities to export.');
       return;
     }
-    String cell(String value) {
-      // Neutralize spreadsheet formula prefixes, including after whitespace.
-      final cleaned = value.replaceAll('\r', ' ').replaceAll('\n', ' ');
-      final dangerous = RegExp(r'^[\s\u0000-\u001f]*[=+@\-]');
-      final safe = dangerous.hasMatch(cleaned) ? "'$cleaned" : cleaned;
-      return '"${safe.replaceAll('"', '""')}"';
-    }
-
-    final lines = <String>[
-      'Log ID,Timestamp (local),Actor,Role,Action,Module,Target ID,Outcome,Description',
-      for (final log in records)
+    setState(() => _exporting = true);
+    try {
+      final document = pw.Document();
+      final forest = PdfColor.fromHex('#00492C');
+      final mint = PdfColor.fromHex('#EAF5EE');
+      // Core PDF fonts do not support every Unicode character.
+      String safe(String input) =>
+          input.replaceAll(RegExp(r'[^\x20-\x7e]'), '-');
+      final rows = <List<String>>[
         [
-          log.id,
-          log.timestamp.toLocal().toIso8601String(),
-          log.actorName,
-          log.actorRole,
-          log.action.label,
-          log.module,
-          log.targetId,
-          'Not recorded',
-          log.description,
-        ].map(cell).join(','),
-    ];
-    await Clipboard.setData(ClipboardData(text: '\uFEFF${lines.join('\r\n')}'));
-    if (mounted) _snack('${records.length} filtered log(s) copied as CSV.');
+          'Date & Time',
+          'Actor',
+          'Role',
+          'Action',
+          'Module',
+          'Record ID',
+          'Description',
+        ],
+        for (final log in records)
+          [
+            safe(_dateTime(log.timestamp)),
+            safe(log.actorName),
+            safe(log.actorRole),
+            safe(log.action.label),
+            safe(log.module),
+            safe(log.targetId),
+            safe(log.description),
+          ],
+      ];
+      document.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4.landscape,
+          margin: const pw.EdgeInsets.all(24),
+          header: (_) => pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Container(
+                width: double.infinity,
+                padding: const pw.EdgeInsets.all(13),
+                color: forest,
+                child: pw.Text(
+                  'KAISA  |  OPERATIONS ADMINISTRATOR',
+                  style: pw.TextStyle(
+                    color: PdfColors.white,
+                    fontSize: 15,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
+              ),
+              pw.SizedBox(height: 10),
+              pw.Text(
+                'Operations Audit Trail',
+                style: pw.TextStyle(
+                  color: forest,
+                  fontSize: 17,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+              pw.Text(
+                'Generated: ${DateTime.now().toLocal().toIso8601String().substring(0, 16)}  |  Records: ${records.length}',
+                style: const pw.TextStyle(fontSize: 9),
+              ),
+              pw.Text(
+                'DEMONSTRATION REPORT - not independently verified system evidence',
+                style: pw.TextStyle(fontSize: 8, color: PdfColors.red700),
+              ),
+              pw.SizedBox(height: 10),
+            ],
+          ),
+          footer: (context) => pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Text(
+                'KAISA | Operations audit (prototype)',
+                style: const pw.TextStyle(fontSize: 8),
+              ),
+              pw.Text(
+                'Page ${context.pageNumber} of ${context.pagesCount}',
+                style: const pw.TextStyle(fontSize: 8),
+              ),
+            ],
+          ),
+          build: (_) => [
+            pw.Table.fromTextArray(
+              headers: rows.first,
+              data: rows.skip(1).toList(),
+              headerDecoration: pw.BoxDecoration(color: forest),
+              headerStyle: pw.TextStyle(
+                color: PdfColors.white,
+                fontWeight: pw.FontWeight.bold,
+                fontSize: 8,
+              ),
+              cellStyle: const pw.TextStyle(fontSize: 8),
+              rowDecoration: const pw.BoxDecoration(color: PdfColors.white),
+              oddRowDecoration: pw.BoxDecoration(color: mint),
+              cellPadding: const pw.EdgeInsets.all(6),
+              border: pw.TableBorder.all(
+                color: PdfColor.fromHex('#DEE8DF'),
+                width: .5,
+              ),
+            ),
+          ],
+        ),
+      );
+      await FileSaver.instance.saveFile(
+        name: 'kaisa_operations_audit_demo',
+        bytes: Uint8List.fromList(await document.save()),
+        fileExtension: 'pdf',
+        mimeType: MimeType.pdf,
+      );
+      if (mounted)
+        _snack('Exported ${records.length} filtered activities to PDF.');
+    } catch (error) {
+      if (mounted) _snack('PDF export failed: $error');
+    } finally {
+      if (mounted) setState(() => _exporting = false);
+    }
   }
 
   void _snack(String message) {
@@ -273,7 +373,6 @@ class _LguAuditLogsPageState extends State<LguAuditLogsPage> {
                   'Target record',
                   log.targetId.isEmpty ? 'Not specified' : log.targetId,
                 ),
-                _detail('Outcome', 'Not recorded in prototype model'),
                 _detail('Description', log.description),
                 const SizedBox(height: 8),
                 const Text(
@@ -466,9 +565,16 @@ class _LguAuditLogsPageState extends State<LguAuditLogsPage> {
                                         _action,
                                         [
                                           'All',
-                                          ...AuditActionType.values.map(
-                                            (a) => a.label,
-                                          ),
+                                          ...AuditActionType.values
+                                              .where(
+                                                (a) =>
+                                                    a !=
+                                                        AuditActionType.login &&
+                                                    a !=
+                                                        AuditActionType
+                                                            .statusChange,
+                                              )
+                                              .map((a) => a.label),
                                         ],
                                         (value) => setState(() {
                                           _action = value;
@@ -553,14 +659,18 @@ class _LguAuditLogsPageState extends State<LguAuditLogsPage> {
                                   style: FilledButton.styleFrom(
                                     backgroundColor: _forest,
                                   ),
-                                  onPressed: filtered.isEmpty
+                                  onPressed: filtered.isEmpty || _exporting
                                       ? null
-                                      : () => _copyCsv(filtered),
+                                      : () => _exportPdf(filtered),
                                   icon: const Icon(
-                                    Icons.content_copy_rounded,
+                                    Icons.picture_as_pdf_outlined,
                                     size: 18,
                                   ),
-                                  label: const Text('Copy filtered CSV'),
+                                  label: Text(
+                                    _exporting
+                                        ? 'Exporting...'
+                                        : 'Export filtered PDF',
+                                  ),
                                 ),
                               ],
                             ),
@@ -571,7 +681,7 @@ class _LguAuditLogsPageState extends State<LguAuditLogsPage> {
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 2),
                         child: Text(
-                          '${filtered.length} of ${all.length} operations activities  •  Outcome not recorded in prototype',
+                          '${filtered.length} of ${all.length} operations activities  •  Prototype records',
                           style: const TextStyle(
                             color: _muted,
                             fontSize: 12,
@@ -638,7 +748,7 @@ class _LguAuditLogsPageState extends State<LguAuditLogsPage> {
                             child: Text(
                               'Prototype-only view: locally filters operational modules, but it does NOT provide secure access control. '
                               'Production must enforce row-level authorization, immutable server-side logging, and export auditing. '
-                              'Action outcomes, approval references and verified actor IDs are not recorded in the current model.',
+                              'Verified actor IDs and independently confirmed outcomes are not recorded in the current model.',
                               style: TextStyle(
                                 color: _muted,
                                 fontSize: 11,
@@ -860,7 +970,6 @@ class _LguAuditLogsPageState extends State<LguAuditLogsPage> {
                   DataColumn(label: Text('MODULE')),
                   DataColumn(label: Text('DESCRIPTION')),
                   DataColumn(label: Text('RECORD ID')),
-                  DataColumn(label: Text('OUTCOME')),
                   DataColumn(label: Text('DETAILS')),
                 ],
                 rows: [
@@ -956,12 +1065,6 @@ class _LguAuditLogsPageState extends State<LguAuditLogsPage> {
                                 fontSize: 11,
                               ),
                             ),
-                          ),
-                        ),
-                        const DataCell(
-                          Text(
-                            'Not recorded',
-                            style: TextStyle(color: _muted, fontSize: 11),
                           ),
                         ),
                         DataCell(

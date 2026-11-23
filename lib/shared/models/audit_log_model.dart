@@ -1,3 +1,5 @@
+// Shared audit event model. Keep legacy enum cases for backwards compatibility
+// with existing KAISA modules until all usages are migrated.
 enum AuditActionType {
   create,
   update,
@@ -9,24 +11,15 @@ enum AuditActionType {
 }
 
 extension AuditActionTypeLabel on AuditActionType {
-  String get label {
-    switch (this) {
-      case AuditActionType.create:
-        return 'Created';
-      case AuditActionType.update:
-        return 'Updated';
-      case AuditActionType.assign:
-        return 'Assigned';
-      case AuditActionType.remove:
-        return 'Removed';
-      case AuditActionType.statusChange:
-        return 'Status Changed';
-      case AuditActionType.login:
-        return 'Login';
-      case AuditActionType.certificate:
-        return 'Certificate';
-    }
-  }
+  String get label => switch (this) {
+    AuditActionType.create => 'Created',
+    AuditActionType.update => 'Updated',
+    AuditActionType.assign => 'Assigned',
+    AuditActionType.remove => 'Removed',
+    AuditActionType.statusChange => 'Status Changed',
+    AuditActionType.login => 'Login',
+    AuditActionType.certificate => 'Certificate',
+  };
 }
 
 class AuditLog {
