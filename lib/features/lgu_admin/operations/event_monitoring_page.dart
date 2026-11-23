@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:file_saver/file_saver.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
 
 import '../../../shared/models/community_event_model.dart';
 import '../../../shared/models/organization_model.dart';
@@ -185,48 +187,135 @@ class _EventMonitoringPageState extends State<EventMonitoringPage> {
     });
   }
 
-  String _csvCell(Object? value) {
-    final text = (value ?? '').toString();
-    return '"${text.replaceAll('"', '""')}"';
-  }
+  bool _exportingPdf = false;
 
-  Future<void> _copyCsv(List<CommunityEvent> events) async {
-    const headers = [
-      'Event ID',
-      'Event',
-      'Organization',
-      'Status',
-      'Start',
-      'End',
-      'Location',
-      'Registrations',
-      'Attendance',
-      'Capacity',
-    ];
-    final rows = <List<Object?>>[
-      headers,
-      for (final event in events)
-        [
-          event.id,
-          event.title,
-          _organizationName(event.organizationId),
-          event.status.label,
-          event.startsAt.toIso8601String(),
-          event.endsAt.toIso8601String(),
-          event.location,
-          event.registrationCount,
-          event.attendanceCount,
-          event.capacity,
-        ],
-    ];
-    final csv = rows.map((row) => row.map(_csvCell).join(',')).join('\r\n');
-    await Clipboard.setData(ClipboardData(text: csv));
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Copied ${events.length} filtered event(s) as CSV.'),
-      ),
-    );
+  String _printable(Object? value) =>
+      (value ?? '').toString().replaceAll(RegExp(r'[^\x20-\x7E\n\r\t]'), '?');
+
+  Future<void> _exportEventsPdf(List<CommunityEvent> events) async {
+    if (_exportingPdf) return;
+    setState(() => _exportingPdf = true);
+    try {
+      final document = pw.Document(
+        title: 'KAISA Operations Events Monitoring - Prototype',
+      );
+      final forest = PdfColor.fromHex('#00492C');
+      final gold = PdfColor.fromHex('#FBBA16');
+      document.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4.landscape,
+          margin: const pw.EdgeInsets.all(28),
+          maxPages: 250,
+          header: (_) => pw.Container(
+            padding: const pw.EdgeInsets.all(11),
+            color: forest,
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text(
+                  'KAISA  /  OPERATIONS  /  EVENT MONITORING',
+                  style: pw.TextStyle(
+                    color: gold,
+                    fontSize: 9,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
+                pw.Text(
+                  'Filtered Event Monitoring Report',
+                  style: pw.TextStyle(
+                    color: PdfColors.white,
+                    fontSize: 17,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          footer: (ctx) => pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Text(
+                'PROTOTYPE - not official attendance evidence',
+                style: const pw.TextStyle(fontSize: 8),
+              ),
+              pw.Text(
+                'Page ${ctx.pageNumber} of ${ctx.pagesCount}',
+                style: const pw.TextStyle(fontSize: 8),
+              ),
+            ],
+          ),
+          build: (_) => [
+            pw.SizedBox(height: 10),
+            pw.Text(
+              'Generated ${DateTime.now().toIso8601String()} | '
+              '${events.length} filtered events',
+              style: const pw.TextStyle(fontSize: 9),
+            ),
+            pw.SizedBox(height: 12),
+            if (events.isEmpty)
+              pw.Text('No matching events')
+            else
+              pw.TableHelper.fromTextArray(
+                headers: const [
+                  'Event ID',
+                  'Title',
+                  'Organization',
+                  'Date',
+                  'Status',
+                  'Location',
+                  'Registrations',
+                  'Attendance',
+                ],
+                data: [
+                  for (final e in events)
+                    [
+                      _printable(e.id),
+                      _printable(e.title),
+                      _printable(_organizationName(e.organizationId)),
+                      _date(e.startsAt),
+                      _printable(e.status.label),
+                      _printable(e.location),
+                      '${e.registrationCount}',
+                      '${e.attendanceCount}',
+                    ],
+                ],
+                headerDecoration: pw.BoxDecoration(color: forest),
+                headerStyle: pw.TextStyle(
+                  color: PdfColors.white,
+                  fontWeight: pw.FontWeight.bold,
+                  fontSize: 8,
+                ),
+                cellStyle: const pw.TextStyle(fontSize: 8),
+                cellPadding: const pw.EdgeInsets.all(5),
+                oddRowDecoration: pw.BoxDecoration(
+                  color: PdfColor.fromHex('#F0F7F2'),
+                ),
+              ),
+          ],
+        ),
+      );
+      final now = DateTime.now();
+      final stamp =
+          '${now.year}${now.month.toString().padLeft(2, '0')}'
+          '${now.day.toString().padLeft(2, '0')}';
+      await FileSaver.instance.saveFile(
+        name: 'KAISA_Events_Monitoring_$stamp',
+        bytes: await document.save(),
+        fileExtension: 'pdf',
+        mimeType: MimeType.pdf,
+      );
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Event Monitoring PDF saved.')),
+        );
+    } catch (e) {
+      if (mounted)
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('PDF export failed: $e')));
+    } finally {
+      if (mounted) setState(() => _exportingPdf = false);
+    }
   }
 
   void _showEventDetails(CommunityEvent event) {
@@ -393,7 +482,7 @@ class _EventMonitoringPageState extends State<EventMonitoringPage> {
                           Expanded(
                             child: Text(
                               'Prototype Event Monitoring reads the shared local repositories. '
-                              'Calendar navigation, filtering, inspection and CSV copying work on these records. '
+                              'Calendar navigation, filtering, inspection and PDF reporting work on these records. '
                               'No event is approved, cancelled, or updated in Supabase from this screen.',
                               style: TextStyle(
                                 color: _muted,
@@ -733,9 +822,11 @@ class _EventMonitoringPageState extends State<EventMonitoringPage> {
                   ],
                 );
                 final export = OutlinedButton.icon(
-                  onPressed: events.isEmpty ? null : () => _copyCsv(events),
-                  icon: const Icon(Icons.content_copy_outlined, size: 17),
-                  label: const Text('Copy filtered CSV'),
+                  onPressed: events.isEmpty || _exportingPdf
+                      ? null
+                      : () => _exportEventsPdf(events),
+                  icon: const Icon(Icons.picture_as_pdf_outlined, size: 17),
+                  label: const Text('Export PDF'),
                   style: OutlinedButton.styleFrom(foregroundColor: _forest),
                 );
                 return bounds.maxWidth < 560
