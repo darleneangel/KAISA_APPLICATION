@@ -4,14 +4,14 @@ import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../features/lgu_admin/organizations/organization_registry_page.dart';
+import '../../features/lgu_admin/operations/organization_registry_page.dart';
 
 import '../../features/lgu_admin/security/lgu_admin_session_guard.dart';
 
-import '../../features/lgu_admin/assignments/admin_assignments_page.dart';
-import '../../features/lgu_admin/events/event_monitoring_page.dart';
-import '../../features/lgu_admin/reports/lgu_reports_page.dart';
-import '../../features/lgu_admin/audit_logs/lgu_audit_logs_page.dart';
+import '../../features/lgu_admin/operations/admin_assignments_page.dart';
+import '../../features/lgu_admin/operations/event_monitoring_page.dart';
+import '../../features/lgu_admin/operations/lgu_reports_page.dart';
+import '../../features/lgu_admin/operations/lgu_audit_logs_page.dart';
 import '../../features/lgu_admin/settings/lgu_settings_page.dart';
 
 import '../../features/lgu_admin/it/account_management_page.dart';
@@ -30,7 +30,7 @@ import '../../features/lgu_admin/verification/verification_audit_logs_page.dart'
 
 import '../../features/resident/widgets/kaisa_responsive_shell.dart';
 import '../../features/lgu_admin/layout/lgu_admin_shell.dart';
-import '../../features/lgu_admin/dashboard/lgu_admin_dashboard_page.dart';
+import '../../features/lgu_admin/operations/lgu_admin_dashboard_page.dart';
 import '../services/social_otp_service.dart';
 import '../../features/resident/about/about_kaisa_page.dart';
 import '../../features/organization_admin/dashboard/organization_admin_dashboard_page.dart';
