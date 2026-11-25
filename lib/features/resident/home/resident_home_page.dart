@@ -720,36 +720,9 @@ class _ResidentHomePageState extends State<ResidentHomePage> {
                                   );
                                 },
                               ),
-<<<<<<< HEAD
                       ),
                     ],
                   ),
-=======
-                            )
-                          : ListView.separated(
-                              shrinkWrap: true,
-                              itemCount: results.length,
-                              separatorBuilder: (_, _) =>
-                                  const Divider(height: 1, color: _line),
-                              itemBuilder: (context, index) {
-                                final item = results[index];
-                                return ListTile(
-                                  contentPadding: EdgeInsets.zero,
-                                  leading: Icon(item.$2, color: _forest),
-                                  title: Text(item.$1),
-                                  trailing: const Icon(
-                                    Icons.chevron_right_rounded,
-                                  ),
-                                  onTap: () {
-                                    Navigator.pop(sheetContext);
-                                    _go(item.$3);
-                                  },
-                                );
-                              },
-                            ),
-                    ),
-                  ],
->>>>>>> beff271c77b5546304dfe3296c31bd8c33d1f3a2
                 ),
               ),
             );

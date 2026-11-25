@@ -3,8 +3,6 @@ import 'package:go_router/go_router.dart';
 
 import 'core/theme/app_theme.dart';
 import 'features/lgu_admin/layout/lgu_admin_shell.dart';
-<<<<<<< HEAD
-=======
 import 'features/lgu_admin/operations/lgu_admin_dashboard_page.dart';
 import 'features/lgu_admin/operations/organization_registry_page.dart';
 import 'features/lgu_admin/operations/admin_assignments_page.dart';
@@ -14,7 +12,6 @@ import 'features/lgu_admin/operations/event_monitoring_page.dart';
 import 'features/lgu_admin/operations/lgu_reports_page.dart';
 import 'features/lgu_admin/operations/lgu_audit_logs_page.dart';
 import 'features/lgu_admin/operations/lgu_settings_page.dart';
->>>>>>> beff271c77b5546304dfe3296c31bd8c33d1f3a2
 
 import 'features/lgu_admin/operations/lgu_admin_dashboard_page.dart';
 import 'features/lgu_admin/operations/organization_registry_page.dart';

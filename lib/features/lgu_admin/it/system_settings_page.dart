@@ -1,8 +1,4 @@
 import 'package:flutter/material.dart';
-<<<<<<< HEAD
-import '../settings/widgets/lgu_role_settings_view.dart';
-=======
->>>>>>> beff271c77b5546304dfe3296c31bd8c33d1f3a2
 
 // KAISA IT Superadmin — least-privilege System Settings.
 // Preview-only: nothing here changes Supabase, project configuration,
@@ -22,53 +18,6 @@ class SystemSettingsPage extends StatefulWidget {
   const SystemSettingsPage({super.key});
 
   @override
-<<<<<<< HEAD
-  Widget build(BuildContext context) => const LguRoleSettingsView(
-    roleName: 'IT',
-    roleCode: 'lgu_it_admin',
-    subtitle:
-        'Your administrator profile, security preferences, and IT responsibilities.',
-    options: [
-      LguSettingOption(
-        'security',
-        'Security event alerts',
-        'Local preference for unusual sign-in and access events.',
-        Icons.shield_outlined,
-      ),
-      LguSettingOption(
-        'health',
-        'System health updates',
-        'Local preference for service and availability updates.',
-        Icons.monitor_heart_outlined,
-      ),
-      LguSettingOption(
-        'backup',
-        'Backup and recovery notices',
-        'Local preference for backup and restore information.',
-        Icons.backup_outlined,
-      ),
-    ],
-    responsibilities: [
-      LguResponsibility(
-        'Account management',
-        'Account administration and authorized account recovery.',
-        Icons.manage_accounts_outlined,
-      ),
-      LguResponsibility(
-        'Roles & permissions',
-        'Trusted provisioning and role-based access enforcement.',
-        Icons.admin_panel_settings_outlined,
-      ),
-      LguResponsibility(
-        'Security monitoring',
-        'Sign-in failures, access events and system health.',
-        Icons.security_outlined,
-      ),
-      LguResponsibility(
-        'Backup & recovery',
-        'Review and operate authorized backup workflows.',
-        Icons.settings_backup_restore_outlined,
-=======
   State<SystemSettingsPage> createState() => _SystemSettingsPageState();
 }
 
@@ -398,7 +347,6 @@ class _SystemSettingsPageState extends State<SystemSettingsPage> {
       _info(
         'Deployment environment',
         'Use your deployment configuration as the source of truth',
->>>>>>> beff271c77b5546304dfe3296c31bd8c33d1f3a2
       ),
     ],
   );
