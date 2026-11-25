@@ -4,15 +4,15 @@ import 'package:go_router/go_router.dart';
 
 import 'core/theme/app_theme.dart';
 import 'features/lgu_admin/layout/lgu_admin_shell.dart';
-import 'features/lgu_admin/dashboard/lgu_admin_dashboard_page.dart';
-import 'features/lgu_admin/organizations/organization_registry_page.dart';
-import 'features/lgu_admin/assignments/admin_assignments_page.dart';
+import 'features/lgu_admin/operations/lgu_admin_dashboard_page.dart';
+import 'features/lgu_admin/operations/organization_registry_page.dart';
+import 'features/lgu_admin/operations/admin_assignments_page.dart';
 
-import 'features/lgu_admin/events/event_monitoring_page.dart';
+import 'features/lgu_admin/operations/event_monitoring_page.dart';
 
-import 'features/lgu_admin/reports/lgu_reports_page.dart';
-import 'features/lgu_admin/audit_logs/lgu_audit_logs_page.dart';
-import 'features/lgu_admin/settings/lgu_settings_page.dart';
+import 'features/lgu_admin/operations/lgu_reports_page.dart';
+import 'features/lgu_admin/operations/lgu_audit_logs_page.dart';
+import 'features/lgu_admin/operations/lgu_settings_page.dart';
 
 
 void main() {

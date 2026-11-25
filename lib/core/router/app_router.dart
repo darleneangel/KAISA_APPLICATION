@@ -12,7 +12,7 @@ import '../../features/lgu_admin/operations/admin_assignments_page.dart';
 import '../../features/lgu_admin/operations/event_monitoring_page.dart';
 import '../../features/lgu_admin/operations/lgu_reports_page.dart';
 import '../../features/lgu_admin/operations/lgu_audit_logs_page.dart';
-import '../../features/lgu_admin/settings/lgu_settings_page.dart';
+import '../../features/lgu_admin/operations/lgu_settings_page.dart';
 
 import '../../features/lgu_admin/it/account_management_page.dart';
 import '../../features/lgu_admin/it/roles_permissions_page.dart';

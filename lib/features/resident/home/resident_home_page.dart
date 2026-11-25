@@ -241,7 +241,7 @@ class _ResidentHomePageState extends State<ResidentHomePage> {
                           : ListView.separated(
                               shrinkWrap: true,
                               itemCount: results.length,
-                              separatorBuilder: (_, __) =>
+                              separatorBuilder: (_, _) =>
                                   const Divider(height: 1, color: _line),
                               itemBuilder: (context, index) {
                                 final item = results[index];

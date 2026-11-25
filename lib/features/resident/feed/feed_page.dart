@@ -281,12 +281,13 @@ bool _termMatch(String text, String term) {
 }
 
 List<String> _readTags(dynamic value) {
-  if (value is List)
+  if (value is List) {
     return value
         .map((e) => e.toString().trim())
         .where((e) => e.isNotEmpty)
         .toSet()
         .toList();
+  }
   if (value is String) {
     final input = value.trim();
     if (input.startsWith('[')) {
@@ -337,8 +338,9 @@ double _postSearchScore(Map<String, dynamic> post, String query) {
     score += weight;
   }
   final phrase = _normalized(query);
-  if (phrase.isNotEmpty && _normalized(_postCorpus(post)).contains(phrase))
+  if (phrase.isNotEmpty && _normalized(_postCorpus(post)).contains(phrase)) {
     score += 5;
+  }
   return score;
 }
 
@@ -680,7 +682,7 @@ class _FeedPageState extends State<FeedPage> {
                               size: 70,
                             )
                           : Image.network(
-                              url!,
+                              url,
                               fit: BoxFit.contain,
                               errorBuilder: (_, _, _) => const Icon(
                                 Icons.broken_image_outlined,
@@ -2267,11 +2269,12 @@ class _PostCard extends StatelessWidget {
                         );
                       }
                     } else if (choice == 'author' && authorId.isNotEmpty) {
-                      if (context.mounted)
+                      if (context.mounted) {
                         context.push(
                           '/resident/user/$authorId',
                           extra: {'name': safeAuthor, 'avatar_path': rawAvatar},
                         );
+                      }
                     }
                   },
                   itemBuilder: (_) => [

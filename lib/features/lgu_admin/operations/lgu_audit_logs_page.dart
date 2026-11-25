@@ -312,8 +312,9 @@ class _LguAuditLogsPageState extends State<LguAuditLogsPage> {
         fileExtension: 'pdf',
         mimeType: MimeType.pdf,
       );
-      if (mounted)
+      if (mounted) {
         _snack('Exported ${records.length} filtered activities to PDF.');
+      }
     } catch (error) {
       if (mounted) _snack('PDF export failed: $error');
     } finally {

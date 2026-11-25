@@ -242,7 +242,7 @@ class _LoginPageState extends State<LoginPage> {
               switchOutCurve: Curves.easeInOut,
               layoutBuilder: (current, previous) => Stack(
                 fit: StackFit.expand,
-                children: [...previous, if (current != null) current],
+                children: [...previous, ?current],
               ),
               child: Image.asset(
                 _slideAssets[_activeSlide],

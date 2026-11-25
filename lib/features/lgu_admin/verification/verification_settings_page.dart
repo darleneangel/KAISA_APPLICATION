@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../settings/widgets/lgu_role_settings_view.dart';
+import '../layout/lgu_role_settings_view.dart';
+
 
 /// Verification Admin settings, aligned with Operations and IT settings.
 class VerificationSettingsPage extends StatelessWidget {

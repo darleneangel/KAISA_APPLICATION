@@ -275,8 +275,10 @@ _TextLayer(
         'design': _serializeDesign(),
       }));
       if (!ok) throw StateError('Browser storage rejected the draft');
-      if (mounted) setState(() => _draftStatus =
+      if (mounted) {
+        setState(() => _draftStatus =
           fingerprint == _currentFingerprint ? 'Draft auto-saved' : 'Saving newer edits…');
+      }
     } catch (e) {
       if (mounted) setState(() => _draftStatus = 'Auto-save failed: $e');
     }
