@@ -1,6 +1,6 @@
 import 'dart:math' as math;
+import 'kaisa_resident_design.dart';
 import 'package:flutter/material.dart';
-import '../../../core/theme/app_colors.dart';
 
 /// A reusable illustrated header for resident screens. All artwork is drawn
 /// using Flutter widgets; no new image assets or dependencies are required.
@@ -45,22 +45,24 @@ class _KaisaResidentHeroState extends State<KaisaResidentHero>
     return AnimatedBuilder(
       animation: _animation,
       builder: (context, child) {
-        final t = Curves.easeInOut.transform(_animation.value);
+        final t = MediaQuery.disableAnimationsOf(context)
+            ? 0.0
+            : Curves.easeInOut.transform(_animation.value);
         return Container(
           width: double.infinity,
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(30),
+            borderRadius: BorderRadius.circular(12),
             gradient: const LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [Color(0xFF0F7555), Color(0xFF074634), Color(0xFF053A30)],
+              colors: [Color(0xFF00492C), Color(0xFF00301B)],
             ),
             border: Border.all(color: Colors.white.withValues(alpha: .18)),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: .17),
-                blurRadius: 22,
+                color: Colors.black.withValues(alpha: .07),
+                blurRadius: 8,
                 offset: const Offset(0, 12),
               ),
             ],
@@ -77,7 +79,7 @@ class _KaisaResidentHeroState extends State<KaisaResidentHero>
                     shape: BoxShape.circle,
                     border: Border.all(
                       width: 34,
-                      color: AppColors.lime.withValues(alpha: .14),
+                      color: KaisaResidentDesign.yellow.withValues(alpha: .14),
                     ),
                   ),
                 ),
@@ -91,7 +93,7 @@ class _KaisaResidentHeroState extends State<KaisaResidentHero>
                     width: 220,
                     height: 42,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF286EAA).withValues(alpha: .30),
+                      color: const Color(0xFF286EAA).withValues(alpha: .08),
                       borderRadius: BorderRadius.circular(60),
                     ),
                   ),
@@ -106,11 +108,13 @@ class _KaisaResidentHeroState extends State<KaisaResidentHero>
                     width: 87,
                     height: 87,
                     decoration: BoxDecoration(
-                      color: AppColors.lime,
-                      borderRadius: BorderRadius.circular(27),
+                      color: KaisaResidentDesign.yellow,
+                      borderRadius: BorderRadius.circular(12),
                       boxShadow: [
                         BoxShadow(
-                          color: AppColors.lime.withValues(alpha: .22),
+                          color: KaisaResidentDesign.yellow.withValues(
+                            alpha: .22,
+                          ),
                           blurRadius: 18,
                           offset: const Offset(0, 9),
                         ),
@@ -118,7 +122,7 @@ class _KaisaResidentHeroState extends State<KaisaResidentHero>
                     ),
                     child: Icon(
                       widget.icon,
-                      color: AppColors.deepForest,
+                      color: const Color(0xFF00301B),
                       size: 43,
                     ),
                   ),
@@ -135,7 +139,7 @@ class _KaisaResidentHeroState extends State<KaisaResidentHero>
                       children: [
                         const Icon(
                           Icons.circle,
-                          color: AppColors.lime,
+                          color: KaisaResidentDesign.yellow,
                           size: 8,
                         ),
                         const SizedBox(width: 8),
@@ -143,11 +147,13 @@ class _KaisaResidentHeroState extends State<KaisaResidentHero>
                           child: Text(
                             widget.eyebrow.toUpperCase(),
                             maxLines: 2,
-                            style: const TextStyle(
-                              color: AppColors.lime,
-                              fontSize: 10,
-                              letterSpacing: 1.3,
-                              fontWeight: FontWeight.w800,
+                            style: KaisaTypography.body(
+                              TextStyle(
+                                color: KaisaResidentDesign.yellow,
+                                fontSize: 10,
+                                letterSpacing: 1.3,
+                                fontWeight: FontWeight.w800,
+                              ),
                             ),
                           ),
                         ),
@@ -156,22 +162,28 @@ class _KaisaResidentHeroState extends State<KaisaResidentHero>
                     const SizedBox(height: 13),
                     Text(
                       widget.title,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 24,
-                        height: 1.13,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: -.6,
+                      style: KaisaTypography.heading(
+                        TextStyle(
+                          color: Colors.white,
+                          fontSize: MediaQuery.sizeOf(context).width < 380
+                              ? 23
+                              : 28,
+                          height: 1.13,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -.6,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 11),
                     Text(
                       widget.subtitle,
-                      style: const TextStyle(
-                        color: AppColors.mint,
-                        fontSize: 12,
-                        height: 1.5,
-                        fontWeight: FontWeight.w500,
+                      style: KaisaTypography.body(
+                        TextStyle(
+                          color: const Color(0xFFE7F2EC),
+                          fontSize: 13,
+                          height: 1.5,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
                     if (widget.chip != null) ...[
@@ -183,17 +195,19 @@ class _KaisaResidentHeroState extends State<KaisaResidentHero>
                         ),
                         decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: .13),
-                          borderRadius: BorderRadius.circular(30),
+                          borderRadius: BorderRadius.circular(12),
                           border: Border.all(
                             color: Colors.white.withValues(alpha: .18),
                           ),
                         ),
                         child: Text(
                           widget.chip!,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
+                          style: KaisaTypography.body(
+                            TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
                       ),

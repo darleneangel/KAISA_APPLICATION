@@ -97,13 +97,13 @@ class KaisaResidentNavbar extends StatelessWidget {
     child: Tooltip(
       message: label,
       child: Material(
-        color: active ? const Color(0xFF135D3A) : Colors.transparent,
-        borderRadius: BorderRadius.circular(6),
+        color: active ? const Color(0xFF176044) : Colors.transparent,
+        borderRadius: BorderRadius.circular(8),
         child: InkWell(
           onTap: () {
             if (GoRouterState.of(context).uri.path != path) context.go(path);
           },
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(8),
           child: Padding(
             padding: EdgeInsets.symmetric(
               horizontal: compact ? 10 : 14,
@@ -126,10 +126,14 @@ class KaisaResidentNavbar extends StatelessWidget {
                   Expanded(
                     child: Text(
                       label,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                        fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                      style: KaisaTypography.heading(
+                        TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: active
+                              ? FontWeight.w700
+                              : FontWeight.w500,
+                        ),
                       ),
                     ),
                   ),
@@ -172,26 +176,30 @@ class KaisaResidentNavbar extends StatelessWidget {
                   if (!compact) ...[
                     _BrandMark(size: 38),
                     const SizedBox(width: 10),
-                    const Expanded(
+                    Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             'KAISA',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 22,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: .4,
+                            style: KaisaTypography.heading(
+                              TextStyle(
+                                color: Colors.white,
+                                fontSize: 22,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: .4,
+                              ),
                             ),
                           ),
                           Text(
                             'CIVIC PORTAL',
-                            style: TextStyle(
-                              color: Color(0xFFB6D0C0),
-                              fontSize: 9,
-                              letterSpacing: 1.1,
-                              fontWeight: FontWeight.w700,
+                            style: KaisaTypography.body(
+                              TextStyle(
+                                color: Color(0xFFB6D0C0),
+                                fontSize: 9,
+                                letterSpacing: 1.1,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ),
                         ],
@@ -213,17 +221,19 @@ class KaisaResidentNavbar extends StatelessWidget {
               ),
             ),
             if (!compact)
-              const Padding(
+              Padding(
                 padding: EdgeInsets.fromLTRB(29, 0, 0, 12),
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
                     'RESIDENT SERVICES',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.1,
-                      color: Color(0xFFACC9B7),
+                    style: KaisaTypography.body(
+                      TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.1,
+                        color: Color(0xFFACC9B7),
+                      ),
                     ),
                   ),
                 ),
@@ -244,20 +254,22 @@ class KaisaResidentNavbar extends StatelessWidget {
                           currentPath != '/resident/my-events' &&
                           currentPath != '/resident/my-organizations',
                     ),
-                  const Padding(
+                  Padding(
                     padding: EdgeInsets.symmetric(vertical: 14),
                     child: Divider(color: Color(0xFF32654A), height: 1),
                   ),
                   if (!compact)
-                    const Padding(
+                    Padding(
                       padding: EdgeInsets.only(left: 17, bottom: 10),
                       child: Text(
                         'MORE',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 1.1,
-                          color: Color(0xFFACC9B7),
+                        style: KaisaTypography.body(
+                          TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 1.1,
+                            color: Color(0xFFACC9B7),
+                          ),
                         ),
                       ),
                     ),
@@ -297,26 +309,27 @@ class KaisaResidentNavbar extends StatelessWidget {
                     children: [
                       const KaisaThemeSwitch(compact: true),
                       if (!compact)
-                        const Text(
+                        Text(
                           'Appearance',
-                          style: TextStyle(
-                            color: Color(0xFFD6E4DD),
-                            fontSize: 12,
+                          style: KaisaTypography.body(
+                            TextStyle(color: Color(0xFFD6E4DD), fontSize: 12),
                           ),
                         ),
                     ],
                   ),
                   if (!compact)
-                    const Padding(
+                    Padding(
                       padding: EdgeInsets.only(top: 10, left: 7),
                       child: Align(
                         alignment: Alignment.centerLeft,
                         child: Text(
                           'CONNECT • PARTICIPATE • IMPACT',
-                          style: TextStyle(
-                            color: Color(0xFFACC9B7),
-                            fontSize: 9,
-                            letterSpacing: .3,
+                          style: KaisaTypography.body(
+                            TextStyle(
+                              color: Color(0xFFACC9B7),
+                              fontSize: 9,
+                              letterSpacing: .3,
+                            ),
                           ),
                         ),
                       ),
@@ -341,7 +354,7 @@ class _BrandMark extends StatelessWidget {
     padding: const EdgeInsets.all(4),
     decoration: BoxDecoration(
       color: Colors.white,
-      borderRadius: BorderRadius.circular(6),
+      borderRadius: BorderRadius.circular(8),
     ),
     child: Image.asset(
       'assets/images/kaisa_logo.png',
@@ -408,12 +421,21 @@ class _MobileNavItem extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            active ? item.selectedIcon : item.icon,
-            color: active
-                ? KaisaResidentDesign.forest
-                : KaisaResidentDesign.muted,
-            size: 22,
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            width: 46,
+            height: 30,
+            decoration: BoxDecoration(
+              color: active ? KaisaResidentDesign.mint : Colors.transparent,
+              borderRadius: BorderRadius.circular(9),
+            ),
+            child: Icon(
+              active ? item.selectedIcon : item.icon,
+              color: active
+                  ? KaisaResidentDesign.forest
+                  : KaisaResidentDesign.muted,
+              size: 22,
+            ),
           ),
           const SizedBox(height: 3),
           Text(
@@ -424,12 +446,14 @@ class _MobileNavItem extends StatelessWidget {
                 : item.label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: active
-                  ? KaisaResidentDesign.forest
-                  : KaisaResidentDesign.muted,
-              fontSize: 10,
-              fontWeight: active ? FontWeight.w800 : FontWeight.w500,
+            style: KaisaTypography.body(
+              TextStyle(
+                color: active
+                    ? KaisaResidentDesign.forest
+                    : KaisaResidentDesign.muted,
+                fontSize: 10,
+                fontWeight: active ? FontWeight.w800 : FontWeight.w500,
+              ),
             ),
           ),
         ],

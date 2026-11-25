@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../../core/theme/app_colors.dart';
+import 'kaisa_resident_design.dart';
+import 'kaisa_resident_hero.dart';
 
 class KaisaHero extends StatelessWidget {
   const KaisaHero({
@@ -12,85 +13,11 @@ class KaisaHero extends StatelessWidget {
   final String title, subtitle, eyebrow;
   final IconData icon;
   @override
-  Widget build(BuildContext context) => Container(
-    width: double.infinity,
-    decoration: BoxDecoration(
-      gradient: AppColors.heroGradient,
-      borderRadius: BorderRadius.circular(24),
-    ),
-    clipBehavior: Clip.antiAlias,
-    child: Stack(
-      children: [
-        Positioned(
-          right: -35,
-          top: -50,
-          child: Container(
-            width: 220,
-            height: 220,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: Colors.white.withValues(alpha: .1),
-                width: 35,
-              ),
-            ),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.all(28),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      eyebrow,
-                      style: const TextStyle(
-                        color: AppColors.yellow,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 2,
-                        fontSize: 10,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      title,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: MediaQuery.sizeOf(context).width < 600
-                            ? 25
-                            : 32,
-                        fontWeight: FontWeight.w900,
-                        height: 1.2,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      subtitle,
-                      style: const TextStyle(
-                        color: Color(0xFFE1F2E5),
-                        fontSize: 13,
-                        height: 1.5,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 14),
-              Container(
-                padding: const EdgeInsets.all(17),
-                decoration: BoxDecoration(
-                  color: AppColors.yellow,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Icon(icon, color: AppColors.deepForest, size: 35),
-              ),
-            ],
-          ),
-        ),
-      ],
-    ),
+  Widget build(BuildContext context) => KaisaResidentHero(
+    eyebrow: eyebrow,
+    title: title,
+    subtitle: subtitle,
+    icon: icon,
   );
 }
 
@@ -129,8 +56,15 @@ class KaisaTile extends StatelessWidget {
   final Widget? trailing;
   @override
   Widget build(BuildContext context) => Card(
+    elevation: 0,
+    margin: EdgeInsets.zero,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(12),
+      side: const BorderSide(color: KaisaResidentDesign.border),
+    ),
+    clipBehavior: Clip.antiAlias,
     child: InkWell(
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(12),
       onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.all(19),
@@ -141,14 +75,10 @@ class KaisaTile extends StatelessWidget {
               width: 54,
               height: 54,
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primaryContainer,
+                color: KaisaResidentDesign.mint,
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: Icon(
-                icon,
-                color: Theme.of(context).colorScheme.onPrimaryContainer,
-                size: 27,
-              ),
+              child: Icon(icon, color: KaisaResidentDesign.forest, size: 27),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -157,18 +87,19 @@ class KaisaTile extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 15,
+                    style: KaisaTypography.heading(
+                      TextStyle(fontWeight: FontWeight.w600, fontSize: 17),
                     ),
                   ),
                   const SizedBox(height: 6),
                   Text(
                     subtitle,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      fontSize: 12,
-                      height: 1.5,
+                    style: KaisaTypography.body(
+                      TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        fontSize: 12,
+                        height: 1.5,
+                      ),
                     ),
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
@@ -200,11 +131,10 @@ class KaisaResponsiveGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, c) {
-      final columns = c.maxWidth > 1050
-          ? 3
-          : c.maxWidth > 660
-          ? 2
-          : 1;
+      final columns = ((c.maxWidth + 14) / (minWidth.clamp(120.0, 1440.0) + 14))
+          .floor()
+          .clamp(1, 3)
+          .toInt();
       return GridView.builder(
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),

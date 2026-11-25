@@ -34,58 +34,61 @@ class _KaisaResponsiveShellState extends State<KaisaResponsiveShell> {
   @override
   Widget build(BuildContext context) {
     final current = widget.location ?? GoRouterState.of(context).uri.path;
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final width = constraints.maxWidth;
-        final mobile = width < 768;
-        final tablet = width >= 768 && width < 1024;
-        final sidebarCollapsed = tablet || _sidebarCollapsed;
+    return Theme(
+      data: KaisaTypography.theme(context),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final width = constraints.maxWidth;
+          final mobile = width < 768;
+          final tablet = width >= 768 && width < 1024;
+          final sidebarCollapsed = tablet || _sidebarCollapsed;
 
-        return Scaffold(
-          backgroundColor: KaisaResidentDesign.paper,
-          body: KaisaShellScope(
-            child: mobile
-                ? Column(
-                    children: [
-                      const KaisaResidentTopBar(),
-                      Expanded(child: widget.child),
-                    ],
-                  )
-                : Row(
-                    children: [
-                      KaisaResidentNavbar(
-                        currentPath: current,
-                        compact: sidebarCollapsed,
-                        onToggle: () => setState(
-                          () => _sidebarCollapsed = !_sidebarCollapsed,
+          return Scaffold(
+            backgroundColor: KaisaResidentDesign.paper,
+            body: KaisaShellScope(
+              child: mobile
+                  ? Column(
+                      children: [
+                        const KaisaResidentTopBar(),
+                        Expanded(child: widget.child),
+                      ],
+                    )
+                  : Row(
+                      children: [
+                        KaisaResidentNavbar(
+                          currentPath: current,
+                          compact: sidebarCollapsed,
+                          onToggle: () => setState(
+                            () => _sidebarCollapsed = !_sidebarCollapsed,
+                          ),
+                          canToggle: !tablet,
                         ),
-                        canToggle: !tablet,
-                      ),
-                      Expanded(
-                        child: Column(
-                          children: [
-                            const KaisaResidentTopBar(),
-                            Expanded(
-                              child: Center(
-                                child: ConstrainedBox(
-                                  constraints: const BoxConstraints(
-                                    maxWidth: 1440,
+                        Expanded(
+                          child: Column(
+                            children: [
+                              const KaisaResidentTopBar(),
+                              Expanded(
+                                child: Center(
+                                  child: ConstrainedBox(
+                                    constraints: const BoxConstraints(
+                                      maxWidth: 1440,
+                                    ),
+                                    child: widget.child,
                                   ),
-                                  child: widget.child,
                                 ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-          ),
-          bottomNavigationBar: mobile
-              ? KaisaMobileNavbar(currentPath: current)
-              : null,
-        );
-      },
+                      ],
+                    ),
+            ),
+            bottomNavigationBar: mobile
+                ? KaisaMobileNavbar(currentPath: current)
+                : null,
+          );
+        },
+      ),
     );
   }
 }
@@ -116,7 +119,10 @@ class _KaisaResidentTopBarState extends State<KaisaResidentTopBar> {
 
   void _reload() {
     final user = Supabase.instance.client.auth.currentUser;
-    if (user == null) return;
+    if (user == null) {
+      if (mounted) setState(() => _firstName = null);
+      return;
+    }
     final meta = user.userMetadata ?? {};
     final fallback = (meta['first_name'] ?? meta['firstName'] ?? '')
         .toString()
@@ -128,7 +134,9 @@ class _KaisaResidentTopBarState extends State<KaisaResidentTopBar> {
         .eq('user_id', user.id)
         .maybeSingle()
         .then((row) {
-          if (!mounted) return;
+          if (!mounted ||
+              Supabase.instance.client.auth.currentUser?.id != user.id)
+            return;
           final value = (row?['first_name'] ?? '').toString().trim();
           if (value.isNotEmpty) setState(() => _firstName = value);
         })
@@ -146,16 +154,16 @@ class _KaisaResidentTopBarState extends State<KaisaResidentTopBar> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Sign out of KAISA?'),
-        content: const Text('You can sign back in with your account.'),
+        title: Text('Sign out of KAISA?'),
+        content: Text('You can sign back in with your account.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancel'),
+            child: Text('Cancel'),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Sign out'),
+            child: Text('Sign out'),
           ),
         ],
       ),
@@ -175,71 +183,136 @@ class _KaisaResidentTopBarState extends State<KaisaResidentTopBar> {
     }
   }
 
-  void _explore() => showModalBottomSheet<void>(
-    context: context,
-    isScrollControlled: true,
-    useSafeArea: true,
-    showDragHandle: true,
-    builder: (sheetContext) => Padding(
-      padding: EdgeInsets.fromLTRB(
-        20,
-        12,
-        20,
-        MediaQuery.viewInsetsOf(sheetContext).bottom + 24,
+  void _explore() {
+    final router = GoRouter.of(context);
+    var query = '';
+    final destinations = <(String, IconData, String)>[
+      for (final item in KaisaResidentNavigation.destinations)
+        (item.label, item.icon, item.path),
+      ('My Events', Icons.event_available_outlined, '/resident/my-events'),
+      (
+        'My Organizations',
+        Icons.group_work_outlined,
+        '/resident/my-organizations',
       ),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 550),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Find KAISA features',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w700,
-                color: KaisaResidentDesign.ink,
+      (
+        'Notifications',
+        Icons.notifications_none_rounded,
+        '/resident/notifications',
+      ),
+      (
+        'Identity Verification',
+        Icons.verified_user_outlined,
+        '/resident/identity-verification',
+      ),
+    ];
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => Theme(
+        data: KaisaTypography.theme(context),
+        child: StatefulBuilder(
+          builder: (context, update) {
+            final results = destinations
+                .where(
+                  (item) => item.$1.toLowerCase().contains(
+                    query.trim().toLowerCase(),
+                  ),
+                )
+                .toList();
+            return Dialog(
+              insetPadding: const EdgeInsets.symmetric(
+                horizontal: 20,
+                vertical: 24,
               ),
-            ),
-            const SizedBox(height: 7),
-            Text(
-              'Go directly to a KAISA service.',
-              style: TextStyle(fontSize: 14, color: KaisaResidentDesign.muted),
-            ),
-            const SizedBox(height: 17),
-            for (final entry in const <(String, IconData, String)>[
-              ('Community Feed', Icons.forum_outlined, '/resident/feed'),
-              (
-                'Organizations',
-                Icons.groups_2_outlined,
-                '/resident/organizations',
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
               ),
-              ('Events', Icons.event_outlined, '/resident/events'),
-              (
-                'My Events',
-                Icons.event_available_outlined,
-                '/resident/my-events',
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: 540,
+                  maxHeight: MediaQuery.sizeOf(context).height * .72,
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Smart Search',
+                              style: KaisaTypography.heading(
+                                const TextStyle(
+                                  fontSize: 26,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            tooltip: 'Close search',
+                            onPressed: () => Navigator.pop(dialogContext),
+                            icon: const Icon(Icons.close_rounded),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Find a KAISA page or service.',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        autofocus: true,
+                        onChanged: (value) => update(() => query = value),
+                        decoration: const InputDecoration(
+                          hintText: 'Search KAISA features...',
+                          prefixIcon: Icon(Icons.search_rounded),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Flexible(
+                        child: results.isEmpty
+                            ? Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Text('No matching pages.'),
+                              )
+                            : ListView.separated(
+                                shrinkWrap: true,
+                                itemCount: results.length,
+                                separatorBuilder: (_, _) =>
+                                    const Divider(height: 1),
+                                itemBuilder: (context, index) {
+                                  final item = results[index];
+                                  return ListTile(
+                                    leading: Icon(
+                                      item.$2,
+                                      color: KaisaResidentDesign.forest,
+                                    ),
+                                    title: Text(item.$1),
+                                    trailing: const Icon(
+                                      Icons.chevron_right_rounded,
+                                    ),
+                                    onTap: () {
+                                      Navigator.pop(dialogContext);
+                                      router.go(item.$3);
+                                    },
+                                  );
+                                },
+                              ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-              (
-                'My Organizations',
-                Icons.group_work_outlined,
-                '/resident/my-organizations',
-              ),
-            ])
-              ListTile(
-                leading: Icon(entry.$2, color: KaisaResidentDesign.forest),
-                title: Text(entry.$1),
-                trailing: const Icon(Icons.chevron_right_rounded, size: 18),
-                onTap: () {
-                  Navigator.pop(sheetContext);
-                  context.go(entry.$3);
-                },
-              ),
-          ],
+            );
+          },
         ),
       ),
-    ),
-  );
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -250,7 +323,7 @@ class _KaisaResidentTopBarState extends State<KaisaResidentTopBar> {
       child: SafeArea(
         bottom: false,
         child: Container(
-          height: 64,
+          height: 66,
           padding: EdgeInsets.symmetric(
             horizontal: tiny ? 12 : (width < 768 ? 17 : 28),
           ),
@@ -273,7 +346,7 @@ class _KaisaResidentTopBarState extends State<KaisaResidentTopBar> {
                       padding: const EdgeInsets.all(3),
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(6),
+                        borderRadius: BorderRadius.circular(8),
                         border: Border.all(color: KaisaResidentDesign.border),
                       ),
                       child: Image.asset(
@@ -290,24 +363,27 @@ class _KaisaResidentTopBarState extends State<KaisaResidentTopBar> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'KAISA',
-                          style: TextStyle(
-                            color: KaisaResidentDesign.forest,
-                            fontFamily: 'Outfit',
-                            fontSize: 20,
-                            fontWeight: FontWeight.w800,
-                            height: 1.05,
+                          style: KaisaTypography.heading(
+                            TextStyle(
+                              color: KaisaResidentDesign.forest,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w800,
+                              height: 1.05,
+                            ),
                           ),
                         ),
                         if (!tiny)
-                          const Text(
+                          Text(
                             'CAVITE CITY',
-                            style: TextStyle(
-                              color: KaisaResidentDesign.muted,
-                              fontSize: 8,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 1,
+                            style: KaisaTypography.body(
+                              TextStyle(
+                                color: KaisaResidentDesign.muted,
+                                fontSize: 8,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 1,
+                              ),
                             ),
                           ),
                       ],
@@ -323,12 +399,20 @@ class _KaisaResidentTopBarState extends State<KaisaResidentTopBar> {
                   child: OutlinedButton.icon(
                     onPressed: _explore,
                     icon: const Icon(Icons.search_rounded, size: 18),
-                    label: const Text('Search KAISA'),
+                    label: Text(
+                      'Search KAISA',
+                      style: KaisaTypography.body(
+                        const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
                     style: OutlinedButton.styleFrom(
                       side: const BorderSide(color: KaisaResidentDesign.border),
                       foregroundColor: KaisaResidentDesign.muted,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(6),
+                        borderRadius: BorderRadius.circular(8),
                       ),
                       padding: const EdgeInsets.symmetric(horizontal: 13),
                     ),
@@ -362,15 +446,15 @@ class _KaisaResidentTopBarState extends State<KaisaResidentTopBar> {
                       enabled: false,
                       child: Text('Signed in as $_firstName'),
                     ),
-                  const PopupMenuItem(
+                  PopupMenuItem(
                     value: '/resident/profile',
                     child: Text('My profile'),
                   ),
-                  const PopupMenuItem(
+                  PopupMenuItem(
                     value: '/resident/identity-verification',
                     child: Text('Identity verification'),
                   ),
-                  const PopupMenuItem(value: 'logout', child: Text('Sign out')),
+                  PopupMenuItem(value: 'logout', child: Text('Sign out')),
                 ],
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -379,10 +463,12 @@ class _KaisaResidentTopBarState extends State<KaisaResidentTopBar> {
                     backgroundColor: KaisaResidentDesign.forest,
                     child: Text(
                       _initial,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 13,
+                      style: KaisaTypography.body(
+                        TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 13,
+                        ),
                       ),
                     ),
                   ),

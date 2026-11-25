@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'kaisa_resident_design.dart';
 import '../../../core/theme/kaisa_theme_controller.dart';
 
 class KaisaThemeSwitch extends StatelessWidget {
@@ -18,28 +19,39 @@ class KaisaThemeSwitch extends StatelessWidget {
             : value == ThemeMode.light
             ? Icons.light_mode_rounded
             : Icons.brightness_auto_rounded,
-        color: Theme.of(context).colorScheme.onSurface,
+        color: compact
+            ? const Color(0xFFD6E4DD)
+            : Theme.of(context).colorScheme.onSurface,
       ),
-      itemBuilder: (context) => const [
+      itemBuilder: (context) => [
         PopupMenuItem(
           value: ThemeMode.system,
           child: ListTile(
             leading: Icon(Icons.brightness_auto_rounded),
-            title: Text('System'),
+            title: Text(
+              'System',
+              style: KaisaTypography.body(const TextStyle(fontSize: 14)),
+            ),
           ),
         ),
         PopupMenuItem(
           value: ThemeMode.light,
           child: ListTile(
             leading: Icon(Icons.light_mode_rounded),
-            title: Text('Light'),
+            title: Text(
+              'Light',
+              style: KaisaTypography.body(const TextStyle(fontSize: 14)),
+            ),
           ),
         ),
         PopupMenuItem(
           value: ThemeMode.dark,
           child: ListTile(
             leading: Icon(Icons.dark_mode_rounded),
-            title: Text('Dark'),
+            title: Text(
+              'Dark',
+              style: KaisaTypography.body(const TextStyle(fontSize: 14)),
+            ),
           ),
         ),
       ],

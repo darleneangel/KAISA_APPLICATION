@@ -1,13 +1,15 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/services/kaisa_auth_service.dart';
 import '../../../core/services/kaisa_resident_profile_gate.dart';
 
-/// KAISA login — compact Civic Dignity UI with 5-photo crossfade background.
+/// KAISA login — centered Civic Dignity form over a civic photo slideshow.
 ///
 /// Authentication, session checking, OAuth, and role-based destinations are
 /// retained from the existing login_page.dart. This is a UI replacement only.
@@ -29,7 +31,7 @@ class _CivicColors {
   static const Color gold = Color(0xFFFDBC19);
   static const Color ink = Color(0xFF17211B);
   static const Color muted = Color(0xFF65716B);
-  static const Color input = Color(0xFFF4F6FB);
+  static const Color input = Color(0xFFF9F9FF);
   static const Color border = Color(0xFFE2E9E5);
 }
 
@@ -43,42 +45,74 @@ class _LoginPageState extends State<LoginPage> {
   bool _socialLoading = false;
   bool _tagalog = false;
 
-  // Five rotating background photos. When the files exist in assets/images,
-  // Flutter uses them offline; until then, online Unsplash photos are used.
-  static const List<String> _slideAssets = [
-    'assets/images/kaisa_bg_01.jpg',
-    'assets/images/kaisa_bg_02.jpg',
-    'assets/images/kaisa_bg_03.jpg',
-    'assets/images/kaisa_bg_04.jpg',
-    'assets/images/kaisa_bg_05.jpg',
+  // Documented civic milestones. Keep each image and caption together.
+  static const _slides = <_AchievementSlide>[
+    _AchievementSlide(
+      'assets/images/cavite/unlad_pier.jpg',
+      'https://thecaviterising.com/wp-content/uploads/2023/09/Photo-1-Article-180-091623.png',
+      'Unlad Pier opens to the public',
+      'Binuksan sa publiko ang Unlad Pier',
+      'A waterfront facility supporting local transport and tourism.',
+      'Pasilidad sa baybayin para sa transportasyon at turismo.',
+      'INFRASTRUCTURE • SEP 2023',
+      'The Cavite Rising',
+    ),
+    _AchievementSlide(
+      'assets/images/cavite/corregidor_2025.jpg',
+      'https://thecaviterising.com/wp-content/uploads/2025/06/Photo-8-Article-143-060625.jpg',
+      'Corregidor tours launched',
+      'Inilunsad ang Corregidor tours',
+      'The City Tourism Office launched group tours from Unlad Pier.',
+      'Inilunsad ng City Tourism Office ang group tours mula sa Unlad Pier.',
+      'TOURISM • JUN 2025',
+      'The Cavite Rising',
+    ),
+    _AchievementSlide(
+      'assets/images/cavite/regada_foam_2025.jpg',
+      'https://media.assettype.com/tribune%2F2025-07-20%2Fq9frrgh4%2FRevelers-enjoying-a-foam-party-Photo-by-Roel-Hoang-Manipon.jpg',
+      'Regada community celebration',
+      'Pagdiriwang ng Regada',
+      'Residents celebrate together at the Regada foam party.',
+      'Sama-samang nagdiriwang ang mga residente sa Regada.',
+      'COMMUNITY • JUN 2025',
+      'Roel Hoang Manipon / Daily Tribune',
+    ),
+    _AchievementSlide(
+      'assets/images/cavite/regada_2025.jpg',
+      'https://media.assettype.com/tribune%2F2025-07-20%2Fg6tgw5si%2FFirefighters-drenching-attendees-with-cool-water-Photo-by-Roel-Hoang-Manipon.jpg',
+      'Regada Water Festival',
+      'Pista ng Regada',
+      'The city celebrated local culture through festivities and community activities.',
+      'Ipinagdiwang ng lungsod ang kultura sa pamamagitan ng mga gawaing pangkomunidad.',
+      'CULTURE • JUN 2025',
+      'Roel Hoang Manipon / Daily Tribune',
+    ),
   ];
-
-  static const List<String> _slideImageUrls = [
-    'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=1600&q=82',
-    'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=1600&q=82',
-    'https://images.unsplash.com/photo-1529333166437-7750a6dd5a70?auto=format&fit=crop&w=1600&q=82',
-    'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&w=1600&q=82',
-    'https://images.unsplash.com/photo-1556761175-b413da4baf72?auto=format&fit=crop&w=1600&q=82',
-  ];
-
   Timer? _slideTimer;
   int _activeSlide = 0;
+  bool _paused = false;
+  bool _reduceMotion = false;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Respect operating-system accessibility preferences (reduced motion).
-    final reduceMotion =
-        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
-    if (reduceMotion) {
-      _slideTimer?.cancel();
-      _slideTimer = null;
-    } else {
-      _slideTimer ??= Timer.periodic(const Duration(seconds: 7), (_) {
-        if (!mounted) return;
-        setState(() => _activeSlide = (_activeSlide + 1) % _slideAssets.length);
-      });
-    }
+    _reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    _scheduleSlides();
+  }
+
+  void _scheduleSlides() {
+    _slideTimer?.cancel();
+    _slideTimer = null;
+    if (_paused || _reduceMotion) return;
+    _slideTimer = Timer.periodic(const Duration(seconds: 7), (_) {
+      if (mounted)
+        setState(() => _activeSlide = (_activeSlide + 1) % _slides.length);
+    });
+  }
+
+  void _selectSlide(int index) {
+    setState(() => _activeSlide = (index + _slides.length) % _slides.length);
+    _scheduleSlides();
   }
 
   bool get _working => _isLoading || _socialLoading;
@@ -225,9 +259,8 @@ class _LoginPageState extends State<LoginPage> {
   // PRESENTATION — adapted from the supplied Stitch screenshot / DESIGN.md.
   // -------------------------------------------------------------------------
 
-  // Crossfade slide animation is independent of auth state and form values.
-  // No external UI dependencies are required.
-  Widget _buildPhotoSlideshow(bool reduceMotion) {
+  Widget _background() {
+    final slide = _slides[_activeSlide % _slides.length];
     return Positioned.fill(
       child: IgnorePointer(
         child: Stack(
@@ -235,45 +268,41 @@ class _LoginPageState extends State<LoginPage> {
           children: [
             const ColoredBox(color: _CivicColors.dark),
             AnimatedSwitcher(
-              duration: reduceMotion
+              duration: _reduceMotion
                   ? Duration.zero
-                  : const Duration(milliseconds: 1350),
+                  : const Duration(milliseconds: 450),
               switchInCurve: Curves.easeInOut,
               switchOutCurve: Curves.easeInOut,
               layoutBuilder: (current, previous) => Stack(
                 fit: StackFit.expand,
                 children: [...previous, if (current != null) current],
               ),
-              child: Image.asset(
-                _slideAssets[_activeSlide],
-                key: ValueKey<int>(_activeSlide),
-                fit: BoxFit.cover,
-                filterQuality: FilterQuality.medium,
-                // Files can be downloaded once with download_kaisa_images.ps1.
-                // Without them, this remote version still shows the slideshow.
-                errorBuilder: (context, error, stackTrace) => Image.network(
-                  _slideImageUrls[_activeSlide],
-                  fit: BoxFit.cover,
-                  filterQuality: FilterQuality.medium,
-                  errorBuilder: (_, error, stackTrace) =>
-                      const ColoredBox(color: _CivicColors.dark),
+              child: SizedBox.expand(
+                key: ValueKey(slide.asset),
+                child: Image.asset(
+                  slide.asset,
+                  filterQuality: FilterQuality.high,
+                  fit: slide.contain ? BoxFit.contain : BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Image.network(
+                    slide.url,
+                    filterQuality: FilterQuality.high,
+                    fit: slide.contain ? BoxFit.contain : BoxFit.cover,
+                    errorBuilder: (_, __, ___) =>
+                        const ColoredBox(color: _CivicColors.dark),
+                  ),
                 ),
               ),
             ),
-            // A forest-green scrim keeps the white login card and header clear
-            // against all five photos, including lighter scenes.
-            ColoredBox(color: _CivicColors.dark.withValues(alpha: 0.50)),
             const DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    Color(0xA6002015),
-                    Color(0x1A002818),
-                    Color(0xAA002015),
+                    Color(0xA6002115),
+                    Color(0x5500301B),
+                    Color(0xC6002818),
                   ],
-                  stops: [0.0, 0.48, 1.0],
                 ),
               ),
             ),
@@ -282,194 +311,194 @@ class _LoginPageState extends State<LoginPage> {
       ),
     );
   }
+
+  Widget _dots() => Wrap(
+    alignment: WrapAlignment.center,
+    crossAxisAlignment: WrapCrossAlignment.center,
+    children: [
+      for (var i = 0; i < _slides.length; i++)
+        IconButton(
+          tooltip: _slides[i].title,
+          onPressed: () => _selectSlide(i),
+          icon: Icon(
+            Icons.circle,
+            size: _activeSlide == i ? 13 : 8,
+            color: _activeSlide == i ? _CivicColors.gold : Colors.white54,
+          ),
+        ),
+      IconButton(
+        tooltip: _paused ? 'Resume slideshow' : 'Pause slideshow',
+        onPressed: _reduceMotion
+            ? null
+            : () {
+                setState(() => _paused = !_paused);
+                _scheduleSlides();
+              },
+        color: Colors.white,
+        icon: Icon(_paused ? Icons.play_arrow_rounded : Icons.pause_rounded),
+      ),
+    ],
+  );
 
   @override
   Widget build(BuildContext context) {
-    final reduceMotion =
-        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
-    return Scaffold(
-      backgroundColor: _CivicColors.dark,
-      body: Stack(
-        children: [
-          _buildPhotoSlideshow(reduceMotion),
-          SafeArea(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final isMobile = constraints.maxWidth < 700;
-                final smallPhone = constraints.maxWidth < 390;
-
-                return SingleChildScrollView(
-                  keyboardDismissBehavior:
-                      ScrollViewKeyboardDismissBehavior.onDrag,
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      minHeight: constraints.maxHeight,
-                    ),
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: isMobile ? 16 : 32,
-                        vertical: isMobile ? 14 : 15,
+    final light = ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.light,
+      colorScheme: ColorScheme.fromSeed(seedColor: _CivicColors.green),
+    );
+    return Theme(
+      data: light.copyWith(
+        textTheme: Theme.of(
+          context,
+        ).textTheme.apply(fontFamily: GoogleFonts.inter().fontFamily),
+        platform: Theme.of(context).platform,
+      ),
+      child: Scaffold(
+        backgroundColor: _CivicColors.dark,
+        body: Stack(
+          children: [
+            _background(),
+            SafeArea(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final mobile = constraints.maxWidth < 700;
+                  return SingleChildScrollView(
+                    keyboardDismissBehavior:
+                        ScrollViewKeyboardDismissBehavior.onDrag,
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minHeight: constraints.maxHeight,
                       ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          _buildHeader(
-                            isMobile: isMobile,
-                            smallPhone: smallPhone,
-                          ),
-                          Padding(
-                            padding: EdgeInsets.symmetric(
-                              vertical: isMobile ? 14 : 12,
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: mobile ? 12 : 40,
+                          vertical: mobile ? 8 : 16,
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            _buildHeader(
+                              isMobile: mobile,
+                              smallPhone: constraints.maxWidth < 390,
                             ),
-                            child: Center(
-                              child: ConstrainedBox(
-                                constraints: BoxConstraints(maxWidth: 350),
-                                child: _buildLoginCard(isMobile: isMobile),
+                            if (mobile) _dots(),
+                            Padding(
+                              padding: EdgeInsets.symmetric(
+                                vertical: mobile ? 6 : 18,
+                              ),
+                              child: Center(
+                                child: ConstrainedBox(
+                                  constraints: BoxConstraints(
+                                    maxWidth: mobile ? 340 : 380,
+                                  ),
+                                  child: _buildLoginCard(isMobile: mobile),
+                                ),
                               ),
                             ),
-                          ),
-                          _buildFooter(isMobile: isMobile),
-                        ],
+                            _buildFooter(isMobile: mobile),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildHeader({required bool isMobile, required bool smallPhone}) {
-    return Row(
-      children: [
-        IconButton(
-          tooltip: _t('Back to welcome', 'Bumalik sa welcome'),
-          onPressed: _working ? null : () => context.go('/welcome'),
-          icon: const Icon(Icons.arrow_back_rounded),
-          color: Colors.white,
-          style: IconButton.styleFrom(
-            backgroundColor: Colors.white.withValues(alpha: 0.09),
+  Widget _buildHeader({required bool isMobile, required bool smallPhone}) =>
+      Row(
+        children: [
+          IconButton(
+            tooltip: _t('Back to welcome', 'Bumalik sa welcome'),
+            onPressed: _working ? null : () => context.go('/welcome'),
+            color: Colors.white,
+            icon: const Icon(Icons.arrow_back_rounded),
           ),
-        ),
-        SizedBox(width: isMobile ? 10 : 16),
-        // Circular logo only: no yellow tile, tint, or colored backdrop.
-        SizedBox(
-          height: isMobile ? 40 : 44,
-          width: isMobile ? 40 : 44,
-          child: ClipOval(
-            child: Image.asset(
-              'assets/images/kaisa_logo.png',
-              fit: BoxFit.contain,
-              errorBuilder: (context, error, stackTrace) => const Icon(
-                Icons.groups_rounded,
-                size: 26,
-                color: Colors.white,
-              ),
+          Image.asset(
+            'assets/images/kaisa_logo.png',
+            width: isMobile ? 34 : 42,
+            height: isMobile ? 34 : 42,
+            fit: BoxFit.contain,
+            errorBuilder: (_, __, ___) => const Icon(
+              Icons.groups_rounded,
+              color: _CivicColors.gold,
+              size: 36,
             ),
           ),
-        ),
-        const SizedBox(width: 10),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'KAISA',
-              style: TextStyle(
-                fontSize: smallPhone ? 18 : 22,
-                fontWeight: FontWeight.w900,
-                letterSpacing: -0.6,
-                color: Colors.white,
-              ),
-            ),
-            if (!smallPhone)
-              Text(
-                'LUNGSOD NG CAVITE',
-                style: TextStyle(
-                  fontSize: isMobile ? 8 : 10,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.5,
-                  color: Colors.white.withValues(alpha: 0.78),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'KAISA',
+                  style: GoogleFonts.outfit(
+                    fontSize: isMobile ? 21 : 25,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                  ),
                 ),
-              ),
-          ],
-        ),
-        const Spacer(),
-        _buildLanguagePicker(isMobile),
-      ],
-    );
-  }
-
-  Widget _buildLanguagePicker(bool isMobile) {
-    if (isMobile) {
-      return PopupMenuButton<bool>(
-        tooltip: 'Choose language / Piliin ang wika',
-        initialValue: _tagalog,
-        onSelected: (value) => setState(() => _tagalog = value),
-        icon: const Icon(Icons.translate_rounded, color: _CivicColors.gold),
-        itemBuilder: (context) => const [
-          PopupMenuItem(value: false, child: Text('English')),
-          PopupMenuItem(value: true, child: Text('Tagalog')),
+                if (!smallPhone)
+                  Text(
+                    'LUNGSOD NG CAVITE',
+                    style: GoogleFonts.inter(
+                      fontSize: 9,
+                      letterSpacing: 1,
+                      color: Colors.white70,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          if (!isMobile) _dots(),
+          _buildLanguagePicker(isMobile),
         ],
       );
-    }
 
-    return DecoratedBox(
+  Widget _buildLanguagePicker(bool isMobile) => PopupMenuButton<bool>(
+    tooltip: 'Choose language / Piliin ang wika',
+    initialValue: _tagalog,
+    onSelected: (value) => setState(() => _tagalog = value),
+    itemBuilder: (_) => const [
+      PopupMenuItem(value: false, child: Text('English')),
+      PopupMenuItem(value: true, child: Text('Tagalog')),
+    ],
+    child: Container(
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.24),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+        color: Colors.black26,
+        border: Border.all(color: Colors.white24),
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.translate_rounded,
-              size: 17,
-              color: _CivicColors.gold,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.translate_rounded,
+            color: _CivicColors.gold,
+            size: 18,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            _tagalog
+                ? (isMobile ? 'FIL' : 'Tagalog')
+                : (isMobile ? 'EN' : 'English'),
+            style: GoogleFonts.inter(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+              fontSize: 12,
             ),
-            const SizedBox(width: 4),
-            TextButton(
-              onPressed: () => setState(() => _tagalog = false),
-              style: TextButton.styleFrom(
-                foregroundColor: _tagalog ? Colors.white60 : Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 6),
-                minimumSize: const Size(0, 32),
-              ),
-              child: Text(
-                'English',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: !_tagalog ? FontWeight.w800 : FontWeight.w500,
-                ),
-              ),
-            ),
-            const Text('/', style: TextStyle(color: Colors.white38)),
-            TextButton(
-              onPressed: () => setState(() => _tagalog = true),
-              style: TextButton.styleFrom(
-                foregroundColor: _tagalog ? Colors.white : Colors.white60,
-                padding: const EdgeInsets.symmetric(horizontal: 6),
-                minimumSize: const Size(0, 32),
-              ),
-              child: Text(
-                'Tagalog',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: _tagalog ? FontWeight.w800 : FontWeight.w500,
-                ),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
-    );
-  }
+    ),
+  );
 
   Widget _buildLoginCard({required bool isMobile}) {
     return Container(
@@ -477,23 +506,29 @@ class _LoginPageState extends State<LoginPage> {
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(isMobile ? 14 : 17),
+        border: Border.all(color: _CivicColors.border),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.24),
-            blurRadius: 35,
-            offset: const Offset(0, 18),
+            color: _CivicColors.forest.withValues(alpha: 0.06),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
       child: Column(
         children: [
+          const SizedBox(
+            height: 4,
+            width: double.infinity,
+            child: ColoredBox(color: _CivicColors.gold),
+          ),
           Padding(
             padding: EdgeInsets.fromLTRB(
-              isMobile ? 18 : 21,
-              isMobile ? 18 : 20,
-              isMobile ? 18 : 21,
-              isMobile ? 15 : 16,
+              isMobile ? 14 : 20,
+              isMobile ? 14 : 20,
+              isMobile ? 14 : 20,
+              isMobile ? 10 : 16,
             ),
             child: AutofillGroup(
               child: Form(
@@ -502,40 +537,56 @@ class _LoginPageState extends State<LoginPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      _t('Sign in to KAISA', 'Mag-sign in sa KAISA'),
-                      style: TextStyle(
+                      _t('YOUR COMMUNITY PORTAL', 'ANG IYONG COMMUNITY PORTAL'),
+                      style: GoogleFonts.inter(
+                        color: _CivicColors.green,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.5,
+                      ),
+                    ),
+                    SizedBox(height: 5),
+                    Text(
+                      _t(
+                        'Welcome Back to KAISA',
+                        'Maligayang pagbabalik sa KAISA',
+                      ),
+                      style: GoogleFonts.outfit(
                         color: _CivicColors.forest,
-                        fontSize: isMobile ? 25 : 26,
+                        fontSize: isMobile ? 22 : 26,
                         height: 1.1,
-                        fontWeight: FontWeight.w900,
+                        fontWeight: FontWeight.w800,
                         letterSpacing: -1.05,
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    SizedBox(height: 4),
                     Text(
                       _t(
-                        'Enter your credentials to access your community '
-                            'portal and opportunities.',
-                        'Ilagay ang iyong account details upang ma-access '
-                            'ang community portal at mga oportunidad.',
+                        'Sign in to your community portal.',
+                        'Mag-sign in sa iyong community portal.',
                       ),
-                      style: const TextStyle(
-                        fontSize: 12,
+                      style: TextStyle(
+                        fontSize: 13,
                         color: Color(0xFF465249),
-                        height: 1.55,
+                        height: 1.4,
                       ),
                     ),
-                    const SizedBox(height: 14),
+                    SizedBox(height: 9),
                     _fieldLabel(_t('Email address', 'Email address')),
-                    const SizedBox(height: 6),
+                    SizedBox(height: 4),
                     TextFormField(
                       controller: _email,
                       enabled: !_working,
                       keyboardType: TextInputType.emailAddress,
+                      style: GoogleFonts.inter(
+                        color: _CivicColors.ink,
+                        fontSize: 14,
+                      ),
                       autofillHints: const [AutofillHints.email],
                       textInputAction: TextInputAction.next,
                       autocorrect: false,
                       decoration: _inputDecoration(
+                        compact: isMobile,
                         hint: 'name@domain.ph',
                         prefix: Icons.alternate_email_rounded,
                       ),
@@ -552,17 +603,22 @@ class _LoginPageState extends State<LoginPage> {
                         return null;
                       },
                     ),
-                    const SizedBox(height: 10),
+                    SizedBox(height: 5),
                     _fieldLabel(_t('Password', 'Password')),
-                    const SizedBox(height: 6),
+                    SizedBox(height: 4),
                     TextFormField(
                       controller: _password,
                       enabled: !_working,
                       obscureText: _hidden,
+                      style: GoogleFonts.inter(
+                        color: _CivicColors.ink,
+                        fontSize: 14,
+                      ),
                       autofillHints: const [AutofillHints.password],
                       textInputAction: TextInputAction.done,
                       onFieldSubmitted: (_) => _signIn(),
                       decoration: _inputDecoration(
+                        compact: isMobile,
                         hint: '••••••••••••',
                         prefix: Icons.lock_outline_rounded,
                         suffix: IconButton(
@@ -587,55 +643,44 @@ class _LoginPageState extends State<LoginPage> {
                           : null,
                     ),
                     const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.shield_outlined,
-                          size: 16,
-                          color: _CivicColors.muted,
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: _working
+                            ? null
+                            : () => context.go('/forgot-password'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: _CivicColors.forest,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 2,
+                            vertical: 6,
+                          ),
+                          minimumSize: const Size(0, 44),
                         ),
-                        const SizedBox(width: 5),
-                        Expanded(
-                          child: Text(
-                            _t('Your KAISA account', 'Ang iyong KAISA account'),
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: _CivicColors.muted,
-                            ),
+                        child: Text(
+                          _t('Forgot password?', 'Nakalimutan ang password?'),
+                          textAlign: TextAlign.end,
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
-                        TextButton(
-                          onPressed: _working
-                              ? null
-                              : () => context.go('/forgot-password'),
-                          style: TextButton.styleFrom(
-                            foregroundColor: _CivicColors.forest,
-                            padding: const EdgeInsets.symmetric(horizontal: 2),
-                            minimumSize: const Size(0, 42),
-                          ),
-                          child: Text(
-                            _t('Forgot password?', 'Nakalimutan ang password?'),
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                     const SizedBox(height: 3),
                     SizedBox(
                       width: double.infinity,
-                      height: 45,
+
                       child: FilledButton(
                         onPressed: _working ? null : _signIn,
                         style: FilledButton.styleFrom(
+                          minimumSize: Size(0, 44),
                           backgroundColor: _CivicColors.forest,
                           foregroundColor: Colors.white,
                           disabledBackgroundColor: _CivicColors.green
                               .withValues(alpha: 0.60),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(7),
+                            borderRadius: BorderRadius.circular(10),
                           ),
                         ),
                         child: _isLoading
@@ -650,42 +695,38 @@ class _LoginPageState extends State<LoginPage> {
                             : Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Text(
-                                    _t('Sign in', 'Mag-sign in'),
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  const CircleAvatar(
-                                    radius: 12,
-                                    backgroundColor: _CivicColors.gold,
-                                    child: Icon(
-                                      Icons.arrow_forward_rounded,
-                                      size: 16,
-                                      color: _CivicColors.forest,
+                                  Flexible(
+                                    child: Text(
+                                      _t('Sign in', 'Mag-sign in'),
+                                      style: const TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w800,
+                                      ),
                                     ),
                                   ),
                                 ],
                               ),
                       ),
                     ),
-                    const SizedBox(height: 13),
+                    SizedBox(height: 8),
                     Row(
                       children: [
                         const Expanded(
                           child: Divider(color: _CivicColors.border),
                         ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 11),
-                          child: Text(
-                            _t('OR CONTINUE WITH', 'O MAGPATULOY GAMIT ANG'),
-                            style: const TextStyle(
-                              fontSize: 10,
-                              color: _CivicColors.muted,
-                              letterSpacing: 1.0,
-                              fontWeight: FontWeight.w800,
+                        Flexible(
+                          flex: 4,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 6),
+                            child: Text(
+                              _t('OR CONTINUE WITH', 'O GAMITIN ANG'),
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 10,
+                                color: _CivicColors.muted,
+                                letterSpacing: 1.0,
+                                fontWeight: FontWeight.w800,
+                              ),
                             ),
                           ),
                         ),
@@ -694,7 +735,14 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 9),
+                    SizedBox(height: 6),
+                    if (_socialLoading)
+                      const Padding(
+                        padding: EdgeInsets.only(bottom: 8),
+                        child: LinearProgressIndicator(
+                          color: _CivicColors.green,
+                        ),
+                      ),
                     Row(
                       children: [
                         Expanded(
@@ -720,7 +768,7 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 10),
+                    SizedBox(height: 5),
                     Center(
                       child: Wrap(
                         alignment: WrapAlignment.center,
@@ -729,7 +777,7 @@ class _LoginPageState extends State<LoginPage> {
                         runSpacing: 0,
                         children: [
                           Text(
-                            _t('New to the community?', 'Bago sa komunidad?'),
+                            _t('New to KAISA?', 'Bago sa KAISA?'),
                             style: const TextStyle(
                               color: Color(0xFF465249),
                               fontSize: 13,
@@ -744,7 +792,7 @@ class _LoginPageState extends State<LoginPage> {
                                 horizontal: 2,
                               ),
                               foregroundColor: _CivicColors.forest,
-                              minimumSize: const Size(0, 38),
+                              minimumSize: const Size(0, 44),
                             ),
                             child: Text(
                               _t(
@@ -792,9 +840,10 @@ class _LoginPageState extends State<LoginPage> {
     required String hint,
     required IconData prefix,
     Widget? suffix,
+    bool compact = false,
   }) {
     final regularBorder = OutlineInputBorder(
-      borderRadius: BorderRadius.circular(7),
+      borderRadius: BorderRadius.circular(10),
       borderSide: const BorderSide(color: _CivicColors.border),
     );
     return InputDecoration(
@@ -804,20 +853,23 @@ class _LoginPageState extends State<LoginPage> {
       fillColor: _CivicColors.input,
       prefixIcon: Icon(prefix, size: 21, color: _CivicColors.muted),
       suffixIcon: suffix,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      contentPadding: EdgeInsets.symmetric(
+        horizontal: 12,
+        vertical: compact ? 9 : 10,
+      ),
       border: regularBorder,
       enabledBorder: regularBorder,
       disabledBorder: regularBorder,
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(7),
+        borderRadius: BorderRadius.circular(10),
         borderSide: const BorderSide(color: _CivicColors.green, width: 2),
       ),
       errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(7),
+        borderRadius: BorderRadius.circular(10),
         borderSide: const BorderSide(color: Color(0xFFBA1A1A)),
       ),
       focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(7),
+        borderRadius: BorderRadius.circular(10),
         borderSide: const BorderSide(color: Color(0xFFBA1A1A), width: 2),
       ),
     );
@@ -830,32 +882,31 @@ class _LoginPageState extends State<LoginPage> {
     required VoidCallback? onPressed,
   }) {
     return SizedBox(
-      height: 40,
       child: OutlinedButton(
         onPressed: onPressed,
         style: OutlinedButton.styleFrom(
           side: const BorderSide(color: _CivicColors.border),
           foregroundColor: _CivicColors.ink,
-          minimumSize: const Size(0, 40),
+          minimumSize: const Size(0, 46),
           padding: const EdgeInsets.symmetric(horizontal: 8),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(
-              brandLetter,
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w900,
-                color: brandColor,
-              ),
+            SvgPicture.string(
+              providerName == 'Google' ? _googleLogoSvg : _facebookLogoSvg,
+              width: 21,
+              height: 21,
+              excludeFromSemantics: true,
             ),
             const SizedBox(width: 8),
             Flexible(
               child: Text(
                 providerName,
-                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
@@ -869,49 +920,57 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Widget _buildFooter({required bool isMobile}) {
-    if (isMobile) {
-      return Padding(
-        padding: const EdgeInsets.only(bottom: 6),
-        child: Text(
-          _t('KAISA  •  Lungsod ng Cavite', 'KAISA  •  Lungsod ng Cavite'),
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.75),
-            fontSize: 11,
-            letterSpacing: 0.3,
-          ),
-        ),
-      );
-    }
-
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    final slide = _slides[_activeSlide % _slides.length];
+    return Wrap(
+      alignment: WrapAlignment.center,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 12,
+      runSpacing: 8,
       children: [
-        Row(
-          children: [
-            const CircleAvatar(radius: 5, backgroundColor: _CivicColors.gold),
-            const SizedBox(width: 10),
-            Text(
-              _t(
-                'Connect • Participate • Make an Impact',
-                'Makipag-ugnayan • Makilahok • Makiisa',
-              ),
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
+        const Icon(Icons.circle, color: _CivicColors.gold, size: 9),
         Text(
-          'Lungsod ng Cavite  •  Civic Engagement Portal',
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.77),
+          _t(slide.title, slide.titleTl),
+          textAlign: TextAlign.center,
+          style: GoogleFonts.inter(
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
             fontSize: 12,
           ),
+        ),
+        Text(
+          slide.credit,
+          textAlign: TextAlign.center,
+          style: GoogleFonts.inter(color: Colors.white70, fontSize: 11),
         ),
       ],
     );
   }
 }
+
+class _AchievementSlide {
+  const _AchievementSlide(
+    this.asset,
+    this.url,
+    this.title,
+    this.titleTl,
+    this.description,
+    this.descriptionTl,
+    this.category,
+    this.credit, {
+    this.contain = false,
+  });
+  final String asset,
+      url,
+      title,
+      titleTl,
+      description,
+      descriptionTl,
+      category,
+      credit;
+  final bool contain;
+}
+
+const _googleLogoSvg =
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path fill="#4285F4" d="M43.6 24.5c0-1.4-.1-2.8-.4-4.1H24v7.8h11a9.4 9.4 0 0 1-4.1 6.2v5.2h6.7c3.9-3.6 6-8.9 6-15.1z"/><path fill="#34A853" d="M24 44c5.5 0 10.1-1.8 13.5-4.9l-6.7-5.2c-1.8 1.2-4.1 2-6.8 2-5.3 0-9.8-3.6-11.4-8.4H5.7v5.4A20 20 0 0 0 24 44z"/><path fill="#FBBC05" d="M12.6 27.5a12 12 0 0 1 0-7.1V15H5.7a20 20 0 0 0 0 17.9l6.9-5.4z"/><path fill="#EA4335" d="M24 12c3 0 5.7 1 7.8 3l5.9-5.9A19.2 19.2 0 0 0 24 4 20 20 0 0 0 5.7 15l6.9 5.4C14.2 15.6 18.7 12 24 12z"/></svg>';
+const _facebookLogoSvg =
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#0866FF"/><path fill="#fff" d="M16.67 15.47l.53-3.47h-3.33V9.75c0-.95.46-1.87 1.95-1.87h1.52V4.93s-1.38-.23-2.7-.23c-2.75 0-4.55 1.67-4.55 4.68V12H7.03v3.47h3.06V24h3.78v-8.53z"/></svg>';

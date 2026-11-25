@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'widgets/lgu_role_settings_view.dart';
+import '../settings/widgets/lgu_role_settings_view.dart';
 
 /// Operations Admin: matches the supplied Operations Settings screen.
 class LguSettingsPage extends StatelessWidget {

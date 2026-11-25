@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../core/theme/kaisa_figma_theme.dart';
+import 'kaisa_resident_design.dart';
 
 /// Presentation-only components. Feed them data already fetched by KAISA.
 /// Never replace Supabase data, registration or QR tokens with demo values.
@@ -16,20 +16,21 @@ class KaisaFigmaCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Material(
     color: Colors.white,
-    borderRadius: BorderRadius.circular(22),
+    borderRadius: BorderRadius.circular(12),
+    clipBehavior: Clip.antiAlias,
     child: InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(22),
+      borderRadius: BorderRadius.circular(12),
       child: Container(
         padding: padding,
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: KaisaFigmaPalette.outline),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: KaisaResidentDesign.border),
           boxShadow: const [
             BoxShadow(
               color: Color(0x09000000),
-              blurRadius: 22,
-              offset: Offset(0, 5),
+              blurRadius: 8,
+              offset: Offset(0, 2),
             ),
           ],
         ),
@@ -57,8 +58,8 @@ class KaisaFigmaHero extends StatelessWidget {
     width: double.infinity,
     padding: const EdgeInsets.all(23),
     decoration: BoxDecoration(
-      gradient: KaisaFigmaPalette.hero,
-      borderRadius: BorderRadius.circular(25),
+      gradient: KaisaResidentDesign.heroGradient,
+      borderRadius: BorderRadius.circular(12),
     ),
     child: Row(
       children: [
@@ -69,31 +70,37 @@ class KaisaFigmaHero extends StatelessWidget {
               if (eyebrow != null) ...[
                 Text(
                   eyebrow!.toUpperCase(),
-                  style: const TextStyle(
-                    color: KaisaFigmaPalette.yellow,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 1.3,
+                  style: KaisaTypography.body(
+                    TextStyle(
+                      color: KaisaResidentDesign.yellow,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.3,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 10),
               ],
               Text(
                 title,
-                style: const TextStyle(
-                  fontSize: 25,
-                  fontWeight: FontWeight.w900,
-                  height: 1.15,
-                  color: Colors.white,
+                style: KaisaTypography.heading(
+                  TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w700,
+                    height: 1.15,
+                    color: Colors.white,
+                  ),
                 ),
               ),
               const SizedBox(height: 8),
               Text(
                 subtitle,
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: .80),
-                  fontSize: 13,
-                  height: 1.5,
+                style: KaisaTypography.body(
+                  TextStyle(
+                    color: Colors.white.withValues(alpha: .80),
+                    fontSize: 13,
+                    height: 1.5,
+                  ),
                 ),
               ),
             ],
@@ -108,7 +115,7 @@ class KaisaFigmaHero extends StatelessWidget {
                 color: Colors.white.withValues(alpha: .14),
                 borderRadius: BorderRadius.circular(17),
               ),
-              child: Icon(icon, color: KaisaFigmaPalette.yellow, size: 28),
+              child: Icon(icon, color: KaisaResidentDesign.yellow, size: 28),
             ),
       ],
     ),
@@ -135,20 +142,21 @@ class KaisaFigmaSection extends StatelessWidget {
           children: [
             Text(
               title,
-              style: const TextStyle(
-                fontWeight: FontWeight.w900,
-                fontSize: 18,
-                letterSpacing: -.35,
-                color: KaisaFigmaPalette.ink,
+              style: KaisaTypography.heading(
+                TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 22,
+                  letterSpacing: -.35,
+                  color: KaisaResidentDesign.ink,
+                ),
               ),
             ),
             if (caption != null) ...[
               const SizedBox(height: 4),
               Text(
                 caption!,
-                style: const TextStyle(
-                  color: KaisaFigmaPalette.muted,
-                  fontSize: 12,
+                style: KaisaTypography.body(
+                  TextStyle(color: KaisaResidentDesign.muted, fontSize: 12),
                 ),
               ),
             ],
@@ -172,7 +180,7 @@ class KaisaFigmaStat extends StatelessWidget {
     required this.label,
     required this.value,
     required this.icon,
-    this.tint = KaisaFigmaPalette.green,
+    this.tint = KaisaResidentDesign.forest,
     this.onTap,
   });
   final String label, value;
@@ -198,17 +206,17 @@ class KaisaFigmaStat extends StatelessWidget {
         const SizedBox(height: 9),
         Text(
           value,
-          style: TextStyle(
-            color: tint,
-            fontSize: 22,
-            fontWeight: FontWeight.w900,
+          style: KaisaTypography.data(
+            TextStyle(color: tint, fontSize: 28, fontWeight: FontWeight.w700),
           ),
         ),
         const SizedBox(height: 2),
         Text(
           label,
           textAlign: TextAlign.center,
-          style: const TextStyle(color: KaisaFigmaPalette.muted, fontSize: 11),
+          style: KaisaTypography.body(
+            TextStyle(color: KaisaResidentDesign.muted, fontSize: 11),
+          ),
         ),
       ],
     ),
@@ -238,7 +246,7 @@ class KaisaFigmaEventCard extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         ClipRRect(
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(21)),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
           child: SizedBox(
             height: 128,
             width: double.infinity,
@@ -270,10 +278,12 @@ class KaisaFigmaEventCard extends StatelessWidget {
                     title,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 15,
+                    style: KaisaTypography.heading(
+                      TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                      ),
                     ),
                   ),
                 ),
@@ -288,14 +298,16 @@ class KaisaFigmaEventCard extends StatelessWidget {
                       ),
                       decoration: BoxDecoration(
                         color: const Color(0xB3184F30),
-                        borderRadius: BorderRadius.circular(25),
+                        borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
                         category!,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
+                        style: KaisaTypography.body(
+                          TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
                       ),
                     ),
@@ -313,7 +325,7 @@ class KaisaFigmaEventCard extends StatelessWidget {
                   const Icon(
                     Icons.groups_2_outlined,
                     size: 16,
-                    color: KaisaFigmaPalette.green,
+                    color: KaisaResidentDesign.forest,
                   ),
                   const SizedBox(width: 5),
                   Expanded(
@@ -321,9 +333,11 @@ class KaisaFigmaEventCard extends StatelessWidget {
                       organizer,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: KaisaFigmaPalette.muted,
-                        fontSize: 12,
+                      style: KaisaTypography.body(
+                        TextStyle(
+                          color: KaisaResidentDesign.muted,
+                          fontSize: 12,
+                        ),
                       ),
                     ),
                   ),
@@ -336,22 +350,24 @@ class KaisaFigmaEventCard extends StatelessWidget {
                   const Icon(
                     Icons.event_outlined,
                     size: 16,
-                    color: KaisaFigmaPalette.green,
+                    color: KaisaResidentDesign.forest,
                   ),
                   const SizedBox(width: 5),
                   Expanded(
                     child: Text(
                       dateLabel,
-                      style: const TextStyle(
-                        color: KaisaFigmaPalette.ink,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
+                      style: KaisaTypography.body(
+                        TextStyle(
+                          color: KaisaResidentDesign.ink,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ),
                   const Icon(
                     Icons.chevron_right_rounded,
-                    color: KaisaFigmaPalette.muted,
+                    color: KaisaResidentDesign.muted,
                   ),
                 ],
               ),
@@ -387,7 +403,7 @@ class KaisaFigmaOrganizationCard extends StatelessWidget {
           width: 54,
           height: 54,
           decoration: BoxDecoration(
-            color: KaisaFigmaPalette.mint,
+            color: KaisaResidentDesign.mint,
             borderRadius: BorderRadius.circular(18),
           ),
           child: ClipRRect(
@@ -395,7 +411,7 @@ class KaisaFigmaOrganizationCard extends StatelessWidget {
             child: logoUrl == null || logoUrl!.isEmpty
                 ? const Icon(
                     Icons.apartment_rounded,
-                    color: KaisaFigmaPalette.green,
+                    color: KaisaResidentDesign.forest,
                     size: 29,
                   )
                 : Image.network(
@@ -403,7 +419,7 @@ class KaisaFigmaOrganizationCard extends StatelessWidget {
                     fit: BoxFit.cover,
                     errorBuilder: (_, _, _) => const Icon(
                       Icons.apartment_rounded,
-                      color: KaisaFigmaPalette.green,
+                      color: KaisaResidentDesign.forest,
                       size: 29,
                     ),
                   ),
@@ -416,20 +432,24 @@ class KaisaFigmaOrganizationCard extends StatelessWidget {
             children: [
               Text(
                 name,
-                style: const TextStyle(
-                  color: KaisaFigmaPalette.ink,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 15,
+                style: KaisaTypography.heading(
+                  TextStyle(
+                    color: KaisaResidentDesign.ink,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                  ),
                 ),
               ),
               const SizedBox(height: 3),
               if (category != null)
                 Text(
                   category!,
-                  style: const TextStyle(
-                    color: KaisaFigmaPalette.green,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 11,
+                  style: KaisaTypography.body(
+                    TextStyle(
+                      color: KaisaResidentDesign.forest,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 11,
+                    ),
                   ),
                 ),
               const SizedBox(height: 7),
@@ -437,10 +457,12 @@ class KaisaFigmaOrganizationCard extends StatelessWidget {
                 description,
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: KaisaFigmaPalette.muted,
-                  fontSize: 12,
-                  height: 1.4,
+                style: KaisaTypography.body(
+                  TextStyle(
+                    color: KaisaResidentDesign.muted,
+                    fontSize: 12,
+                    height: 1.4,
+                  ),
                 ),
               ),
               if (memberCount != null) ...[
@@ -450,15 +472,17 @@ class KaisaFigmaOrganizationCard extends StatelessWidget {
                     const Icon(
                       Icons.people_alt_outlined,
                       size: 15,
-                      color: KaisaFigmaPalette.green,
+                      color: KaisaResidentDesign.forest,
                     ),
                     const SizedBox(width: 5),
                     Text(
                       '$memberCount members',
-                      style: const TextStyle(
-                        color: KaisaFigmaPalette.ink,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
+                      style: KaisaTypography.data(
+                        TextStyle(
+                          color: KaisaResidentDesign.ink,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ],
@@ -467,7 +491,10 @@ class KaisaFigmaOrganizationCard extends StatelessWidget {
             ],
           ),
         ),
-        const Icon(Icons.chevron_right_rounded, color: KaisaFigmaPalette.muted),
+        const Icon(
+          Icons.chevron_right_rounded,
+          color: KaisaResidentDesign.muted,
+        ),
       ],
     ),
   );
@@ -477,12 +504,12 @@ class _ImageFallback extends StatelessWidget {
   const _ImageFallback();
   @override
   Widget build(BuildContext context) => const ColoredBox(
-    color: KaisaFigmaPalette.mint,
+    color: KaisaResidentDesign.mint,
     child: Center(
       child: Icon(
         Icons.landscape_rounded,
         size: 44,
-        color: KaisaFigmaPalette.green,
+        color: KaisaResidentDesign.forest,
       ),
     ),
   );

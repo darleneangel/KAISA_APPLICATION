@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'app_colors.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 /// Shared theme tuned to Google Stitch's Civic Dignity system.
 class AppTheme {
@@ -32,12 +33,67 @@ class AppTheme {
           error: AppColors.error,
         );
 
+    // Start with the Material typography for the active brightness.
+    // Keep its sizes, weights, spacing and contrast while changing families.
+    final base = ThemeData(
+      useMaterial3: true,
+      brightness: brightness,
+      colorScheme: scheme,
+    );
+    final inter = base.textTheme.apply(
+      fontFamily: GoogleFonts.inter().fontFamily,
+    );
+    final headings = base.textTheme.copyWith(
+      displayLarge: base.textTheme.displayLarge?.copyWith(
+        fontWeight: FontWeight.w800,
+      ),
+      displayMedium: base.textTheme.displayMedium?.copyWith(
+        fontWeight: FontWeight.w700,
+      ),
+      displaySmall: base.textTheme.displaySmall?.copyWith(
+        fontWeight: FontWeight.w700,
+      ),
+      headlineLarge: base.textTheme.headlineLarge?.copyWith(
+        fontWeight: FontWeight.w700,
+      ),
+      headlineMedium: base.textTheme.headlineMedium?.copyWith(
+        fontWeight: FontWeight.w700,
+      ),
+      headlineSmall: base.textTheme.headlineSmall?.copyWith(
+        fontWeight: FontWeight.w600,
+      ),
+      titleLarge: base.textTheme.titleLarge?.copyWith(
+        fontWeight: FontWeight.w700,
+      ),
+      titleMedium: base.textTheme.titleMedium?.copyWith(
+        fontWeight: FontWeight.w600,
+      ),
+      titleSmall: base.textTheme.titleSmall?.copyWith(
+        fontWeight: FontWeight.w600,
+      ),
+    );
+    final outfit = headings.apply(fontFamily: GoogleFonts.outfit().fontFamily);
+    final typography = inter.copyWith(
+      displayLarge: outfit.displayLarge,
+      displayMedium: outfit.displayMedium,
+      displaySmall: outfit.displaySmall,
+      headlineLarge: outfit.headlineLarge,
+      headlineMedium: outfit.headlineMedium,
+      headlineSmall: outfit.headlineSmall,
+      titleLarge: outfit.titleLarge,
+      titleMedium: outfit.titleMedium,
+      titleSmall: outfit.titleSmall,
+    );
+
     return ThemeData(
       useMaterial3: true,
       brightness: brightness,
       colorScheme: scheme,
       scaffoldBackgroundColor: background,
-      fontFamily: 'Inter',
+      textTheme: typography,
+      primaryTextTheme: base.primaryTextTheme.apply(
+        fontFamily: GoogleFonts.inter().fontFamily,
+      ),
       appBarTheme: AppBarTheme(
         backgroundColor: surface,
         surfaceTintColor: Colors.transparent,
@@ -48,8 +104,7 @@ class AppTheme {
         systemOverlayStyle: isDark
             ? SystemUiOverlayStyle.light
             : SystemUiOverlayStyle.dark,
-        titleTextStyle: TextStyle(
-          fontFamily: 'Outfit',
+        titleTextStyle: GoogleFonts.outfit(
           fontSize: 20,
           fontWeight: FontWeight.w700,
           color: ink,
@@ -71,7 +126,10 @@ class AppTheme {
           foregroundColor: scheme.onPrimary,
           minimumSize: const Size(0, 44),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-          textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+          textStyle: GoogleFonts.inter(
+            fontWeight: FontWeight.w700,
+            fontSize: 13,
+          ),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
         ),
       ),
@@ -98,7 +156,10 @@ class AppTheme {
         style: TextButton.styleFrom(
           foregroundColor: scheme.primary,
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+          textStyle: GoogleFonts.inter(
+            fontWeight: FontWeight.w700,
+            fontSize: 13,
+          ),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
         ),
       ),
@@ -109,8 +170,8 @@ class AppTheme {
           horizontal: 13,
           vertical: 13,
         ),
-        hintStyle: TextStyle(color: sub, fontSize: 14),
-        labelStyle: TextStyle(color: sub, fontSize: 14),
+        hintStyle: GoogleFonts.inter(color: sub, fontSize: 14),
+        labelStyle: GoogleFonts.inter(color: sub, fontSize: 14),
         prefixIconColor: sub,
         suffixIconColor: sub,
         border: OutlineInputBorder(
@@ -136,7 +197,7 @@ class AppTheme {
         elevation: 0,
         indicatorColor: AppColors.mint,
         labelTextStyle: WidgetStateProperty.resolveWith(
-          (states) => TextStyle(
+          (states) => GoogleFonts.inter(
             fontSize: 11,
             fontWeight: states.contains(WidgetState.selected)
                 ? FontWeight.w700
@@ -148,12 +209,12 @@ class AppTheme {
       chipTheme: ChipThemeData(
         backgroundColor: surface,
         selectedColor: AppColors.mint,
-        labelStyle: TextStyle(
+        labelStyle: GoogleFonts.inter(
           color: ink,
           fontWeight: FontWeight.w500,
           fontSize: 12,
         ),
-        secondaryLabelStyle: const TextStyle(
+        secondaryLabelStyle: GoogleFonts.inter(
           color: AppColors.forest,
           fontSize: 12,
           fontWeight: FontWeight.w700,
