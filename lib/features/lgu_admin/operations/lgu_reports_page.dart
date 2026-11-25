@@ -80,8 +80,9 @@ class _LguReportsPageState extends State<LguReportsPage> {
       if (_dates != null) {
         final day = DateUtils.dateOnly(e.startsAt);
         if (day.isBefore(DateUtils.dateOnly(_dates!.start)) ||
-            day.isAfter(DateUtils.dateOnly(_dates!.end)))
+            day.isAfter(DateUtils.dateOnly(_dates!.end))) {
           return false;
+        }
       }
       return query.isEmpty ||
           e.title.toLowerCase().contains(query) ||
@@ -249,8 +250,9 @@ class _LguReportsPageState extends State<LguReportsPage> {
                     lastDate: DateTime(2100),
                     initialDateRange: _dates,
                   );
-                  if (picked != null && mounted)
+                  if (picked != null && mounted) {
                     setState(() => _dates = picked);
+                  }
                 },
               ),
               TextButton.icon(
@@ -481,17 +483,19 @@ class _LguReportsPageState extends State<LguReportsPage> {
         fileExtension: 'pdf',
         mimeType: MimeType.pdf,
       );
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('PDF report generated. Check your downloads.'),
           ),
         );
+      }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Could not export PDF: $e')));
+      }
     } finally {
       if (mounted) setState(() => _exporting = false);
     }

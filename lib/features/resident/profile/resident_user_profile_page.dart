@@ -160,7 +160,7 @@ class _ResidentUserProfilePageState extends State<ResidentUserProfilePage> {
           : Image.network(
               url,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => fallback,
+              errorBuilder: (_, _, _) => fallback,
             ),
     );
   }
@@ -252,7 +252,7 @@ class _ResidentUserProfilePageState extends State<ResidentUserProfilePage> {
               width: double.infinity,
               height: 185,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+              errorBuilder: (_, _, _) => const SizedBox.shrink(),
             ),
         ],
       ),

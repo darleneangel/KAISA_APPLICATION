@@ -3,7 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../operations/operations_performance_service.dart';
+import 'operations_performance_service.dart';
 
 const _forest = Color(0xFF00492C);
 const _green = Color(0xFF287D55);

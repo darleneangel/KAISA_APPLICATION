@@ -304,15 +304,17 @@ class _EventMonitoringPageState extends State<EventMonitoringPage> {
         fileExtension: 'pdf',
         mimeType: MimeType.pdf,
       );
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Event Monitoring PDF saved.')),
         );
+      }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('PDF export failed: $e')));
+      }
     } finally {
       if (mounted) setState(() => _exportingPdf = false);
     }

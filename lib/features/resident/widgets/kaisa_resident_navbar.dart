@@ -58,14 +58,17 @@ abstract final class KaisaResidentNavigation {
     if (route == '/resident/feed') return 1;
     if (route.startsWith('/resident/organization') ||
         route.startsWith('/resident/my-organizations') ||
-        route.startsWith('/resident/request-organization'))
+        route.startsWith('/resident/request-organization')) {
       return 2;
+    }
     if (route == '/resident/events' ||
         route.startsWith('/resident/event-details') ||
-        route.startsWith('/resident/my-events'))
+        route.startsWith('/resident/my-events')) {
       return 3;
-    if (route.startsWith('/resident/profile') || route.contains('verification'))
+    }
+    if (route.startsWith('/resident/profile') || route.contains('verification')) {
       return 4;
+    }
     return -1; // Notifications and other utilities have no primary selection.
   }
 }
@@ -415,8 +418,9 @@ class _MobileNavItem extends StatelessWidget {
     label: item.label,
     child: InkWell(
       onTap: () {
-        if (GoRouterState.of(context).uri.path != item.path)
+        if (GoRouterState.of(context).uri.path != item.path) {
           context.go(item.path);
+        }
       },
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
