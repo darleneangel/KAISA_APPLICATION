@@ -103,6 +103,9 @@ class KaisaResidentTopBar extends StatefulWidget {
 
 class _KaisaResidentTopBarState extends State<KaisaResidentTopBar> {
   String? _firstName;
+  String? _avatarUrl;
+  String? _avatarUserId;
+  int _profileRequest = 0;
 
   @override
   void initState() {
@@ -117,38 +120,79 @@ class _KaisaResidentTopBarState extends State<KaisaResidentTopBar> {
     super.dispose();
   }
 
-  void _reload() {
-    final user = Supabase.instance.client.auth.currentUser;
+  Future<void> _reload() async {
+    final request = ++_profileRequest;
+    final client = Supabase.instance.client;
+    final user = client.auth.currentUser;
+    if (!mounted) return;
     if (user == null) {
-      if (mounted) setState(() => _firstName = null);
+      setState(() {
+        _firstName = null;
+        _avatarUrl = null;
+        _avatarUserId = null;
+      });
       return;
     }
     final meta = user.userMetadata ?? {};
     final fallback = (meta['first_name'] ?? meta['firstName'] ?? '')
         .toString()
         .trim();
-    if (mounted) setState(() => _firstName = fallback);
-    Supabase.instance.client
-        .from('resident_profiles')
-        .select('first_name')
-        .eq('user_id', user.id)
-        .maybeSingle()
-        .then((row) {
-          if (!mounted ||
-              Supabase.instance.client.auth.currentUser?.id != user.id)
-            return;
-          final value = (row?['first_name'] ?? '').toString().trim();
-          if (value.isNotEmpty) setState(() => _firstName = value);
-        })
-        .catchError((Object error) {
-          debugPrint('KAISA header profile lookup unavailable: $error');
-        });
+    if (_avatarUserId != user.id) {
+      setState(() {
+        _avatarUserId = user.id;
+        _firstName = fallback;
+        _avatarUrl = null;
+      });
+    }
+    try {
+      final row = await client
+          .from('resident_profiles')
+          .select('first_name, avatar_path')
+          .eq('user_id', user.id)
+          .maybeSingle();
+      if (!mounted ||
+          request != _profileRequest ||
+          client.auth.currentUser?.id != user.id)
+        return;
+      final name = (row?['first_name'] ?? '').toString().trim();
+      final path = (row?['avatar_path'] ?? '').toString().trim();
+      final url = path.isEmpty
+          ? null
+          : client.storage.from('kaisa-avatars').getPublicUrl(path);
+      setState(() {
+        _firstName = name.isEmpty ? fallback : name;
+        _avatarUrl = url == null
+            ? null
+            : Uri.parse(url)
+                  .replace(
+                    queryParameters: {
+                      'v': DateTime.now().millisecondsSinceEpoch.toString(),
+                    },
+                  )
+                  .toString();
+      });
+    } catch (error) {
+      debugPrint('KAISA header profile lookup unavailable: $error');
+    }
   }
 
   String get _initial {
     final name = (_firstName ?? '').trim();
     return name.isEmpty ? 'R' : name.substring(0, 1).toUpperCase();
   }
+
+  Widget _avatarFallback() => Center(
+    child: Text(
+      _initial,
+      style: KaisaTypography.body(
+        const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.w800,
+          fontSize: 13,
+        ),
+      ),
+    ),
+  );
 
   Future<void> _logout() async {
     final confirmed = await showDialog<bool>(
@@ -461,14 +505,21 @@ class _KaisaResidentTopBarState extends State<KaisaResidentTopBar> {
                   child: CircleAvatar(
                     radius: 17,
                     backgroundColor: KaisaResidentDesign.forest,
-                    child: Text(
-                      _initial,
-                      style: KaisaTypography.body(
-                        TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 13,
-                        ),
+                    child: ClipOval(
+                      child: SizedBox.square(
+                        dimension: 34,
+                        child: _avatarUrl == null
+                            ? _avatarFallback()
+                            : Image.network(
+                                _avatarUrl!,
+                                key: ValueKey(_avatarUrl),
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, _, _) => _avatarFallback(),
+                                loadingBuilder: (context, child, progress) =>
+                                    progress == null
+                                    ? child
+                                    : _avatarFallback(),
+                              ),
                       ),
                     ),
                   ),
