@@ -488,8 +488,14 @@ final appRouter = GoRouter(
     // Organization Admin workspace uses its own shell and access guard.
     // The guard checks authorization for the selected organizationId.
     ShellRoute(
-      builder: (context, state, child) =>
-          KaisaOrgAdminGate(child: KaisaOrgAdminShell(child: child)),
+      builder: (context, state, child) {
+        final path = state.uri.path;
+        final studio = path == '/organization-admin/ecertificate-studio' ||
+            path == '/organization-admin/certificates';
+        return KaisaOrgAdminGate(
+          child: studio ? child : KaisaOrgAdminShell(child: child),
+        );
+      },
       routes: [
         GoRoute(
           path: '/organization-admin/reports',
@@ -506,12 +512,16 @@ final appRouter = GoRouter(
         // Preserve existing E-Certificate Studio URL used by your project.
         GoRoute(
           path: '/organization-admin/ecertificate-studio',
-          builder: (context, state) => const ECertificateStudioPage(),
+          builder: (context, state) => ECertificateStudioPage(
+            organizationId: state.uri.queryParameters['organizationId'],
+          ),
         ),
         // Also support the shorter path used by earlier sidebar packages.
         GoRoute(
           path: '/organization-admin/certificates',
-          builder: (context, state) => const ECertificateStudioPage(),
+          builder: (context, state) => ECertificateStudioPage(
+            organizationId: state.uri.queryParameters['organizationId'],
+          ),
         ),
         // Staff invitations: both menu URLs share the same protected page.
         GoRoute(

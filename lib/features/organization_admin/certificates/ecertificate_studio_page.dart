@@ -3,6 +3,7 @@ import 'dart:async';
 import 'certificate_leave_guard_stub.dart' if (dart.library.html) 'certificate_leave_guard_web.dart' as leave_guard;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -336,8 +337,13 @@ _TextLayer(
   Future<void> _confirmRouteExit() async {
     if (!await _confirmDiscardChanges()) return;
     if (!mounted) return;
-    _allowRouteExit = true;
-    Navigator.of(context).pop();
+    _draftTimer?.cancel();
+    await _writeDraft();
+    if (!mounted || _draftStatus.startsWith('Auto-save failed')) return;
+    setState(() => _allowRouteExit = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) Navigator.of(context).maybePop();
+    });
   }
 
 
@@ -770,9 +776,9 @@ _TextLayer(
   final Map<String, String> _namedFontFamilies = {};
     String _selectedId = 'recipient';
   String? _selectedImageId;
-  bool _layersExpanded = false;
-  bool _templateExpanded = false;
-  bool _formatExpanded = false;
+  bool _layersExpanded = true;
+  bool _templateExpanded = true;
+  bool _formatExpanded = true;
   Map<String, dynamic>? _copiedObject;
   int _pasteCount = 0;
   int _recipientIndex = 0;
@@ -2282,77 +2288,7 @@ _TextLayer(
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Card(
-          margin: EdgeInsets.zero,
-          clipBehavior: Clip.antiAlias,
-          child: ExpansionTile(
-            key: const PageStorageKey('certificate_template'),
-            initiallyExpanded: _templateExpanded,
-            onExpansionChanged: (value) => _templateExpanded = value,
-            leading: const Icon(Icons.dashboard_customize_outlined),
-            title: const Text('Template', style: TextStyle(fontWeight: FontWeight.w800)),
-            subtitle: const Text('Design, border, logo and background'),
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(14, 4, 14, 14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-         SwitchListTile.adaptive(
-           title: const Text('Show default KAISA logo'),
-           value: _showKaisaLogo,
-           onChanged: (value) { _checkpoint(); setState(() => _showKaisaLogo = value); },
-         ),
-         SwitchListTile.adaptive(
-           title: const Text('Show KAISA green-and-gold border'),
-           value: _showKaisaBorder,
-           onChanged: (value) { _checkpoint(); setState(() => _showKaisaBorder = value); },
-         ),
-         if (_showKaisaLogo) ...[
-           const Text('KAISA logo size'),
-           Slider(
-  value: _kaisaLogoWidth.clamp(0.05, 0.40).toDouble(),
-  min: 0.05,
-  max: 0.40,
-  onChangeStart: (_) => _checkpoint(),
-  onChanged: (value) {
-    setState(() {
-      _kaisaLogoWidth = value;
-      _kaisaLogoX = _kaisaLogoX
-          .clamp(0.0, 1.0 - value)
-          .toDouble();
-    });
-  },
-),
-         ],
-        const SizedBox(height: 8),
-        OutlinedButton.icon(
-          onPressed: _pickBackground,
-          icon: const Icon(Icons.upload_file),
-          label: Text(
-            _backgroundName == null
-                ? 'Upload PNG/JPG background'
-                : 'Background: $_backgroundName',
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-        if (_background != null)
-          TextButton(
-            onPressed: () { _checkpoint(); setState(() {
-              _background = null;
-              _backgroundName = null;
-            }); },
-            child: const Text('Use simple built-in border'),
-          ),
-                                   ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 10),
-         _layerNavigator(),
-         const SizedBox(height: 12),
+
          if (_selectedImageId != null) ...[
            Text('Selected image', style: Theme.of(context).textTheme.titleMedium),
            const SizedBox(height: 8),
@@ -2489,7 +2425,7 @@ _TextLayer(
           ],
         ),
         Slider(
-          value: e.size,
+          value: e.size.clamp(9.0, 64.0).toDouble(),
           min: 9,
           max: 64,
           divisions: 55,
@@ -2577,7 +2513,7 @@ _TextLayer(
             const Text('Vertical'),
             Expanded(
               child: Slider(
-                value: e.y,
+                value: e.y.clamp(0.0, .96).toDouble(),
                 min: 0,
                 max: .96,
                 onChangeStart: (_) => _checkpoint(),
@@ -2592,113 +2528,258 @@ _TextLayer(
         ], // ExpansionTile children
         ), // ExpansionTile
         ), // Card
-         const SizedBox(height: 8),
-         const Divider(),
-         const SizedBox(height: 12),
-        const Text(
-          'Recipients · one name per line',
-          style: TextStyle(fontWeight: FontWeight.w800),
-        ),
-        const SizedBox(height: 8),
-        TextField(
-          controller: _names,
-          maxLines: 5,
-          readOnly: true,
-          decoration: const InputDecoration(
-            hintText:
-                'Choose verified attendees above; names are loaded securely from Supabase.',
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          '${_recipients.length} unique recipient(s)',
-          style: const TextStyle(color: _forest, fontWeight: FontWeight.w700),
-        ),
          ], // Text controls else spread
       ], // Control panel Column children
     );
   }
 
-  Widget _previewPanel() => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      Row(
-        children: [
-          const Expanded(
-            child: Text(
-              'Certificate canvas',
-              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 20),
-            ),
+  static const _studioGreen = Color(0xFF00301B);
+  static const _studioSurface = Color(0xFFEEF1FF);
+  static const _studioLine = Color(0xFFC0C9C0);
+  int _studioTool = 4;
+  bool _showTools = true;
+  bool _showProperties = true;
+  double _canvasZoom = 1.0;
+  bool _leavingStudio = false;
+
+  Future<void> _backToDashboard() async {
+    if (_leavingStudio) return;
+    _leavingStudio = true;
+    try {
+      if (!await _confirmDiscardChanges() || !mounted) return;
+      _draftTimer?.cancel();
+      await _writeDraft();
+      if (!mounted) return;
+      if (_draftStatus.startsWith('Auto-save failed')) return;
+      _allowRouteExit = true;
+      context.go(Uri(
+        path: '/organization-admin/dashboard',
+        queryParameters: _organizationId == null ? null :
+            {'organizationId': _organizationId!},
+      ).toString());
+    } finally {
+      _leavingStudio = false;
+    }
+  }
+  static const _toolNames = ['Templates', 'Text', 'Images', 'Background', 'Layers', 'Recipients'];
+  static const _toolIcons = [Icons.dashboard_customize_outlined, Icons.text_fields, Icons.image_outlined, Icons.wallpaper_outlined, Icons.layers_outlined, Icons.people_outline];
+
+  Widget _backgroundTools() =>         Card(
+          margin: EdgeInsets.zero,
+          clipBehavior: Clip.antiAlias,
+          child: ExpansionTile(
+            key: const PageStorageKey('certificate_template'),
+            initiallyExpanded: _templateExpanded,
+            onExpansionChanged: (value) => _templateExpanded = value,
+            leading: const Icon(Icons.dashboard_customize_outlined),
+            title: const Text('Template', style: TextStyle(fontWeight: FontWeight.w800)),
+            subtitle: const Text('Design, border, logo and background'),
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 4, 14, 14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+         SwitchListTile.adaptive(
+           title: const Text('Show default KAISA logo'),
+           value: _showKaisaLogo,
+           onChanged: (value) { _checkpoint(); setState(() { _showKaisaLogo = value; if (!value && _selectedImageId == 'kaisa_default') _selectedImageId = null; }); },
+         ),
+         SwitchListTile.adaptive(
+           title: const Text('Show KAISA green-and-gold border'),
+           value: _showKaisaBorder,
+           onChanged: (value) { _checkpoint(); setState(() => _showKaisaBorder = value); },
+         ),
+         if (_showKaisaLogo) ...[
+           const Text('KAISA logo size'),
+           Slider(
+  value: _kaisaLogoWidth.clamp(0.05, 0.40).toDouble(),
+  min: 0.05,
+  max: 0.40,
+  onChangeStart: (_) => _checkpoint(),
+  onChanged: (value) {
+    setState(() {
+      _kaisaLogoWidth = value;
+      _kaisaLogoX = _kaisaLogoX
+          .clamp(0.0, 1.0 - value)
+          .toDouble();
+    });
+  },
+),
+         ],
+        const SizedBox(height: 8),
+        OutlinedButton.icon(
+          onPressed: _pickBackground,
+          icon: const Icon(Icons.upload_file),
+          label: Text(
+            _backgroundName == null
+                ? 'Upload PNG/JPG background'
+                : 'Background: $_backgroundName',
+            overflow: TextOverflow.ellipsis,
           ),
-                     IconButton(
-             tooltip: 'Undo (Ctrl+Z)',
-             onPressed: _undoStack.isEmpty ? null : _undo,
-             icon: const Icon(Icons.undo),
-           ),
-           IconButton(
-             tooltip: 'Redo (Ctrl+Y / Ctrl+Shift+Z)',
-             onPressed: _redoStack.isEmpty ? null : _redo,
-             icon: const Icon(Icons.redo),
-           ),
-if (_recipients.length > 1) ...[
-            IconButton(
-              onPressed: _recipientIndex <= 0
-                  ? null
-                  : () => setState(() => _recipientIndex--),
-              icon: const Icon(Icons.chevron_left),
-            ),
-            Text('${_recipientIndex + 1} / ${_recipients.length}'),
-            IconButton(
-              onPressed: _recipientIndex >= _recipients.length - 1
-                  ? null
-                  : () => setState(() => _recipientIndex++),
-              icon: const Icon(Icons.chevron_right),
-            ),
-          ],
-        ],
-      ),
-      const SizedBox(height: 6),
-      const Text(
-        'Click to select, double-click to edit text on the canvas, or drag to move. Ctrl+C: copy layer; Ctrl+V: paste layer; Ctrl+Z: undo; Ctrl+Y: redo.',
-        style: TextStyle(color: Color(0xFF5E7869), fontSize: 12),
-      ),
-      const SizedBox(height: 12),
-      _certificateCanvas(),
-      const SizedBox(height: 17),
-      Wrap(
-        spacing: 10,
-        runSpacing: 10,
-        children: [
-          FilledButton.icon(
-            onPressed: _exporting ? null : () => _export(print: false),
-            icon: const Icon(Icons.picture_as_pdf),
-            label: const Text('Export batch PDF'),
+        ),
+        if (_background != null)
+          TextButton(
+            onPressed: () { _checkpoint(); setState(() {
+              _background = null;
+              _backgroundName = null;
+            }); },
+            child: const Text('Use simple built-in border'),
           ),
-          OutlinedButton.icon(
-            onPressed: _exporting ? null : () => _export(print: true),
-            icon: const Icon(Icons.print),
-            label: const Text('Print'),
+                                   ],
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
-      if (_message != null) ...[
-        const SizedBox(height: 10),
-        Text(_message!, style: const TextStyle(color: Colors.red)),
-      ],
-      const SizedBox(height: 9),
-      const Text(
-        'Verified attendees and event details are read from Supabase. PDF export is local; issuance records and resident download delivery are not yet implemented.',
-        style: TextStyle(fontSize: 12, color: Color(0xFF5E7869)),
-      ),
-    ],
+        );
+
+  String get _studioTemplateName {
+    for (final template in _savedTemplates) {
+      if (template['id'] == _activeTemplateId) return template['name'].toString();
+    }
+    return 'Untitled certificate';
+  }
+
+  Widget _studioHeader() => Material(
+    color: Colors.white,
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: _studioLine))),
+      child: Wrap(spacing: 8, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
+        IconButton(tooltip: 'Back to dashboard', onPressed: _backToDashboard, icon: const Icon(Icons.arrow_back)),
+        const Text('E-Certificate Studio', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+        Container(constraints: const BoxConstraints(maxWidth: 190), padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5), decoration: BoxDecoration(color: _studioSurface, borderRadius: BorderRadius.circular(5)), child: Text(_studioTemplateName, overflow: TextOverflow.ellipsis)),
+        IconButton(tooltip: 'Undo (Ctrl+Z)', onPressed: _undoStack.isEmpty ? null : _undo, icon: const Icon(Icons.undo)),
+        IconButton(tooltip: 'Redo (Ctrl+Y)', onPressed: _redoStack.isEmpty ? null : _redo, icon: const Icon(Icons.redo)),
+        Text(_hasUncommittedEdits ? 'Unsaved edits · $_draftStatus' : _draftStatus, style: const TextStyle(fontSize: 12)),
+        TextButton.icon(onPressed: _libraryReady && !_templatesBusy ? () => _saveTemplate() : null, icon: const Icon(Icons.save_outlined), label: Text(_activeTemplateId == null ? 'Save template' : 'Save changes')),
+        TextButton.icon(onPressed: _libraryReady && !_templatesBusy ? () => _saveTemplate(saveAs: true) : null, icon: const Icon(Icons.copy_outlined), label: const Text('Save as new')),
+        TextButton.icon(onPressed: _exporting ? null : () => _export(print: true), icon: const Icon(Icons.print_outlined), label: const Text('Print')),
+        FilledButton.icon(onPressed: _exporting ? null : () => _export(print: false), icon: const Icon(Icons.picture_as_pdf_outlined), label: Text(_exporting ? 'Exporting…' : 'Export PDF')),
+      ]),
+    ),
   );
+
+  Widget _toolButton(int i, {bool mobile = false}) => Padding(
+    padding: const EdgeInsets.all(3),
+    child: Material(
+      color: _studioTool == i ? _studioGreen : Colors.transparent,
+      borderRadius: BorderRadius.circular(5),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(5),
+        onTap: () => setState(() { _studioTool = i; _showTools = true; }),
+        child: SizedBox(width: mobile ? 76 : 72, height: 60, child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Icon(_toolIcons[i], size: 21, color: _studioTool == i ? Colors.white : _studioGreen),
+          const SizedBox(height: 4),
+          Text(_toolNames[i], style: TextStyle(fontSize: 10, color: _studioTool == i ? Colors.white : _studioGreen)),
+        ])),
+      ),
+    ),
+  );
+
+  Widget _toolContent() {
+    switch (_studioTool) {
+      case 0: return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        const Text('Built-in designs', style: TextStyle(fontWeight: FontWeight.w700)),
+        const SizedBox(height: 8),
+        ListTile(dense: true, selected: _background == null, leading: const Icon(Icons.article_outlined), title: const Text('KAISA built-in design'), onTap: () => _applyDesign(0)),
+        const Divider(), _myTemplatesPanel(),
+      ]);
+      case 1: return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        FilledButton.icon(onPressed: _addTextLayer, icon: const Icon(Icons.add), label: const Text('Add text')),
+        for (final layer in _layers) ListTile(dense: true, selected: _selectedImageId == null && _selectedId == layer.id, leading: const Icon(Icons.text_fields), title: Text(layer.label), subtitle: Text(layer.text.text, maxLines: 1, overflow: TextOverflow.ellipsis), onTap: () => _selectTextLayer(layer.id)),
+      ]);
+      case 2: return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        FilledButton.icon(onPressed: _addLogo, icon: const Icon(Icons.upload), label: const Text('Upload image')),
+        SwitchListTile(title: const Text('KAISA logo'), value: _showKaisaLogo, onChanged: (v) { _checkpoint(); setState(() { _showKaisaLogo = v; if (!v && _selectedImageId == 'kaisa_default') _selectedImageId = null; }); }),
+        if (_showKaisaLogo) ListTile(title: const Text('Default KAISA logo'), leading: const Icon(Icons.image_outlined), selected: _selectedImageId == 'kaisa_default', onTap: () => _selectImageLayer('kaisa_default')),
+        for (final logo in _logos) ListTile(dense: true, leading: const Icon(Icons.image_outlined), title: Text(logo.name), selected: _selectedImageId == logo.id, onTap: () => _selectImageLayer(logo.id)),
+      ]);
+      case 3: return _backgroundTools();
+      case 4: return _layerNavigator();
+      default: return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        _supabasePanel(), const SizedBox(height: 12),
+        Text('${_recipients.length} unique recipient(s)', style: const TextStyle(fontWeight: FontWeight.w700)),
+        const SizedBox(height: 8), TextField(controller: _names, readOnly: true, maxLines: 4, decoration: const InputDecoration(labelText: 'Selected recipient names')),
+      ]);
+    }
+  }
+
+  Widget _studioPanel(String title, Widget child) => Material(
+    color: Colors.white,
+    child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Padding(padding: const EdgeInsets.fromLTRB(14, 16, 14, 12), child: Text(title, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w700))),
+      const Divider(height: 1),
+      Expanded(child: SingleChildScrollView(padding: const EdgeInsets.all(12), child: child)),
+    ]),
+  );
+
+  Widget _studioInspector() => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+    Text(_selectedImageId == null ? 'TEXT LAYER' : 'IMAGE LAYER', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: _studioGreen)),
+    const SizedBox(height: 8),
+    Wrap(spacing: 4, children: [
+      IconButton(tooltip: 'Copy selected', onPressed: _copySelectedObject, icon: const Icon(Icons.copy_outlined)),
+      IconButton(tooltip: 'Paste object', onPressed: _copiedObject == null ? null : _pasteCopiedObject, icon: const Icon(Icons.content_paste_outlined)),
+      IconButton(tooltip: 'Remove selected', onPressed: _removeSelectedObject, icon: const Icon(Icons.delete_outline)),
+    ]),
+    _controlPanel(),
+  ]);
+
+  Widget _studioCanvas() => ColoredBox(
+    color: _studioSurface,
+    child: Column(children: [
+      Padding(padding: const EdgeInsets.all(12), child: Row(children: [
+        const Expanded(child: Text('A4 Landscape', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600))),
+        IconButton(tooltip: 'Zoom out', onPressed: _canvasZoom <= .5 ? null : () => setState(() => _canvasZoom = (_canvasZoom - .25).clamp(.5, 2.5).toDouble()), icon: const Icon(Icons.remove)),
+        TextButton(onPressed: () => setState(() => _canvasZoom = 1), child: Text('${(_canvasZoom * 100).round()}%')),
+        IconButton(tooltip: 'Zoom in', onPressed: _canvasZoom >= 2.5 ? null : () => setState(() => _canvasZoom = (_canvasZoom + .25).clamp(.5, 2.5).toDouble()), icon: const Icon(Icons.add)),
+        IconButton(tooltip: 'Editing help', icon: const Icon(Icons.help_outline), onPressed: () => showDialog<void>(context: context, builder: (context) => AlertDialog(title: const Text('Editing shortcuts'), content: const Text('Click to select. Double-click text to edit. Drag to move. Ctrl+Z: undo. Ctrl+Y: redo. Ctrl+C: copy. Ctrl+V: paste.'), actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close'))]))),
+      ])),
+      Expanded(child: LayoutBuilder(builder: (context, constraints) {
+        final width = (constraints.maxWidth - 24).clamp(0.0, (constraints.maxHeight - 16).clamp(0.0, 2000.0) * _pageWidth / _pageHeight).toDouble();
+        if (width < 1) return const SizedBox.shrink();
+        return SingleChildScrollView(child: SingleChildScrollView(scrollDirection: Axis.horizontal, child: SizedBox(width: (width * _canvasZoom + 24).clamp(constraints.maxWidth, double.infinity).toDouble(), height: (width * _canvasZoom * _pageHeight / _pageWidth + 16).clamp(constraints.maxHeight, double.infinity).toDouble(), child: Center(child: Container(width: width * _canvasZoom, decoration: const BoxDecoration(color: Colors.white, boxShadow: [BoxShadow(color: Color(0x2200301B), blurRadius: 18, offset: Offset(0, 8))]), child: _certificateCanvas())))));
+      })),
+      Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+        IconButton(tooltip: 'Previous recipient', onPressed: _recipientIndex <= 0 ? null : () => setState(() => _recipientIndex--), icon: const Icon(Icons.chevron_left)),
+        Flexible(child: Text(_recipients.isEmpty ? 'No recipients selected' : '${_recipients[_recipientIndex.clamp(0, _recipients.length - 1).toInt()]} · ${_recipientIndex + 1} / ${_recipients.length}', overflow: TextOverflow.ellipsis)),
+        IconButton(tooltip: 'Next recipient', onPressed: _recipientIndex >= _recipients.length - 1 ? null : () => setState(() => _recipientIndex++), icon: const Icon(Icons.chevron_right)),
+      ]),
+    ]),
+  );
+
+  Widget _studioBody() => LayoutBuilder(builder: (context, constraints) {
+    final desktop = constraints.maxWidth >= 1000;
+    return Column(children: [
+      _studioHeader(),
+      if (desktop) Material(color: Colors.white, child: Row(children: [
+        TextButton.icon(onPressed: () => setState(() => _showTools = !_showTools), icon: const Icon(Icons.view_sidebar_outlined), label: Text(_showTools ? 'Hide tools' : 'Show tools')),
+        const Spacer(),
+        TextButton.icon(onPressed: () => setState(() => _showProperties = !_showProperties), icon: const Icon(Icons.tune), label: Text(_showProperties ? 'Hide properties' : 'Show properties')),
+      ])),
+      if (_message != null) Material(color: const Color(0xFFFFE9E5), child: Padding(padding: const EdgeInsets.all(10), child: Row(children: [Expanded(child: Text(_message!, style: const TextStyle(color: Colors.red))), IconButton(onPressed: () => setState(() => _message = null), icon: const Icon(Icons.close))]))),
+      Expanded(child: desktop ? Row(children: [
+        Material(color: Colors.white, child: SizedBox(width: 78, child: ListView(children: [for (var i = 0; i < _toolNames.length; i++) _toolButton(i)]))),
+        const VerticalDivider(width: 1, color: _studioLine),
+        if (_showTools) SizedBox(width: 260, child: _studioPanel(_studioTool == 6 ? 'Layers' : _toolNames[_studioTool], _studioTool == 6 ? _layerNavigator() : _toolContent())),
+        const VerticalDivider(width: 1, color: _studioLine),
+        Expanded(child: _studioCanvas()),
+        const VerticalDivider(width: 1, color: _studioLine),
+        if (_showProperties) SizedBox(width: 290, child: _studioPanel('Properties', _studioInspector())),
+      ]) : Column(children: [
+        Expanded(flex: 5, child: _studioCanvas()),
+        Material(color: Colors.white, child: SingleChildScrollView(scrollDirection: Axis.horizontal, child: Row(children: [for (var i = 0; i < _toolNames.length; i++) _toolButton(i, mobile: true), TextButton.icon(onPressed: () => setState(() => _studioTool = 6), icon: const Icon(Icons.tune), label: const Text('Properties'))]))),
+        Expanded(flex: 5, child: _studioPanel(_studioTool == 6 ? 'Properties' : _toolNames[_studioTool], _studioTool == 6 ? _studioInspector() : _toolContent())),
+      ])),
+      Material(color: Colors.white, child: Padding(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), child: Text('${_recipients.length} verified recipients selected · Local PDF export', style: const TextStyle(fontSize: 11)))),
+    ]);
+  });
 
   @override
   Widget build(BuildContext context) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _scheduleDraftIfChanged();
     });
-    final desktop = MediaQuery.sizeOf(context).width >= 1000;
     return PopScope(
       canPop: _allowRouteExit || !_hasUncommittedEdits,
       onPopInvokedWithResult: (didPop, result) {
@@ -2715,81 +2796,15 @@ if (_recipients.length > 1) ...[
       child: Focus(
       focusNode: _editorFocus,
       autofocus: true,
-      child: Scaffold(
-      // No app bar: the Organization Admin shell owns the shared header.
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1700),
-          child: ListView(
-            padding: const EdgeInsets.all(18),
-            children: [
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('KAISA · ORGANIZATION TOOLS · VERIFIED ATTENDANCE',
-                      style: TextStyle(color: _forest, fontSize: 12,
-                        fontWeight: FontWeight.w800)),
-                    SizedBox(height: 6),
-                    Text('Make it yours.',
-                      style: TextStyle(color: Color(0xFF173F2E), fontSize: 29,
-                        fontWeight: FontWeight.w900)),
-                    SizedBox(height: 4),
-                    Text('Upload a design, drag text, choose fonts, and print certificates for every attendee.',
-                      style: TextStyle(color: Color(0xFF5E7869))),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              _supabasePanel(),
-              const SizedBox(height: 16),
-              _myTemplatesPanel(),
-              const SizedBox(height: 16),
-              if (desktop)
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      flex: 4,
-                      child: Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(18),
-                          child: _controlPanel(),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      flex: 6,
-                      child: Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(18),
-                          child: _previewPanel(),
-                        ),
-                      ),
-                    ),
-                  ],
-                )
-              else ...[
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: _previewPanel(),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: _controlPanel(),
-                  ),
-                ),
-              ],
-            ],
-          ),
+      child: Theme(
+        data: Theme.of(context).copyWith(
+          colorScheme: ColorScheme.fromSeed(seedColor: _studioGreen, surface: Colors.white),
+          scaffoldBackgroundColor: _studioSurface,
+          cardTheme: const CardThemeData(color: Colors.white, elevation: 0, margin: EdgeInsets.zero),
+          inputDecorationTheme: InputDecorationTheme(filled: true, fillColor: _studioSurface, isDense: true, border: OutlineInputBorder(borderRadius: BorderRadius.circular(5), borderSide: BorderSide.none)),
+          dividerColor: _studioLine,
         ),
-      ),
+        child: Scaffold(body: _studioBody()),
       ),
       ),
       ),
