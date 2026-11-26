@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -106,7 +107,46 @@ class _KaisaOrgAnnouncementsPageState extends State<KaisaOrgAnnouncementsPage> {
   bool _loading = false;
   bool _composerOpen = false;
   String? _error;
+  bool _mock = kDebugMode && const bool.fromEnvironment('USE_MOCK_DATA');
+  List<Map<String, dynamic>> _mockRows = [];
   int _scope = 0;
+
+  void _seedMock() {
+    final now = DateTime.now();
+    _mockRows = [
+      for (final (title, body, audience, days) in [
+        ('Volunteer orientation reminder', 'Please bring your reusable water bottle and arrive 15 minutes early.', 'public', 0),
+        ('Monthly members meeting', 'Members are invited to review our upcoming activities and committee assignments.', 'members', 1),
+        ('Community clean-up update', 'Thank you to our volunteers. Upcoming activities will be listed in Events Management.', 'public', 3),
+      ])
+        {'title': title, 'body': body, 'visibility': audience,
+         'created_at': now.subtract(Duration(days: days)).toIso8601String()},
+    ];
+    _announcements = List.of(_mockRows);
+    _orgName = 'KAISA Demo Organization';
+  }
+
+  void _switchMode(bool value) {
+    if (!kDebugMode || _composerOpen || value == _mock) return;
+    setState(() {
+      _mock = value;
+      ++_scope;
+      ++_request;
+      _error = null;
+      _loading = false;
+      _search.clear();
+      _audience = 'all';
+      _announcements = [];
+      _orgName = 'Your organization';
+      if (_mock) _seedMock();
+    });
+    final id = _organizationId;
+    if (!_mock && id != null) {
+      _reload();
+      _loadOrganizationName(id, _scope);
+    }
+  }
+
   int _request = 0;
 
   @override
@@ -124,6 +164,11 @@ class _KaisaOrgAnnouncementsPageState extends State<KaisaOrgAnnouncementsPage> {
     _audience = 'all';
     _search.clear();
     _loading = id != null;
+    if (_mock) {
+      _loading = false;
+      _seedMock();
+      return;
+    }
     if (id != null) {
       Future.microtask(() async {
         if (!mounted || scope != _scope) return;
@@ -157,6 +202,10 @@ class _KaisaOrgAnnouncementsPageState extends State<KaisaOrgAnnouncementsPage> {
   }
 
   Future<void> _reload() async {
+    if (_mock) {
+      if (mounted) setState(() => _announcements = List.of(_mockRows));
+      return;
+    }
     final id = _organizationId;
     if (!mounted || id == null) return;
     final request = ++_request;
@@ -186,6 +235,13 @@ class _KaisaOrgAnnouncementsPageState extends State<KaisaOrgAnnouncementsPage> {
     if (!mounted || scope != _scope || id != _organizationId) {
       throw StateError('The active organization changed. Close this composer and start a new announcement.');
     }
+    if (_mock) {
+      _mockRows.insert(0, {
+        'title': draft.title, 'body': draft.body, 'visibility': draft.visibility,
+        'created_at': DateTime.now().toIso8601String(),
+      });
+      return;
+    }
     await _db.rpc('kaisa_org_announcement_publish', params: {
       'p_organization_id': id,
       'p_title': draft.title,
@@ -204,6 +260,7 @@ class _KaisaOrgAnnouncementsPageState extends State<KaisaOrgAnnouncementsPage> {
     final wide = MediaQuery.sizeOf(context).width >= 700;
     Widget content() => _AnnouncementComposer(
       organizationName: _orgName,
+      mock: _mock,
       onPublish: (draft) => _publish(id, scope, draft),
     );
     try {
@@ -227,7 +284,7 @@ class _KaisaOrgAnnouncementsPageState extends State<KaisaOrgAnnouncementsPage> {
               builder: (_) => content(),
             );
       if (!mounted || result == null || scope != _scope) return;
-      _snack(result.email
+      _snack(_mock ? 'Sample announcement published locally. No notifications sent.' : result.email
           ? 'Announcement published. Email requests queued (not yet sent).'
           : 'Announcement published successfully.');
       setState(() { _search.clear(); _audience = 'all'; _newestFirst = true; });
@@ -326,10 +383,23 @@ class _KaisaOrgAnnouncementsPageState extends State<KaisaOrgAnnouncementsPage> {
         Expanded(child: Text('KAISA / ORGANIZATION COMMUNICATIONS', style: TextStyle(color: _green, fontWeight: FontWeight.w800, letterSpacing: 1.15, fontSize: 10))),
       ]),
       const SizedBox(height: 7),
-      const Text('Community Feed & Announcements', style: TextStyle(color: _forest, fontSize: 30, fontWeight: FontWeight.w800, letterSpacing: -0.8, height: 1.15)),
+      const Text('Feed & Announcements', style: TextStyle(color: _forest, fontSize: 30, fontWeight: FontWeight.w800, letterSpacing: -0.8, height: 1.15)),
       const SizedBox(height: 7),
-      const Text('Keep your members informed, connected, and involved.', style: TextStyle(color: _muted, fontSize: 13, height: 1.45)),
-      const SizedBox(height: 20),
+      const Text('Manage official organization announcements. Events are published from Events Management.', style: TextStyle(color: _muted, fontSize: 13, height: 1.45)),
+      const SizedBox(height: 16),
+      if (kDebugMode) ...[
+        Container(decoration: _surface(), child: SwitchListTile(
+          title: Text(_mock ? 'Mock data mode' : 'Existing service mode'),
+          subtitle: Text(_mock ? 'Local sample announcements only' : 'Authorized organization announcements'),
+          value: _mock,
+          onChanged: _composerOpen ? null : _switchMode,
+        )),
+        if (_mock) Wrap(spacing: 8, children: [
+          TextButton(onPressed: _composerOpen ? null : () => setState(_seedMock), child: const Text('Reset samples')),
+          TextButton(onPressed: _composerOpen ? null : () => setState(() { _mockRows.clear(); _announcements = []; }), child: const Text('Test empty state')),
+        ]),
+        const SizedBox(height: 12),
+      ],
       Row(children: [
         Expanded(child: TextField(
           controller: _search,
@@ -434,7 +504,7 @@ class _KaisaOrgAnnouncementsPageState extends State<KaisaOrgAnnouncementsPage> {
       return const Center(child: Padding(padding: EdgeInsets.all(24), child: Text('Choose an organization from the account switcher first.', textAlign: TextAlign.center)));
     }
     // The existing organization-admin shell owns the app bar and navigation.
-    return ColoredBox(
+    return Material(
       color: _canvas,
       child: LayoutBuilder(builder: (context, constraints) {
         final wide = constraints.maxWidth >= 1000;
@@ -535,7 +605,8 @@ class _AnnouncementDraft {
 }
 
 class _AnnouncementComposer extends StatefulWidget {
-  const _AnnouncementComposer({required this.organizationName, required this.onPublish});
+  const _AnnouncementComposer({required this.organizationName, required this.onPublish, required this.mock});
+  final bool mock;
   final String organizationName;
   final Future<void> Function(_AnnouncementDraft) onPublish;
   @override
@@ -640,6 +711,7 @@ class _AnnouncementComposerState extends State<_AnnouncementComposer> {
               TextField(controller: _body, enabled: !_busy, minLines: 4, maxLines: 8, maxLength: 4000, textCapitalization: TextCapitalization.sentences, onChanged: (_) => setState(() {}), decoration: _field('What would you like to share?')),
               const Divider(height: 24, color: _line),
               _label('NOTIFICATION SETTINGS'),
+              if (widget.mock) const Text('Simulation only: no email or in-app notifications will be sent.'),
               _notification(title: 'In-app notifications', subtitle: 'Notify approved organization members in KAISA.', value: _inApp, onChanged: (v) => setState(() => _inApp = v ?? false), icon: Icons.notifications_none_rounded),
               _notification(title: 'Email notifications', subtitle: 'Queue emails to members. Server email delivery must be configured.', value: _email, onChanged: (v) => setState(() => _email = v ?? false), icon: Icons.mail_outline_rounded),
               if (_error != null) ...[

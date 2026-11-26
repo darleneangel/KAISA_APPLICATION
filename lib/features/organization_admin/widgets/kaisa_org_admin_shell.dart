@@ -1,162 +1,105 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-/// Organization Admin navigation. This widget provides navigation, not permission.
-/// Every organization-admin route and backend RPC must independently enforce access.
+/// Organization navigation only. Authorization remains in KaisaOrgAdminGate
+/// and in the server-side operations. This shell does not grant staff access.
 class KaisaOrgAdminShell extends StatelessWidget {
   const KaisaOrgAdminShell({super.key, required this.child});
-
   final Widget child;
 
-  static const forest = Color(0xFF14532D);
-  static const yellow = Color(0xFFFBC02D);
-  static const selectedGreen = Color(0xFF31704F);
-  static const _background = Color(0xFFF8FAF8);
+  static const _green = Color(0xFF154E2E);
+  static const _deep = Color(0xFF103D25);
+  static const _gold = Color(0xFFFDBC19);
+  static const _muted = Color(0xFFB9D2C2);
+  static const _background = Color(0xFFF6F8F6);
+  static const _base = '/organization-admin';
 
-  // `enabled` means a route is intended to be registered in app_router.dart.
-  // Turn on other routes only after their pages and protected routes exist.
-  static const _entries = <_AdminMenuEntry>[
-    _AdminMenuEntry(
-      'Dashboard & Analytics',
-      Icons.dashboard_outlined,
-      '/organization-admin/dashboard',
-      true,
-    ),
-    _AdminMenuEntry(
-      'Members & Requests',
-      Icons.groups_outlined,
-      '/organization-admin/members',
-      true,
-    ),
-    _AdminMenuEntry(
-      'Staff Invitations',
-      Icons.person_add_alt_outlined,
-      '/organization-admin/invitations',
-      true,
-    ),
-    _AdminMenuEntry(
-      'Events Management',
-      Icons.event_note_outlined,
-      '/organization-admin/events',
-      true,
-    ),
-    _AdminMenuEntry(
-      'Attendance Scanner',
-      Icons.qr_code_scanner_rounded,
-      '/organization-admin/attendance',
-      true,
-    ),
-    _AdminMenuEntry(
-      'E-Certificate Studio',
-      Icons.workspace_premium_outlined,
-      '/organization-admin/certificates',
-      true,
-    ),
-    _AdminMenuEntry(
-      'Community Feed & Announcements',
-      Icons.dynamic_feed_outlined,
-      '/organization-admin/announcements',
-      true,
-    ),
-    _AdminMenuEntry(
-      'Reports & Exports',
-      Icons.assessment_outlined,
-      '/organization-admin/reports',
-      true,
-    ),
-    _AdminMenuEntry(
-      'Organization Profile',
-      Icons.storefront_outlined,
-      '/organization-admin/settings',
-      true,
-    ),
+  static const _groups = <(String, List<(String, IconData, String)>)>[
+    ('OVERVIEW', [
+      ('Dashboard & Analytics', Icons.dashboard_outlined, 'dashboard'),
+    ]),
+    ('PEOPLE MANAGEMENT', [
+      ('Members & Requests', Icons.groups_outlined, 'members'),
+      ('Staff & Permissions', Icons.manage_accounts_outlined, 'invitations'),
+    ]),
+    ('COMMUNITY OPERATIONS', [
+      ('Events Management', Icons.event_outlined, 'events'),
+      ('Attendance Management', Icons.qr_code_scanner, 'attendance'),
+      ('E-Certificate Studio', Icons.workspace_premium_outlined, 'ecertificate-studio'),
+      ('Feed & Announcements', Icons.campaign_outlined, 'announcements'),
+    ]),
+    ('INSIGHTS & GOVERNANCE', [
+      ('Reports & Exports', Icons.bar_chart_rounded, 'reports'),
+      ('Audit Logs', Icons.history_rounded, 'audit-logs'),
+    ]),
+    ('ORGANIZATION', [
+      ('Organization Profile', Icons.storefront_outlined, 'profile'),
+      ('Settings', Icons.settings_outlined, 'workspace-settings'),
+    ]),
   ];
 
-  // Keep mobile destinations focused; the More tab gives access to every item.
-  static const _mobileIndices = [0, 3, 4, 5];
-
-  void _openMenuEntry(
-    BuildContext context,
-    _AdminMenuEntry entry,
-    String? organizationId,
-  ) {
-    if (!entry.enabled) {
-      showDialog<void>(
-        context: context,
-        builder: (dialogContext) => AlertDialog(
-          title: Text(entry.label),
-          content: const Text(
-            'This section is not built yet. It is not an account-permission lock. '
-            'Its page and protected route have not been integrated yet.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('OK'),
-            ),
-          ],
-        ),
-      );
-      return;
-    }
-    if (organizationId == null || organizationId.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Please choose an organization from the account switcher.',
-          ),
-        ),
-      );
-      return;
-    }
-    context.go(
-      Uri(
-        path: entry.path,
-        queryParameters: {'organizationId': organizationId},
-      ).toString(),
-    );
+  String _activePath(String path) {
+    if (path == 'settings') return 'profile'; // Legacy profile URL.
+    if (path == 'certificates') return 'ecertificate-studio';
+    return path;
   }
 
-  void _showMobileMenu(BuildContext context, String? organizationId) {
-    showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      isScrollControlled: true,
-      builder: (sheetContext) => SafeArea(
-        child: ListView(
-          shrinkWrap: true,
-          children: [
-            const ListTile(
-              title: Text(
-                'Organization management',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ),
-            for (final entry in _entries)
-              ListTile(
-                leading: Icon(entry.icon, color: forest),
-                selected: entry.path == GoRouterState.of(context).uri.path,
-                selectedTileColor: const Color(0xFFE1F2E7),
-                title: Text(entry.label),
-                trailing: entry.enabled
-                    ? const Icon(Icons.chevron_right)
-                    : const Icon(Icons.lock_clock_outlined, size: 18),
-                onTap: () {
-                  Navigator.of(sheetContext).pop();
-                  _openMenuEntry(context, entry, organizationId);
-                },
-              ),
-            const Divider(),
-            ListTile(
-              leading: const Icon(Icons.swap_horiz, color: forest),
-              title: const Text('Resident Portal'),
-              onTap: () {
-                Navigator.of(sheetContext).pop();
-                context.go('/resident/home');
-              },
-            ),
-          ],
-        ),
+  String _destination(Uri current, String path) {
+    final id = current.queryParameters['organizationId'];
+    return Uri(path: '$_base/$path', queryParameters:
+        id == null ? null : {'organizationId': id}).toString();
+  }
+
+  Widget _navigation(BuildContext context, Uri uri, {required bool drawer}) {
+    final active = _activePath(uri.pathSegments.last);
+    void go(String target) {
+      final router = GoRouter.of(context);
+      if (drawer) Navigator.of(context).pop();
+      router.go(target);
+    }
+    return Material(
+      color: _green,
+      child: SafeArea(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(18, 22, 14, 18),
+            child: Row(children: [
+              Icon(Icons.groups_rounded, color: _gold, size: 32),
+              SizedBox(width: 12),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('KAISA', style: TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w800, decoration: TextDecoration.none)),
+                Text('ORGANIZATION ADMIN PORTAL', style: TextStyle(color: _muted, fontSize: 10, fontWeight: FontWeight.w600, decoration: TextDecoration.none)),
+              ])),
+            ]),
+          ),
+          const Divider(height: 1, color: Color(0xFF356347)),
+          Expanded(child: ListView(padding: const EdgeInsets.fromLTRB(12, 8, 12, 12), children: [
+            for (final group in _groups) ...[
+              Padding(padding: const EdgeInsets.fromLTRB(12, 17, 8, 5), child: Text(group.$1, style: const TextStyle(color: _muted, fontSize: 10, letterSpacing: 1.1, fontWeight: FontWeight.w700, decoration: TextDecoration.none))),
+              for (final destination in group.$2)
+                Padding(padding: const EdgeInsets.only(bottom: 3), child: ListTile(
+                  dense: true,
+                  minLeadingWidth: 25,
+                  horizontalTitleGap: 10,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  selected: active == destination.$3,
+                  selectedTileColor: _deep,
+                  leading: Icon(destination.$2, size: 21, color: active == destination.$3 ? _gold : _muted),
+                  title: Text(destination.$1, style: TextStyle(color: active == destination.$3 ? Colors.white : _muted, fontSize: 13, fontWeight: active == destination.$3 ? FontWeight.w700 : FontWeight.w500, decoration: TextDecoration.none)),
+                  trailing: active == destination.$3 ? const Icon(Icons.chevron_right, color: _gold, size: 17) : null,
+                  onTap: () => go(_destination(uri, destination.$3)),
+                )),
+            ],
+          ])),
+          const Divider(height: 1, color: Color(0xFF356347)),
+          ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 7),
+            leading: const Icon(Icons.swap_horiz_rounded, color: _gold),
+            title: const Text('Resident Portal', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, decoration: TextDecoration.none)),
+            onTap: () => go('/resident/home'),
+          ),
+        ]),
       ),
     );
   }
@@ -164,263 +107,31 @@ class KaisaOrgAdminShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final uri = GoRouterState.of(context).uri;
-    final currentPath = uri.path;
-    final organizationId = uri.queryParameters['organizationId'];
-    final activeIndex = _entries.indexWhere(
-      (entry) => entry.path == currentPath,
-    );
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final desktop = constraints.maxWidth >= 880;
-        final expanded = constraints.maxWidth >= 1150;
-        final sidebar = desktop
-            ? Container(
-                width: expanded ? 250 : 86,
-                color: forest,
-                child: Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(14, 28, 14, 24),
-                      child: Row(
-                        mainAxisAlignment: expanded
-                            ? MainAxisAlignment.start
-                            : MainAxisAlignment.center,
-                        children: [
-                          const Icon(
-                            Icons.diversity_3_rounded,
-                            color: yellow,
-                            size: 29,
-                          ),
-                          if (expanded)
-                            const Expanded(
-                              child: Padding(
-                                padding: EdgeInsets.only(left: 12),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'KAISA',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 23,
-                                        fontWeight: FontWeight.w900,
-                                      ),
-                                    ),
-                                    Text(
-                                      'ORGANIZATION ADMIN PORTAL',
-                                      maxLines: 2,
-                                      style: TextStyle(
-                                        color: Colors.white70,
-                                        fontSize: 9,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                    Expanded(
-                      child: ListView(
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        children: [
-                          for (var i = 0; i < _entries.length; i++)
-                            Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 2),
-                              child: Tooltip(
-                                message: _entries[i].label,
-                                child: ListTile(
-                                  selected: i == activeIndex,
-                                  selectedTileColor: selectedGreen,
-                                  tileColor: Colors.transparent,
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 14,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  leading: Icon(
-                                    _entries[i].icon,
-                                    color: i == activeIndex
-                                        ? yellow
-                                        : Colors.white70,
-                                  ),
-                                  title: expanded
-                                      ? Text(
-                                          _entries[i].label,
-                                          style: TextStyle(
-                                            color: i == activeIndex
-                                                ? Colors.white
-                                                : Colors.white70,
-                                            fontSize: 12,
-                                            fontWeight: i == activeIndex
-                                                ? FontWeight.w700
-                                                : FontWeight.w400,
-                                          ),
-                                        )
-                                      : null,
-                                  trailing: expanded && !_entries[i].enabled
-                                      ? const Icon(
-                                          Icons.lock_clock_outlined,
-                                          color: Colors.white54,
-                                          size: 16,
-                                        )
-                                      : expanded && i == activeIndex
-                                      ? const Icon(
-                                          Icons.chevron_right_rounded,
-                                          color: yellow,
-                                          size: 18,
-                                        )
-                                      : null,
-                                  onTap: () => _openMenuEntry(
-                                    context,
-                                    _entries[i],
-                                    organizationId,
-                                  ),
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                    const Divider(color: Colors.white24),
-                    Tooltip(
-                      message: 'Resident Portal',
-                      child: ListTile(
-                        leading: const Icon(
-                          Icons.swap_horiz_rounded,
-                          color: yellow,
-                        ),
-                        title: expanded
-                            ? const Text(
-                                'Resident Portal',
-                                style: TextStyle(color: Colors.white),
-                              )
-                            : null,
-                        onTap: () => context.go('/resident/home'),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-                ),
-              )
-            : null;
-
-        final mobileIndex = _mobileIndices.indexOf(activeIndex);
-        return Scaffold(
-          backgroundColor: _background,
-          body: SafeArea(
-            child: Row(
-              children: [
-                if (sidebar != null) sidebar,
-                Expanded(
-                  child: Column(
-                    children: [
-                      Container(
-                        height: 64,
-                        padding: const EdgeInsets.symmetric(horizontal: 18),
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          border: Border(
-                            bottom: BorderSide(color: Color(0xFFE2EBE4)),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.diversity_3_rounded,
-                              color: forest,
-                            ),
-                            const SizedBox(width: 9),
-                            const Expanded(
-                              child: Text(
-                                'KAISA · Organization Administration',
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: forest,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ),
-                            IconButton(
-                              tooltip: 'Resident Portal',
-                              onPressed: () => context.go('/resident/home'),
-                              icon: const Icon(
-                                Icons.person_outline_rounded,
-                                color: forest,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Expanded(
-                        child: Center(
-                          child: ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 1180),
-                            child: child,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+    final theme = Theme.of(context);
+    return LayoutBuilder(builder: (context, constraints) {
+      final desktop = constraints.maxWidth >= 900;
+      return Scaffold(
+        backgroundColor: _background,
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          foregroundColor: _green,
+          elevation: 0,
+          surfaceTintColor: Colors.transparent,
+          title: const Text('KAISA · Organization Administration', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+          actions: [IconButton(tooltip: 'Organization profile', onPressed: () => context.go(_destination(uri, 'profile')), icon: const Icon(Icons.person_outline)), const SizedBox(width: 8)],
+        ),
+        drawer: desktop ? null : Drawer(backgroundColor: _green, child: Builder(builder: (drawerContext) => _navigation(drawerContext, uri, drawer: true))),
+        body: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          if (desktop) SizedBox(width: 260, child: _navigation(context, uri, drawer: false)),
+          Expanded(child: Material(
+            color: _background,
+            child: DefaultTextStyle(
+              style: (theme.textTheme.bodyMedium ?? const TextStyle(fontSize: 14)).copyWith(color: theme.colorScheme.onSurface, decoration: TextDecoration.none),
+              child: child,
             ),
-          ),
-          bottomNavigationBar: desktop
-              ? null
-              : SafeArea(
-                  top: false,
-                  child: NavigationBar(
-                    indicatorColor: const Color(0xFFD5EBDD),
-                    selectedIndex: mobileIndex < 0 ? 4 : mobileIndex,
-                    onDestinationSelected: (index) {
-                      if (index == 4) {
-                        _showMobileMenu(context, organizationId);
-                      } else {
-                        _openMenuEntry(
-                          context,
-                          _entries[_mobileIndices[index]],
-                          organizationId,
-                        );
-                      }
-                    },
-                    destinations: const [
-                      NavigationDestination(
-                        icon: Icon(Icons.dashboard_outlined),
-                        label: 'Dashboard',
-                      ),
-                      NavigationDestination(
-                        icon: Icon(Icons.event_note_outlined),
-                        label: 'Events',
-                      ),
-                      NavigationDestination(
-                        icon: Icon(Icons.qr_code_scanner_rounded),
-                        label: 'Attendance',
-                      ),
-                      NavigationDestination(
-                        icon: Icon(Icons.workspace_premium_outlined),
-                        label: 'Certificates',
-                      ),
-                      NavigationDestination(
-                        icon: Icon(Icons.menu_rounded),
-                        label: 'More',
-                      ),
-                    ],
-                  ),
-                ),
-        );
-      },
-    );
+          )),
+        ]),
+      );
+    });
   }
-}
-
-class _AdminMenuEntry {
-  const _AdminMenuEntry(this.label, this.icon, this.path, this.enabled);
-  final String label;
-  final IconData icon;
-  final String path;
-  final bool enabled;
 }
