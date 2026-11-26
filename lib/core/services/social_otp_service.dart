@@ -23,8 +23,10 @@ class KaisaOtpState {
   int get secondsLeft {
     final end = expiresAt;
     if (end == null) return 0;
+
     final remaining = end.difference(DateTime.now()).inSeconds;
-    return remaining < 0 ? 0 : (remaining > 60 ? 60 : remaining);
+
+    return remaining < 0 ? 0 : remaining;
   }
 }
 

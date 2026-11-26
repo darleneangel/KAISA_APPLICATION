@@ -1,11 +1,14 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-/// Central Supabase authentication entry points for both mobile and web.
+/// Central Supabase authentication entry points for mobile and web.
 class KaisaAuthService {
   KaisaAuthService._();
+
   static final instance = KaisaAuthService._();
+
   SupabaseClient get client => Supabase.instance.client;
+
   User? get user => client.auth.currentUser;
 
   static const mobileRedirect = 'com.kaisa.app://login-callback/';
@@ -17,7 +20,11 @@ class KaisaAuthService {
       authScreenLaunchMode: kIsWeb
           ? LaunchMode.platformDefault
           : LaunchMode.externalApplication,
+      queryParams: provider == OAuthProvider.google
+          ? {'prompt': 'select_account'}
+          : const <String, String>{},
     );
+
     if (!started) {
       throw const AuthException('Unable to launch the sign-in page.');
     }
