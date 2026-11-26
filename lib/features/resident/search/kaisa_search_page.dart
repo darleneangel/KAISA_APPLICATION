@@ -22,7 +22,7 @@ class _KaisaSearchPageState extends State<KaisaSearchPage> {
   static const shortcuts = <(String, IconData, String)>[
     ('Events', Icons.calendar_month_outlined, '/resident/events'),
     ('Organizations', Icons.groups_outlined, '/resident/organizations'),
-    ('Community Feed', Icons.forum_outlined, '/resident/feed'),
+    ('Feed', Icons.dynamic_feed_outlined, '/resident/feed'),
     ('Messages', Icons.chat_bubble_outline, '/resident/messages'),
   ];
 

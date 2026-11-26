@@ -440,15 +440,11 @@ class _ProfilePageState extends State<ProfilePage> {
                       KaisaResidentSectionHeading(
                         title: 'My posts',
                         subtitle:
-                            'Your public Community Feed contributions · ${posts.length} post(s)',
+                            'Your public contributions · ${posts.length} post(s)',
                       ),
                       const SizedBox(height: 12),
                       if (posts.isEmpty)
-                        const KaisaResidentCard(
-                          child: Text(
-                            'No posts yet. Approved Tier 2 residents can publish in Community Feed.',
-                          ),
-                        ),
+                        const KaisaResidentCard(child: Text('No posts yet.')),
                       for (final post in posts)
                         Padding(
                           padding: const EdgeInsets.only(bottom: 12),

@@ -2,6 +2,7 @@ import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../shared/models/community_event_model.dart';
 import '../../../shared/models/organization_model.dart';
@@ -40,6 +41,69 @@ class _LguReportsPageState extends State<LguReportsPage> {
     'Organizations & Performance',
     'Event Activity & Attendance',
   ];
+
+  void _openPrivateReports() {
+    final reports = Supabase.instance.client
+        .from('kaisa_event_private_reports')
+        .select(
+          'category, explanation, created_at, event_id, kaisa_events(title)',
+        )
+        .order('created_at', ascending: false)
+        .limit(50);
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Private event reports'),
+        content: SizedBox(
+          width: 620,
+          height: 420,
+          child: FutureBuilder(
+            future: reports,
+            builder: (context, snapshot) {
+              if (snapshot.hasError) {
+                return const Text(
+                  'Could not load reports. Close and reopen this window to retry.',
+                );
+              }
+              final rows = snapshot.data;
+              if (rows == null) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (rows.isEmpty) {
+                return const Text('No private event reports yet.');
+              }
+              return ListView.separated(
+                itemCount: rows.length,
+                separatorBuilder: (context, index) => const Divider(),
+                itemBuilder: (context, index) {
+                  final row = rows[index];
+                  final event = row['kaisa_events'] as Map<String, dynamic>?;
+                  final when = DateTime.tryParse('${row['created_at']}');
+                  return ListTile(
+                    title: Text(
+                      '${row['category']} · ${event?['title'] ?? row['event_id']}',
+                    ),
+                    subtitle: SelectableText(
+                      [
+                        if (when != null) _date(when.toLocal()),
+                        '${row['explanation']}',
+                      ].join('\n'),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -581,6 +645,20 @@ class _LguReportsPageState extends State<LguReportsPage> {
                     ),
                   ),
                   const SizedBox(height: 18),
+                  if (Supabase
+                          .instance
+                          .client
+                          .auth
+                          .currentUser
+                          ?.appMetadata['kaisa_lgu_role'] ==
+                      'lgu_operations_admin') ...[
+                    OutlinedButton.icon(
+                      onPressed: _openPrivateReports,
+                      icon: const Icon(Icons.flag_outlined),
+                      label: const Text('Private event reports'),
+                    ),
+                    const SizedBox(height: 18),
+                  ],
                   _filters(),
                   const SizedBox(height: 18),
                   LayoutBuilder(

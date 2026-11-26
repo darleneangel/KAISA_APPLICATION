@@ -28,7 +28,7 @@ abstract final class KaisaResidentNavigation {
       Icons.home_rounded,
     ),
     KaisaNavDestination(
-      'Community Feed',
+      'Feed',
       '/resident/feed',
       Icons.forum_outlined,
       Icons.forum_rounded,
@@ -66,7 +66,8 @@ abstract final class KaisaResidentNavigation {
         route.startsWith('/resident/my-events')) {
       return 3;
     }
-    if (route.startsWith('/resident/profile') || route.contains('verification')) {
+    if (route.startsWith('/resident/profile') ||
+        route.contains('verification')) {
       return 4;
     }
     return -1; // Notifications and other utilities have no primary selection.
@@ -443,11 +444,7 @@ class _MobileNavItem extends StatelessWidget {
           ),
           const SizedBox(height: 3),
           Text(
-            item.label == 'Community Feed'
-                ? 'Feed'
-                : item.label == 'Organizations'
-                ? 'Orgs'
-                : item.label,
+            item.label == 'Organizations' ? 'Orgs' : item.label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: KaisaTypography.body(

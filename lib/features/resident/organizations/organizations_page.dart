@@ -5,13 +5,14 @@ import 'kaisa_organizations_repository.dart';
 import 'kaisa_organization_widgets.dart';
 
 class OrganizationsPage extends StatefulWidget {
-  const OrganizationsPage({super.key});
+  const OrganizationsPage({super.key, this.initialSearch = ''});
+  final String initialSearch;
   @override
   State<OrganizationsPage> createState() => _OrganizationsPageState();
 }
 
 class _OrganizationsPageState extends State<OrganizationsPage> {
-  final search = TextEditingController();
+  late final search = TextEditingController(text: widget.initialSearch);
   List<KaisaOrganization> _orgs = [];
   String category = 'All';
   bool loading = true;
@@ -95,19 +96,19 @@ class _OrganizationsPageState extends State<OrganizationsPage> {
             ),
             const SizedBox(height: 22),
             KaisaOrganizationHero(
-                title: 'Great things start together.',
-                subtitle:
-                    'Explore LGU-recognized groups, apply for membership, and discover opportunities.',
-                action: FilledButton.icon(
-                  onPressed: () => context.push('/resident/my-organizations'),
-                  icon: const Icon(Icons.groups_outlined),
-                  label: const Text('My Organizations'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: KaisaResidentDesign.yellow,
-                    foregroundColor: KaisaResidentDesign.forest,
-                  ),
+              title: 'Great things start together.',
+              subtitle:
+                  'Explore LGU-recognized groups, apply for membership, and discover opportunities.',
+              action: FilledButton.icon(
+                onPressed: () => context.push('/resident/my-organizations'),
+                icon: const Icon(Icons.groups_outlined),
+                label: const Text('My Organizations'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: KaisaResidentDesign.yellow,
+                  foregroundColor: KaisaResidentDesign.forest,
                 ),
               ),
+            ),
             const SizedBox(height: 22),
             TextField(
               controller: search,

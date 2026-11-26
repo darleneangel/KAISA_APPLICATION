@@ -108,6 +108,53 @@ abstract final class KaisaTypography {
     fontWeight: style.fontWeight ?? FontWeight.w400,
     fontFeatures: const [FontFeature.tabularFigures()],
   );
+  static ThemeData homeTheme(BuildContext context) {
+    final base = Theme.of(context);
+    final ui = base.textTheme.apply(
+      fontFamily: GoogleFonts.plusJakartaSans().fontFamily,
+    );
+    TextStyle heading(TextStyle? original, double size, FontWeight weight) =>
+        (original ?? const TextStyle()).copyWith(
+          fontFamily: GoogleFonts.outfit(fontWeight: weight).fontFamily,
+          fontSize: size,
+          fontWeight: weight,
+          height: 1.2,
+          letterSpacing: -.25,
+        );
+    TextStyle body(TextStyle? original, double size, FontWeight weight) =>
+        (original ?? const TextStyle()).copyWith(
+          fontFamily: GoogleFonts.plusJakartaSans(
+            fontWeight: weight,
+          ).fontFamily,
+          fontSize: size,
+          fontWeight: weight,
+          height: 1.5,
+        );
+    final residentText = ui.copyWith(
+      displayLarge: heading(ui.displayLarge, 48, FontWeight.w700),
+      displayMedium: heading(ui.displayMedium, 36, FontWeight.w700),
+      displaySmall: heading(ui.displaySmall, 32, FontWeight.w600),
+      headlineLarge: heading(ui.headlineLarge, 32, FontWeight.w600),
+      headlineMedium: heading(ui.headlineMedium, 24, FontWeight.w600),
+      headlineSmall: heading(ui.headlineSmall, 20, FontWeight.w600),
+      titleLarge: heading(ui.titleLarge, 20, FontWeight.w600),
+      titleMedium: heading(ui.titleMedium, 16, FontWeight.w600),
+      titleSmall: heading(ui.titleSmall, 14, FontWeight.w600),
+      bodyLarge: body(ui.bodyLarge, 16, FontWeight.w400),
+      bodyMedium: body(ui.bodyMedium, 14, FontWeight.w400),
+      bodySmall: body(ui.bodySmall, 12, FontWeight.w400),
+      labelLarge: body(ui.labelLarge, 14, FontWeight.w600),
+      labelMedium: body(ui.labelMedium, 12, FontWeight.w500),
+      labelSmall: body(ui.labelSmall, 11, FontWeight.w600),
+    );
+    return base.copyWith(
+      textTheme: residentText,
+      primaryTextTheme: base.primaryTextTheme.apply(
+        fontFamily: GoogleFonts.plusJakartaSans().fontFamily,
+      ),
+    );
+  }
+
   static ThemeData theme(BuildContext context) {
     final base = Theme.of(context);
     final ui = base.textTheme.apply(

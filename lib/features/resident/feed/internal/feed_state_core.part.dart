@@ -1,7 +1,7 @@
 part of '../feed_page.dart';
 
 // Shared state, lifecycle, and cross-feature contracts.
-mixin _FeedStateCore on State<FeedPage> {
+mixin _FeedStateCore on State<LegacySocialFeedPage> {
   final db = Supabase.instance.client;
   List<Map<String, dynamic>> posts = [];
   String filter = 'All';

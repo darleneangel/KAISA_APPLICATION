@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../search/kaisa_search_page.dart';
 import '../widgets/kaisa_resident_design.dart';
 
 /// A list of actual conversations. Names come from a public-safe, authenticated RPC.
@@ -220,14 +221,18 @@ class _MessagesPageState extends State<MessagesPage> {
                               ),
                               const SizedBox(height: 7),
                               const Text(
-                                'Visit Community Feed and open a resident profile to message them.',
+                                'Find a resident and open their public profile to message them.',
                                 textAlign: TextAlign.center,
                               ),
                               const SizedBox(height: 16),
                               OutlinedButton.icon(
-                                onPressed: () => context.go('/resident/feed'),
-                                icon: const Icon(Icons.forum_outlined),
-                                label: const Text('Explore Community Feed'),
+                                onPressed: () => Navigator.of(context).push(
+                                  MaterialPageRoute<void>(
+                                    builder: (_) => const KaisaSearchPage(),
+                                  ),
+                                ),
+                                icon: const Icon(Icons.person_search_outlined),
+                                label: const Text('Find a resident'),
                               ),
                             ],
                           ),

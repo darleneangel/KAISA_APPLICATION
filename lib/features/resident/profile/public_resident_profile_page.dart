@@ -111,7 +111,7 @@ class _PublicResidentProfilePageState extends State<PublicResidentProfilePage> {
                       ? context.pop()
                       : context.go('/resident/feed'),
                   icon: const Icon(Icons.arrow_back_rounded),
-                  label: const Text('Back to Community Feed'),
+                  label: const Text('Back to Feed'),
                 ),
                 const SizedBox(height: 10),
                 if (busy)

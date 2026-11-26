@@ -231,7 +231,9 @@ final appRouter = GoRouter(
         ),
         GoRoute(
           path: '/resident/organizations',
-          builder: (context, state) => const OrganizationsPage(),
+          builder: (context, state) => OrganizationsPage(
+            initialSearch: state.uri.queryParameters['q'] ?? '',
+          ),
         ),
         GoRoute(
           path: '/resident/organization-details',
@@ -490,7 +492,8 @@ final appRouter = GoRouter(
     ShellRoute(
       builder: (context, state, child) {
         final path = state.uri.path;
-        final studio = path == '/organization-admin/ecertificate-studio' ||
+        final studio =
+            path == '/organization-admin/ecertificate-studio' ||
             path == '/organization-admin/certificates';
         return KaisaOrgAdminGate(
           child: studio ? child : KaisaOrgAdminShell(child: child),

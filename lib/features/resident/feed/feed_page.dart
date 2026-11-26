@@ -11,6 +11,8 @@ import 'package:camera/camera.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../widgets/kaisa_resident_design.dart';
 
+export 'civic_feed_page.dart' show FeedPage;
+
 // Internal parts share the Feed library. Existing data and action contracts remain unchanged.
 part 'internal/feed_presentation.part.dart';
 part 'internal/feed_relevance.part.dart';
@@ -30,13 +32,13 @@ part 'widgets/feed_smart_search.part.dart';
 part 'widgets/feed_create_story.part.dart';
 part 'widgets/feed_story_camera.part.dart';
 
-class FeedPage extends StatefulWidget {
-  const FeedPage({super.key});
+class LegacySocialFeedPage extends StatefulWidget {
+  const LegacySocialFeedPage({super.key});
   @override
-  State<FeedPage> createState() => _FeedPageState();
+  State<LegacySocialFeedPage> createState() => _FeedPageState();
 }
 
-class _FeedPageState extends State<FeedPage>
+class _FeedPageState extends State<LegacySocialFeedPage>
     with
         _FeedStateCore,
         _FeedProfileActions,
