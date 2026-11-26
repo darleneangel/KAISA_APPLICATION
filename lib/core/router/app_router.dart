@@ -52,7 +52,7 @@ import '../../features/auth/views/forgot_password_page.dart';
 import '../../features/auth/views/profile_setup_page.dart';
 import '../../features/auth/views/verification_page.dart';
 import '../../features/resident/home/resident_home_page.dart';
-import '../../features/resident/feed/feed_page.dart';
+
 import '../../features/resident/organizations/organizations_page.dart';
 import '../../features/resident/organizations/organization_details_page.dart';
 import '../../features/resident/organizations/my_organizations_page.dart';
@@ -224,10 +224,6 @@ final appRouter = GoRouter(
         GoRoute(
           path: '/resident/home',
           builder: (context, state) => const ResidentHomePage(),
-        ),
-        GoRoute(
-          path: '/resident/feed',
-          builder: (context, state) => const FeedPage(),
         ),
         GoRoute(
           path: '/resident/organizations',

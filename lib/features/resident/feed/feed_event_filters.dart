@@ -50,6 +50,19 @@ bool feedSearchMatches(String text, String query) {
 bool feedEventHasSlots(KaisaEvent event, DateTime now) =>
     event.startsAt.isAfter(now) && !event.isFull && !event.isRegistered;
 
+({List<KaisaEvent> followed, List<KaisaEvent> remaining})
+partitionFollowedEvents(
+  Iterable<KaisaEvent> events,
+  bool Function(KaisaEvent event) isFollowed,
+) {
+  final followed = <KaisaEvent>[];
+  final remaining = <KaisaEvent>[];
+  for (final event in events) {
+    (isFollowed(event) ? followed : remaining).add(event);
+  }
+  return (followed: followed, remaining: remaining);
+}
+
 List<KaisaEvent> filterFeedEvents(
   Iterable<KaisaEvent> events, {
   required DateTime now,
@@ -62,6 +75,7 @@ List<KaisaEvent> filterFeedEvents(
   FeedAvailability availability = FeedAvailability.any,
   FeedSort sort = FeedSort.recommended,
   Map<String, DateTime> creationDates = const {},
+  bool includeEnded = false,
 }) {
   final today = _calendarDate(feedManilaTime(now));
   final monday = today.subtract(Duration(days: today.weekday - 1));
@@ -80,7 +94,7 @@ List<KaisaEvent> filterFeedEvents(
     ),
   };
   final results = events.where((event) {
-    if (!event.endsAt.isAfter(now)) return false;
+    if (!includeEnded && !event.endsAt.isAfter(now)) return false;
     final date = _calendarDate(feedManilaTime(event.startsAt));
     final matchesDate =
         window == null ||

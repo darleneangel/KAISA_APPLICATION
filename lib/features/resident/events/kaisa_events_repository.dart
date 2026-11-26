@@ -115,6 +115,34 @@ class KaisaEventsRepository {
   static final instance = KaisaEventsRepository._();
   final _client = Supabase.instance.client;
 
+  Future<Set<String>?> savedEvents() async {
+    try {
+      final saved = <String>{};
+      const pageSize = 250;
+      for (var offset = 0; ; offset += pageSize) {
+        final rows = await _client.from('kaisa_saved_events')
+            .select('event_id').order('event_id').range(offset, offset + pageSize - 1);
+        saved.addAll(rows.map((row) => row['event_id'] as String));
+        if (rows.length < pageSize) return saved;
+      }
+    } on PostgrestException catch (error) {
+      if (error.code == 'PGRST205' || error.code == '42P01') return null;
+      rethrow;
+    }
+  }
+
+  Future<void> setEventSaved(String id, bool saved) async {
+    if (saved) {
+      try {
+        await _client.from('kaisa_saved_events').insert({'event_id': id});
+      } on PostgrestException catch (error) {
+        if (error.code != '23505') rethrow;
+      }
+    } else {
+      await _client.from('kaisa_saved_events').delete().eq('event_id', id);
+    }
+  }
+
   Future<List<KaisaEvent>> listEvents() async {
     final data = await _client.rpc('kaisa_events_catalog');
     return (data as List)

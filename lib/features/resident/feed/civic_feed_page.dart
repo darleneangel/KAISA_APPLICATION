@@ -37,6 +37,13 @@ class _CivicFeedPageState extends State<FeedPage> {
   final _ratings = <String, Future<({double average, bool sample})?>>{};
   List<KaisaEvent> _events = [];
   List<KaisaOrganization> _organizations = [];
+  Set<String> _following = {};
+  Set<String>? _saved;
+  final _saving = <String>{};
+  bool _savedOnly = false;
+  int _savedRevision = 0;
+  Map<String, String> _eventOrganizations = {};
+  List<Map<String, dynamic>> _followedPosts = [];
   Map<String, DateTime> _creationDates = {};
   List<String> _recent = [];
   Timer? _debounce;
@@ -60,6 +67,9 @@ class _CivicFeedPageState extends State<FeedPage> {
   void initState() {
     super.initState();
     _focus.addListener(_focusChanged);
+    KaisaOrganizationsRepository.instance.followsChanged.addListener(
+      _followingChanged,
+    );
     unawaited(_load());
     final user = Supabase.instance.client.auth.currentUser;
     if (user != null) {
@@ -69,10 +79,14 @@ class _CivicFeedPageState extends State<FeedPage> {
   }
 
   void _focusChanged() => setState(() {});
+  void _followingChanged() => unawaited(_load());
 
   @override
   void dispose() {
     _debounce?.cancel();
+    KaisaOrganizationsRepository.instance.followsChanged.removeListener(
+      _followingChanged,
+    );
     _focus.removeListener(_focusChanged);
     _focus.dispose();
     _search.dispose();
@@ -82,24 +96,45 @@ class _CivicFeedPageState extends State<FeedPage> {
   Future<void> _load() async {
     if (!mounted) return;
     final generation = ++_loadGeneration;
+    final savedRevision = _savedRevision;
     setState(() {
       _loading = true;
       _failed = false;
     });
     try {
       final repository = KaisaEventsRepository.instance;
-      final (events, organizations, dates) = await (
+      final directory = KaisaOrganizationsRepository.instance;
+      final (
+        events,
+        organizations,
+        dates,
+        following,
+        eventOrganizations,
+        posts,
+        saved,
+      ) = await (
         repository.listEvents(),
-        KaisaOrganizationsRepository.instance.getOrganizations(),
+        directory.getOrganizations(),
         repository.publishedEventCreationDates(),
+        directory.followedOrganizations(),
+        directory.eventOrganizations(),
+        directory.followedAnnouncements(),
+        repository.savedEvents(),
       ).wait;
       if (!mounted || generation != _loadGeneration) return;
       setState(() {
         _events = events;
         _organizations = organizations;
         _creationDates = dates;
+        _following = following ?? {};
+        _eventOrganizations = eventOrganizations;
+        _followedPosts = posts;
+        if (savedRevision == _savedRevision) {
+          _saved = saved;
+          if (saved == null) _savedOnly = false;
+        }
         _ratings.clear();
-        final upcoming = _upcoming;
+        final upcoming = _visibleCatalog;
         if (!upcoming.any((event) => event.category == _category)) {
           _category = null;
         }
@@ -118,6 +153,40 @@ class _CivicFeedPageState extends State<FeedPage> {
       if (mounted && generation == _loadGeneration) {
         setState(() => _loading = false);
       }
+    }
+  }
+
+  List<KaisaEvent> get _visibleCatalog => _savedOnly
+      ? _events.where((event) => _saved?.contains(event.id) == true).toList()
+      : _upcoming;
+
+  Future<void> _toggleSave(String id) async {
+    final saved = _saved;
+    if (saved == null || _saving.contains(id)) return;
+    final next = !saved.contains(id);
+    setState(() => _saving.add(id));
+    try {
+      await KaisaEventsRepository.instance.setEventSaved(id, next);
+      if (!mounted) return;
+      setState(() {
+        _savedRevision++;
+        final current = _saved ??= <String>{};
+        if (next) {
+          current.add(id);
+        } else {
+          current.remove(id);
+        }
+      });
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not update Saved events. Please try again.'),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving.remove(id));
     }
   }
 
@@ -220,6 +289,7 @@ class _CivicFeedPageState extends State<FeedPage> {
     availability: _availability,
     sort: _sort,
     creationDates: _creationDates,
+    includeEnded: _savedOnly,
   );
   List<String> _options(Iterable<String> values) =>
       values.where((value) => value.trim().isNotEmpty).toSet().toList()
@@ -516,17 +586,14 @@ class _CivicFeedPageState extends State<FeedPage> {
                       math.max(1.0, MediaQuery.textScalerOf(context).scale(1)),
               child: _EventCard(
                 event: event,
+                saved: _saved?.contains(event.id) == true,
+                saving: _saving.contains(event.id),
+                onSave: _saved == null ? null : () => _toggleSave(event.id),
                 rating: _ratings.putIfAbsent(
                   event.id,
                   () => KaisaEventsRepository.instance.getRatingSummary(event),
                 ),
-                organizer: _organizations
-                    .where(
-                      (organization) =>
-                          organization.name.trim().toLowerCase() ==
-                          event.organization.trim().toLowerCase(),
-                    )
-                    .firstOrNull,
+                organizer: _organizerFor(event),
                 featured: featured,
                 compact: columns == 1,
                 onRegistrationChanged: _load,
@@ -537,11 +604,34 @@ class _CivicFeedPageState extends State<FeedPage> {
     },
   );
 
+  KaisaOrganization? _organizerFor(KaisaEvent event) {
+    final linked = _eventOrganizations[event.id];
+    return _organizations
+        .where(
+          (organization) => linked != null
+              ? organization.id == linked
+              : organization.name.trim().toLowerCase() ==
+                    event.organization.trim().toLowerCase(),
+        )
+        .firstOrNull;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final upcoming = _upcoming;
+    final upcoming = _visibleCatalog;
     final results = _results(upcoming);
-    final matchingOrganizations = _query.isEmpty
+    final showFollowing =
+        !_savedOnly &&
+        !_hasFilters &&
+        _query.isEmpty &&
+        _sort == FeedSort.recommended;
+    final (followed: followedEvents, remaining: remainingEvents) = showFollowing
+        ? partitionFollowedEvents(
+            results,
+            (event) => _following.contains(_organizerFor(event)?.id),
+          )
+        : (followed: <KaisaEvent>[], remaining: results);
+    final matchingOrganizations = _savedOnly || _query.isEmpty
         ? <KaisaOrganization>[]
         : _organizations
               .where((organization) {
@@ -554,17 +644,17 @@ class _CivicFeedPageState extends State<FeedPage> {
               .take(6)
               .toList();
     final featured = <KaisaEvent>[];
-    if (!_hasFilters && _query.isEmpty && _sort == FeedSort.recommended) {
+    if (showFollowing) {
       final categories = <String>{};
       final now = DateTime.now();
-      for (final event in results) {
+      for (final event in remainingEvents) {
         if (feedEventHasSlots(event, now) && categories.add(event.category)) {
           featured.add(event);
           if (featured.length == 3) break;
         }
       }
     }
-    final entries = results
+    final entries = remainingEvents
         .where((event) => !featured.contains(event))
         .toList();
     final baseTheme = KaisaTypography.homeTheme(context);
@@ -599,11 +689,31 @@ class _CivicFeedPageState extends State<FeedPage> {
                           children: [
                             Expanded(
                               child: _heading(
-                                'Feed',
+                                _savedOnly ? 'Saved events' : 'Feed',
                                 compact: compact,
                                 pageTitle: true,
                               ),
                             ),
+                            if (_saved case final bookmarks?)
+                              IconButton(
+                                tooltip: _savedOnly
+                                    ? 'Show all events'
+                                    : 'Show saved events',
+                                isSelected: _savedOnly,
+                                onPressed: () => _updateFilters(() {
+                                  _savedOnly = !_savedOnly;
+                                  _category = _organizer = _location = null;
+                                }),
+                                icon: Badge.count(
+                                  isLabelVisible: bookmarks.isNotEmpty,
+                                  count: bookmarks.length,
+                                  child: Icon(
+                                    _savedOnly
+                                        ? Icons.bookmark
+                                        : Icons.bookmark_border,
+                                  ),
+                                ),
+                              ),
                             IconButton(
                               tooltip: 'Refresh events',
                               onPressed: _loading ? null : _load,
@@ -639,6 +749,71 @@ class _CivicFeedPageState extends State<FeedPage> {
                                       child: const LinearProgressIndicator(),
                                     ),
                                     const SizedBox(height: 20),
+                                    if (showFollowing &&
+                                        _followedPosts.isNotEmpty) ...[
+                                      _heading(
+                                        'Updates from organizations you follow',
+                                        compact: compact,
+                                      ),
+                                      const SizedBox(height: 8),
+                                      for (final post in _followedPosts)
+                                        Card(
+                                          child: ListTile(
+                                            leading: const Icon(
+                                              Icons.campaign_outlined,
+                                            ),
+                                            title: Text(
+                                              post['title'] as String,
+                                            ),
+                                            subtitle: Text(
+                                              '${post['organization_name']} · ${post['body']}',
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            trailing: const Icon(
+                                              Icons.chevron_right,
+                                            ),
+                                            onTap: () {
+                                              final organization = _organizations
+                                                  .where(
+                                                    (item) =>
+                                                        item.id ==
+                                                        post['organization_id'],
+                                                  )
+                                                  .firstOrNull;
+                                              if (organization != null) {
+                                                context.push(
+                                                  '/resident/organization-details',
+                                                  extra: organization
+                                                      .toRouteExtra(),
+                                                );
+                                              }
+                                            },
+                                          ),
+                                        ),
+                                      const SizedBox(height: 20),
+                                    ],
+                                    if (followedEvents.isNotEmpty) ...[
+                                      _heading(
+                                        'Events from organizations you follow',
+                                        compact: compact,
+                                      ),
+                                      const SizedBox(height: 8),
+                                      _cards(
+                                        followedEvents.take(_limit).toList(),
+                                        columns,
+                                      ),
+                                      if (followedEvents.length > _limit)
+                                        TextButton(
+                                          onPressed: () => setState(
+                                            () => _limit += _batchSize,
+                                          ),
+                                          child: const Text(
+                                            'Show more followed events',
+                                          ),
+                                        ),
+                                      const SizedBox(height: 20),
+                                    ],
                                     for (var index = 0; index < 2; index++)
                                       Container(
                                         height: 120,
@@ -703,9 +878,12 @@ class _CivicFeedPageState extends State<FeedPage> {
                                       const SizedBox(height: 24),
                                     ],
                                     if (entries.isNotEmpty ||
-                                        featured.isEmpty) ...[
+                                        (featured.isEmpty &&
+                                            followedEvents.isEmpty)) ...[
                                       _heading(
-                                        _query.isEmpty
+                                        _savedOnly
+                                            ? 'Your saved events'
+                                            : _query.isEmpty
                                             ? 'Upcoming community events'
                                             : 'Event search results',
                                         compact: compact,
@@ -717,19 +895,26 @@ class _CivicFeedPageState extends State<FeedPage> {
                                         entries.take(_limit).toList(),
                                         columns,
                                       )
-                                    else if (featured.isEmpty)
+                                    else if (featured.isEmpty &&
+                                        followedEvents.isEmpty)
                                       Card(
                                         child: ListTile(
                                           leading: const Icon(
                                             Icons.event_busy_outlined,
                                           ),
                                           title: Text(
-                                            _hasFilters || _query.isNotEmpty
+                                            _savedOnly
+                                                ? 'No saved events to show'
+                                                : _hasFilters ||
+                                                      _query.isNotEmpty
                                                 ? 'No events match your search'
                                                 : 'No upcoming events',
                                           ),
                                           subtitle: Text(
-                                            _hasFilters || _query.isNotEmpty
+                                            _savedOnly
+                                                ? 'Save an event from the Feed or adjust your filters.'
+                                                : _hasFilters ||
+                                                      _query.isNotEmpty
                                                 ? 'Try a different search or clear the filters.'
                                                 : 'Check back for new civic opportunities.',
                                           ),
@@ -794,6 +979,9 @@ class _CivicFeedPageState extends State<FeedPage> {
 class _EventCard extends StatelessWidget {
   const _EventCard({
     required this.event,
+    required this.saved,
+    required this.saving,
+    required this.onSave,
     required this.rating,
     required this.organizer,
     required this.featured,
@@ -802,6 +990,8 @@ class _EventCard extends StatelessWidget {
   });
 
   final KaisaEvent event;
+  final bool saved, saving;
+  final VoidCallback? onSave;
   final Future<({double average, bool sample})?> rating;
   final KaisaOrganization? organizer;
   final bool featured;
@@ -817,6 +1007,8 @@ class _EventCard extends StatelessWidget {
     final date = localizations.formatMediumDate(start);
     final status = event.isRegistered
         ? 'Already registered'
+        : event.isPast
+        ? 'Completed'
         : !event.startsAt.isAfter(DateTime.now())
         ? 'In progress'
         : event.isFull
@@ -942,12 +1134,23 @@ class _EventCard extends StatelessWidget {
           PositionedDirectional(
             top: 10,
             start: 10,
-            end: 10,
+            end: onSave == null ? 10 : 56,
             child: Align(
               alignment: AlignmentDirectional.centerStart,
               child: statusBadge,
             ),
           ),
+          if (onSave != null)
+            PositionedDirectional(
+              top: 6,
+              end: 6,
+              child: IconButton.filledTonal(
+                tooltip: saved ? 'Remove from Saved events' : 'Save event',
+                isSelected: saved,
+                onPressed: saving ? null : onSave,
+                icon: Icon(saved ? Icons.bookmark : Icons.bookmark_border),
+              ),
+            ),
           PositionedDirectional(
             start: 12,
             end: 12,

@@ -27,6 +27,24 @@ void main() {
     registrationStatus: registration,
   );
 
+  test(
+    'followed events move ahead without changing order inside each group',
+    () {
+      final ordinary = event('ordinary', now);
+      final followed = event('followed', now);
+      final otherFollowed = event('second-followed', now);
+      final other = event('second-ordinary', now);
+      final groups = partitionFollowedEvents([
+        ordinary,
+        followed,
+        other,
+        otherFollowed,
+      ], (event) => event.id == 'followed' || event.id == 'second-followed');
+      expect(groups.followed, [followed, otherFollowed]);
+      expect(groups.remaining, [ordinary, other]);
+    },
+  );
+
   test('combined filters use Manila calendar dates and search all fields', () {
     final matches = event('matches', DateTime.utc(2026, 11, 29, 17));
     final results = filterFeedEvents(
