@@ -30,6 +30,7 @@ import '../../features/lgu_admin/verification/verification_audit_logs_page.dart'
 
 import '../../features/resident/widgets/kaisa_responsive_shell.dart';
 import '../../features/lgu_admin/layout/lgu_admin_shell.dart';
+import '../../features/lgu_admin/verification/resident_directory_page.dart';
 import '../../features/lgu_admin/operations/lgu_admin_dashboard_page.dart';
 import '../services/social_otp_service.dart';
 import '../../features/resident/about/about_kaisa_page.dart';
@@ -69,7 +70,6 @@ import '../../features/resident/notifications/notifications_page.dart';
 import '../../features/resident/messaging/messages_page.dart';
 import '../../features/resident/my-qr/kaisa_my_qr_page.dart';
 import '../../features/resident/profile/resident_user_profile_page.dart';
-import '../../features/resident/organizations/my_organizations_page.dart';
 import '../../features/resident/feed/feed_event_filters.dart';
 import '../../features/resident/feed/feed_page.dart';
 
@@ -94,6 +94,7 @@ class _AuthRouterRefresh extends ChangeNotifier {
 }
 
 String? getLguRole(User user) {
+  if (user.appMetadata['is_super_admin'] != true) return null;
   final role = user.appMetadata['kaisa_lgu_role'];
 
   if (role == 'lgu_it_admin' ||
@@ -129,6 +130,7 @@ final appRouter = GoRouter(
     if (user == null) {
       if (path.startsWith('/resident/') ||
           path.startsWith('/lgu-admin/') ||
+          path == '/lgu-admin-preview' ||
           path.startsWith('/organization-admin/') ||
           path.startsWith('/organization_admin/') ||
           path == '/profile-setup') {
@@ -166,6 +168,10 @@ final appRouter = GoRouter(
       return getHomeRoute(user);
     }
 
+    if (path == '/lgu-admin-preview' && !lguPreviewEnabled) {
+      return getHomeRoute(user);
+    }
+
     // Require a recognized LGU role for every LGU route.
     if (path.startsWith('/lgu-admin/')) {
       final role = getLguRole(user);
@@ -191,6 +197,10 @@ final appRouter = GoRouter(
           '/lgu-admin/events',
           '/lgu-admin/reports',
           '/lgu-admin/audit-logs',
+          '/lgu-admin/operations/organization-monitoring',
+          '/lgu-admin/operations/moderation',
+          '/lgu-admin/operations/participation',
+          '/lgu-admin/operations/announcements',
           '/lgu-admin/settings',
         };
 
@@ -336,10 +346,13 @@ final appRouter = GoRouter(
       ],
     ),
 
-    // LGU Admin prototype workspace.
-    // NOTE: This only requires a signed-in user; it does NOT yet verify
-    // an LGU administrator role. Add a trusted server-side role guard
-    // before allowing access to real administrative data.
+    // Isolated debug-only navigation preview. Never mounts live LGU pages.
+    if (lguPreviewEnabled)
+      GoRoute(path: '/lgu-admin-preview',
+        builder: (context, state) => const LguDeveloperPreviewPage()),
+
+    // LGU routes require server-assigned metadata; backend authorization
+    // must independently enforce all sensitive operations.
 
     // =========================================
     // LGU ADMIN WORKSPACE
@@ -419,7 +432,68 @@ final appRouter = GoRouter(
           builder: (context, state) => const VerificationSettingsPage(),
         ),
 
-        // 2. Organization Registry
+        GoRoute(
+          path: '/lgu-admin/verification/residents',
+          builder: (context, state) => const ResidentDirectoryPage(),
+        ),
+
+        GoRoute(
+          path: '/lgu-admin/verification/organizations',
+          builder: (context, state) => const LguPlannedModulePage(
+            title: 'Organization Registry',
+            description: 'Transfer of live registry access requires backend authorization changes. Existing registry remains with Operations during transition.',
+          ),
+        ),
+
+        GoRoute(
+          path: '/lgu-admin/verification/assignments',
+          builder: (context, state) => const LguPlannedModulePage(
+            title: 'Admin Assignments',
+            description: 'Transfer of live assignment access requires backend authorization changes.',
+          ),
+        ),
+
+        GoRoute(
+          path: '/lgu-admin/operations/organization-monitoring',
+          builder: (context, state) => const LguPlannedModulePage(
+            title: 'Organization Monitoring',
+            description: 'Read-only organization monitoring will be implemented separately from registry administration.',
+          ),
+        ),
+
+        GoRoute(
+          path: '/lgu-admin/operations/moderation',
+          builder: (context, state) => const LguPlannedModulePage(
+            title: 'Event Moderation',
+            description: 'Warning, hold, correction, release and cancellation workflows are planned.',
+          ),
+        ),
+
+        GoRoute(
+          path: '/lgu-admin/operations/participation',
+          builder: (context, state) => const LguPlannedModulePage(
+            title: 'Participation Monitoring',
+            description: 'Participation analytics integration is planned.',
+          ),
+        ),
+
+        GoRoute(
+          path: '/lgu-admin/operations/announcements',
+          builder: (context, state) => const LguPlannedModulePage(
+            title: 'Official Announcements',
+            description: 'LGU publication authority requires client approval and backend integration.',
+          ),
+        ),
+
+        GoRoute(
+          path: '/lgu-admin/it/security',
+          builder: (context, state) => const LguPlannedModulePage(
+            title: 'Security Management',
+            description: 'Security incident management is planned.',
+          ),
+        ),
+
+        // 2. Organization Registry (legacy Operations access during migration)
         GoRoute(
           path: '/lgu-admin/organizations',
           builder: (context, state) => const OrganizationRegistryPage(),

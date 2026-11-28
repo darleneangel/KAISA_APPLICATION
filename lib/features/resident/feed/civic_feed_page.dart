@@ -657,7 +657,7 @@ class _CivicFeedPageState extends State<FeedPage> {
     final entries = remainingEvents
         .where((event) => !featured.contains(event))
         .toList();
-    final baseTheme = KaisaTypography.homeTheme(context);
+    final baseTheme = Theme.of(context);
     return Theme(
       data: baseTheme.copyWith(
         colorScheme: baseTheme.colorScheme.copyWith(
